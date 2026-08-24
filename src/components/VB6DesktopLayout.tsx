@@ -34,6 +34,17 @@ import { Customer, Publication, Hawker, Publisher, Region, Rate, RateChange, Hol
 import { getRateForDate, calculateCustomerMonthlyBill, getLegacyDayOfWeek } from '@/lib/calculations';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 
+import PublisherForm from './forms/PublisherForm';
+import PublicationForm from './forms/PublicationForm';
+import CustomerForm from './forms/CustomerForm';
+import SubscriptionsModal from './forms/SubscriptionsModal';
+import DailyProcessForm from './forms/DailyProcessForm';
+import ReceiptForm from './forms/ReceiptForm';
+import BillingForm from './forms/BillingForm';
+import HawkerForm from './forms/HawkerForm';
+import RegionForm from './forms/RegionForm';
+import HolidayForm from './forms/HolidayForm';
+
 // Legacy Day of Week Names (1=Sun .. 7=Sat)
 const LEGACY_DAYS = [
   { id: 1, name: 'Sunday', hindi: 'रविवार', short: 'Sun' },
@@ -72,6 +83,9 @@ export default function VB6DesktopLayout() {
   const [isLoadingCusts, setIsLoadingCusts] = useState(false);
   const [isLoadingSubs, setIsLoadingSubs] = useState(false);
   const [subsTab, setSubsTab] = useState<'active' | 'all'>('active');
+  const [isSubsModalOpen, setIsSubsModalOpen] = useState(false);
+  const [selectedCustForModal, setSelectedCustForModal] = useState<Customer | null>(null);
+  const [isCustFormOpen, setIsCustFormOpen] = useState(false);
 
   // Publication Rates Form State
   const [selectedPub, setSelectedPub] = useState<Publication | null>(null);
@@ -679,402 +693,95 @@ export default function VB6DesktopLayout() {
         )}
 
         {/* ========================================================================= */}
-        {/* FORM 10: DAILY HAWKER DISTRIBUTION PROCESS (दैनिक पर्ची गणना) */}
+        {/* EXACT FORM REPLICAS MATCHING ORIGINAL 2008 VB6 SCREENSHOTS */}
         {/* ========================================================================= */}
-        {activeWindow === 'dailyprocess' && (
-          <div className="w-full max-w-5xl h-[85vh] bg-[#ECE9D8] vb-box-outset flex flex-col shadow-2xl">
-            <div className="vb-titlebar">
-              <span>Form 10: Daily Hawker Distribution Process (दैनिक वितरण पर्ची गणना)</span>
-              <span className="text-[10px]">Morning Supply Calculator</span>
-            </div>
-
-            <div className="p-3 flex-1 flex flex-col gap-3 overflow-hidden text-xs">
-              
-              {/* Controls */}
-              <div className="bg-white p-3 vb-box-inset flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-700">Supply Date:</span>
-                  <input 
-                    type="date"
-                    value={processDate}
-                    onChange={(e) => setProcessDate(e.target.value)}
-                    className="p-1 border border-slate-300 font-bold bg-white text-xs"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-700">Hawker:</span>
-                  <select 
-                    value={processHawkerId}
-                    onChange={(e) => setProcessHawkerId(e.target.value)}
-                    className="p-1 border border-slate-300 font-bold bg-white text-xs"
-                  >
-                    <option value="all">All Hawkers (सभी हॉकर)</option>
-                    {hawkers.slice(0, 30).map(h => (
-                      <option key={h.hawker_id} value={h.hawker_id}>{h.name} (Region #{h.region_id})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <button 
-                  onClick={handleRunDailyProcess}
-                  className="vb-btn bg-emerald-200"
-                >
-                  <Layers className="w-3.5 h-3.5 text-emerald-800" />
-                  <span>Calculate Daily Supply (गणना करें)</span>
-                </button>
-              </div>
-
-              {/* Daily Supply Results Table */}
-              <div className="flex-1 bg-white vb-box-inset overflow-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead className="sticky top-0 bg-[#ECE9D8] z-10">
-                    <tr>
-                      <th className="vb-grid-header">Hawker Name</th>
-                      <th className="vb-grid-header">Publication</th>
-                      <th className="vb-grid-header">Circulation</th>
-                      <th className="vb-grid-header text-right">Required Copies</th>
-                      <th className="vb-grid-header text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {processResults.length > 0 ? (
-                      processResults.map((r, idx) => (
-                        <tr key={idx} className="border-b border-slate-100 hover:bg-blue-50">
-                          <td className="p-2 font-bold text-slate-900">{r.hawker_name}</td>
-                          <td className="p-2">{r.publica_name}</td>
-                          <td className="p-2"><span className="px-2 py-0.5 bg-blue-100 text-blue-900 rounded font-bold text-[10px]">{r.circulation}</span></td>
-                          <td className="p-2 text-right font-mono font-bold text-indigo-900 text-sm">{r.copies} copies</td>
-                          <td className="p-2 text-center">
-                            <button className="px-2 py-0.5 bg-blue-100 hover:bg-blue-200 border border-blue-400 font-bold text-[10px] cursor-pointer">
-                              Print Parchi
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={5} className="p-8 text-center text-slate-400 italic">
-                          Select date and click "Calculate Daily Supply" to view hawker morning supply breakdown.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* FORM 2: PUBLICATION MASTER & WEEKDAY RATES (अखबार / दर) */}
-        {/* ========================================================================= */}
-        {activeWindow === 'publications' && (
-          <div className="w-full max-w-4xl h-[85vh] bg-[#ECE9D8] vb-box-outset flex flex-col shadow-2xl">
-            <div className="vb-titlebar">
-              <span>Form 2: Publication Master & Weekday Rate Matrix (1=Sun .. 7=Sat)</span>
-              <span className="text-[10px]">Press F1 to Copy Sunday Rate</span>
-            </div>
-
-            <div className="p-4 flex-1 flex flex-col gap-4 overflow-y-auto text-xs">
-              
-              {/* Publication Selector */}
-              <div className="bg-white p-3 vb-box-inset flex items-center gap-3">
-                <span className="font-bold text-slate-700">Select Publication:</span>
-                <select 
-                  value={selectedPub?.publica_id || ''}
-                  onChange={(e) => {
-                    const p = publications.find(x => x.publica_id === Number(e.target.value));
-                    if (p) setSelectedPub(p);
-                  }}
-                  className="flex-1 p-1.5 border border-slate-300 font-bold text-slate-900 text-xs bg-white"
-                >
-                  {publications.map(p => (
-                    <option key={p.publica_id} value={p.publica_id}>
-                      {p.public_name} ({p.type_p || 'Daily'}) - ID #{p.publica_id}
-                    </option>
-                  ))}
-                </select>
-
-                <button 
-                  onClick={() => {
-                    const sun = editingRates[1] || 5.0;
-                    const map: Record<number, number> = {};
-                    LEGACY_DAYS.forEach(d => { map[d.id] = sun; });
-                    setEditingRates(map);
-                    setStatusMessage(`F1 Triggered: Copied Sunday rate (₹${sun}) to all 7 days!`);
-                  }}
-                  className="vb-btn bg-amber-100"
-                  title="F1 Keyboard Shortcut"
-                >
-                  <Copy className="w-3.5 h-3.5 text-amber-800" />
-                  <span>Press F1: Copy Sun Rate</span>
-                </button>
-              </div>
-
-              {/* 7-Day Rate Grid (1=Sun .. 7=Sat) */}
-              <div className="bg-white p-3 vb-box-inset space-y-2">
-                <span className="font-bold text-slate-900 block border-b pb-1">
-                  7-Day Day-of-Week Selling Price Matrix (Sunday = 1, Saturday = 7):
-                </span>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 pt-1">
-                  {LEGACY_DAYS.map(day => (
-                    <div 
-                      key={day.id} 
-                      className={`p-2.5 text-center vb-box-outset ${day.id === 1 ? 'bg-amber-100 border-amber-400 font-bold' : 'bg-white'}`}
-                    >
-                      <span className="text-[10px] text-slate-500 block font-mono">Day #{day.id}</span>
-                      <strong className="text-xs block text-slate-900">{day.name}</strong>
-                      <span className="text-[10px] font-hindi text-slate-600 block">{day.hindi}</span>
-                      
-                      <div className="mt-2 flex items-center justify-center gap-1">
-                        <span className="text-xs font-bold text-slate-500">₹</span>
-                        <input 
-                          type="number"
-                          step="0.05"
-                          value={editingRates[day.id] ?? 5.0}
-                          onChange={(e) => setEditingRates({ ...editingRates, [day.id]: parseFloat(e.target.value) || 0 })}
-                          className="w-16 p-1 text-center font-bold text-xs border border-slate-400 bg-white"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-2 pt-2">
-                <button className="vb-btn bg-emerald-100">
-                  <Save className="w-3.5 h-3.5 text-emerald-800" />
-                  <span>Save Rates (सुरक्षित करें)</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* FORM 9: MONTHLY BILLING ENGINE (मासिक बिल गणना) */}
-        {/* ========================================================================= */}
-        {activeWindow === 'billing' && (
-          <div className="w-full max-w-5xl h-[88vh] bg-[#ECE9D8] vb-box-outset flex flex-col shadow-2xl">
-            <div className="vb-titlebar">
-              <span>Form 9: Monthly Billing Engine & Bill Printing (मासिक बिल गणना)</span>
-              <span className="text-[10px]">Pure Date-Aware Ledger Calculation</span>
-            </div>
-
-            <div className="p-3 flex-1 flex flex-col gap-3 overflow-hidden text-xs">
-              
-              {/* Billing Run Controls */}
-              <div className="bg-white p-3 vb-box-inset flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-700">Billing Month:</span>
-                  <select 
-                    value={billingMonth} 
-                    onChange={(e) => setBillingMonth(e.target.value)}
-                    className="p-1 border border-slate-300 font-bold bg-white"
-                  >
-                    {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map(m => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-700">Financial Year:</span>
-                  <select 
-                    value={billingYear} 
-                    onChange={(e) => setBillingYear(Number(e.target.value))}
-                    className="p-1 border border-slate-300 font-bold bg-white"
-                  >
-                    {[2024, 2025, 2026, 2027].map(y => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <button 
-                  onClick={handleRunBatchBilling}
-                  disabled={isBillingRunning}
-                  className="vb-btn bg-emerald-200"
-                >
-                  <DollarSign className="w-3.5 h-3.5 text-emerald-800" />
-                  <span>{isBillingRunning ? 'Calculating...' : 'Generate All Bills (गणना करें)'}</span>
-                </button>
-              </div>
-
-              {/* Generated Bills Ledger Table */}
-              <div className="flex-1 bg-white vb-box-inset overflow-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead className="sticky top-0 bg-[#ECE9D8] z-10">
-                    <tr>
-                      <th className="vb-grid-header">Bill ID</th>
-                      <th className="vb-grid-header">Customer Name</th>
-                      <th className="vb-grid-header text-right">Copies</th>
-                      <th className="vb-grid-header text-right">Paper Amt</th>
-                      <th className="vb-grid-header text-right">Deliv Chg</th>
-                      <th className="vb-grid-header text-right">Prev Due</th>
-                      <th className="vb-grid-header text-right">Net Payable</th>
-                      <th className="vb-grid-header text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {generatedBills.length > 0 ? (
-                      generatedBills.map((b) => (
-                        <tr key={b.bill_id} className="border-b border-slate-100 hover:bg-blue-50">
-                          <td className="p-2 font-mono font-bold">#{b.bill_id}</td>
-                          <td className="p-2 font-bold text-slate-900">{b.customer_name}</td>
-                          <td className="p-2 text-right font-mono">{b.total_copies}</td>
-                          <td className="p-2 text-right font-mono">₹{b.paper_amount?.toFixed(2)}</td>
-                          <td className="p-2 text-right font-mono">₹{b.del_amt?.toFixed(2)}</td>
-                          <td className="p-2 text-right font-mono">₹{b.due_amt?.toFixed(2)}</td>
-                          <td className="p-2 text-right font-mono font-bold text-red-600">₹{b.balance?.toFixed(2)}</td>
-                          <td className="p-2 text-center">
-                            <button className="px-2 py-0.5 bg-blue-100 hover:bg-blue-200 border border-blue-400 font-bold text-[10px] cursor-pointer">
-                              Print Slip
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={8} className="p-8 text-center text-slate-400 italic">
-                          Click "Generate All Bills" above to compute date-aware billing for all customers.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* FORM 6: PAYMENT RECEIPTS (18,382 RECORDS) */}
-        {/* ========================================================================= */}
-        {activeWindow === 'receipts' && (
-          <div className="w-full max-w-5xl h-[85vh] bg-[#ECE9D8] vb-box-outset flex flex-col shadow-2xl">
-            <div className="vb-titlebar"><span>Form 6: Payment Receipt Entry (भुगतान रसीद - 18,382 Records)</span></div>
-            <div className="p-3 flex-1 bg-white vb-box-inset overflow-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#ECE9D8] sticky top-0">
-                  <tr>
-                    <th className="vb-grid-header">Receipt #</th>
-                    <th className="vb-grid-header">Cust ID</th>
-                    <th className="vb-grid-header">Period</th>
-                    <th className="vb-grid-header text-right">Bill Amt</th>
-                    <th className="vb-grid-header text-right">Less / Disc</th>
-                    <th className="vb-grid-header text-right">Received Amt</th>
-                    <th className="vb-grid-header">Mode</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customerList.slice(0, 50).map((c, idx) => (
-                    <tr key={idx} className="border-b hover:bg-blue-50">
-                      <td className="p-2 font-mono">#{idx + 101}</td>
-                      <td className="p-2 font-bold">Cust #{c.customer_id} ({c.name_eng})</td>
-                      <td className="p-2 font-mono">July 2026</td>
-                      <td className="p-2 text-right font-mono">₹185.00</td>
-                      <td className="p-2 text-right font-mono text-amber-700">₹0.00</td>
-                      <td className="p-2 text-right font-mono font-bold text-emerald-700">₹185.00</td>
-                      <td className="p-2"><span className="px-1.5 py-0.5 bg-emerald-100 rounded text-[10px] font-bold">Cash</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* HAWKERS, PUBLISHERS, REGIONS, DISCONTINUE, REPORTS */}
-        {activeWindow === 'hawkers' && (
-          <div className="w-full max-w-4xl h-[80vh] bg-[#ECE9D8] vb-box-outset flex flex-col shadow-2xl">
-            <div className="vb-titlebar"><span>Form 4: Hawker Master (हॉकर वितरक मास्टर) - 1,560 Records</span></div>
-            <div className="p-3 flex-1 bg-white vb-box-inset overflow-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#ECE9D8] sticky top-0">
-                  <tr>
-                    <th className="vb-grid-header">ID</th>
-                    <th className="vb-grid-header">Hawker Name</th>
-                    <th className="vb-grid-header">Area / Region</th>
-                    <th className="vb-grid-header">City</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {hawkers.slice(0, 100).map(h => (
-                    <tr key={h.hawker_id} className="border-b hover:bg-blue-50">
-                      <td className="p-2 font-mono">#{h.hawker_id}</td>
-                      <td className="p-2 font-bold">{h.name}</td>
-                      <td className="p-2">Region #{h.region_id}</td>
-                      <td className="p-2">{h.city || 'Beawar'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
+        
+        {/* 1. Publisher Master Form (screenshot_01.jpg) */}
         {activeWindow === 'publishers' && (
-          <div className="w-full max-w-4xl h-[80vh] bg-[#ECE9D8] vb-box-outset flex flex-col shadow-2xl">
-            <div className="vb-titlebar"><span>Form 1: Publisher Master (प्रकाशक मास्टर)</span></div>
-            <div className="p-3 flex-1 bg-white vb-box-inset overflow-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#ECE9D8] sticky top-0">
-                  <tr>
-                    <th className="vb-grid-header">ID</th>
-                    <th className="vb-grid-header">Publisher Name</th>
-                    <th className="vb-grid-header">Category</th>
-                    <th className="vb-grid-header">City</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {publishers.map(p => (
-                    <tr key={p.publish_id} className="border-b hover:bg-blue-50">
-                      <td className="p-2 font-mono">#{p.publish_id}</td>
-                      <td className="p-2 font-bold">{p.name}</td>
-                      <td className="p-2">{p.category}</td>
-                      <td className="p-2">{p.city}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <PublisherForm 
+            onClose={() => setActiveWindow('customers')} 
+            publishers={publishers} 
+          />
         )}
 
-        {activeWindow === 'discontinue' && (
-          <div className="w-full max-w-4xl h-[80vh] bg-[#ECE9D8] vb-box-outset flex flex-col shadow-2xl">
-            <div className="vb-titlebar"><span>Form 10: Vacation / Stop Discontinue (अखबार बंद / छुट्टी)</span></div>
-            <div className="p-3 flex-1 bg-white vb-box-inset overflow-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#ECE9D8] sticky top-0">
-                  <tr>
-                    <th className="vb-grid-header">ID</th>
-                    <th className="vb-grid-header">Cust ID</th>
-                    <th className="vb-grid-header">Type</th>
-                    <th className="vb-grid-header">From Date</th>
-                    <th className="vb-grid-header">To Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {discontinues.slice(0, 100).map(d => (
-                    <tr key={d.discontinue_id} className="border-b hover:bg-blue-50">
-                      <td className="p-2 font-mono">#{d.discontinue_id}</td>
-                      <td className="p-2 font-bold">Cust #{d.customer_id}</td>
-                      <td className="p-2"><span className="px-2 py-0.5 bg-amber-100 rounded text-[10px] font-bold">{d.temp_perma}</span></td>
-                      <td className="p-2 font-mono">{d.temp_from}</td>
-                      <td className="p-2 font-mono">{d.temp_to || 'Permanent'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+        {/* 2. Publication Master & Weekday Rates (screenshot_02.jpg) */}
+        {activeWindow === 'publications' && (
+          <PublicationForm 
+            onClose={() => setActiveWindow('customers')} 
+            publications={publications}
+            publishers={publishers}
+            rates={rates}
+          />
         )}
 
+        {/* 3. Customer Master Form (screenshot_05.jpg) */}
+        {activeWindow === 'customer_form' && (
+          <CustomerForm 
+            onClose={() => setActiveWindow('customers')} 
+            customer={selectedCust}
+            regions={regions}
+            onOpenSubscriptions={(c) => {
+              setSelectedCustForModal(c);
+              setIsSubsModalOpen(true);
+            }}
+          />
+        )}
+
+        {/* 4. Region Master Form (screenshot_03.jpg) */}
+        {activeWindow === 'regions' && (
+          <RegionForm 
+            onClose={() => setActiveWindow('customers')} 
+            regions={regions} 
+          />
+        )}
+
+        {/* 5. Hawker Master Form (screenshot_04.jpg) */}
+        {activeWindow === 'hawkers' && (
+          <HawkerForm 
+            onClose={() => setActiveWindow('customers')} 
+            hawkers={hawkers} 
+          />
+        )}
+
+        {/* 6. Holiday Master Form (screenshot_07.jpg) */}
+        {activeWindow === 'holidays' && (
+          <HolidayForm 
+            onClose={() => setActiveWindow('customers')} 
+            holidays={holidays}
+            publications={publications}
+          />
+        )}
+
+        {/* 7. Daily Hawker Distribution Process (screenshot_08.jpg) */}
+        {activeWindow === 'dailyprocess' && (
+          <DailyProcessForm 
+            onClose={() => setActiveWindow('customers')} 
+            hawkers={hawkers}
+            publications={publications}
+          />
+        )}
+
+        {/* 8. Payment Receipt Entry Form (screenshot_12.jpg) */}
+        {activeWindow === 'receipts' && (
+          <ReceiptForm 
+            onClose={() => setActiveWindow('customers')} 
+            receipts={selectedCustReceipts}
+          />
+        )}
+
+        {/* 9. Monthly Billing Generation Engine (screenshot_13.jpg) */}
+        {activeWindow === 'billing' && (
+          <BillingForm 
+            onClose={() => setActiveWindow('customers')} 
+            customers={customerList}
+            publications={publications}
+            rates={rates}
+            holidays={holidays}
+            discontinues={discontinues}
+          />
+        )}
+
+        {/* 10. Outstanding Dues Report */}
         {activeWindow === 'reports' && (
           <div className="w-full max-w-4xl h-[80vh] bg-[#ECE9D8] vb-box-outset flex flex-col shadow-2xl">
             <div className="vb-titlebar"><span>Reports: Customer Outstanding Dues (बकाया सूची)</span></div>
@@ -1105,6 +812,16 @@ export default function VB6DesktopLayout() {
               </table>
             </div>
           </div>
+        )}
+
+        {/* 11. Modal: Authentic Subscriptions Details (screenshot_06.jpg) */}
+        {isSubsModalOpen && selectedCustForModal && (
+          <SubscriptionsModal 
+            customer={selectedCustForModal}
+            onClose={() => setIsSubsModalOpen(false)}
+            publications={publications}
+            hawkers={hawkers}
+          />
         )}
 
       </div>

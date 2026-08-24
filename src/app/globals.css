@@ -15,81 +15,132 @@ body {
   font-family: 'Tahoma', 'Segoe UI', 'Verdana', sans-serif;
   color: #000000;
   user-select: none;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
-/* Classic Windows / VB6 3D Bevel Classes */
-.vb-box-outset {
+/* Classic Windows 2000 / XP Window Frames */
+.vb-window {
   background-color: #ECE9D8;
-  border-top: 2px solid #FFFFFF;
-  border-left: 2px solid #FFFFFF;
-  border-right: 2px solid #808080;
-  border-bottom: 2px solid #808080;
+  border-top: 3px solid #ECE9D8;
+  border-left: 3px solid #ECE9D8;
+  border-right: 3px solid #404040;
+  border-bottom: 3px solid #404040;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
 }
 
-.vb-box-inset {
-  background-color: #FFFFFF;
-  border-top: 2px solid #808080;
-  border-left: 2px solid #808080;
-  border-right: 2px solid #FFFFFF;
-  border-bottom: 2px solid #FFFFFF;
-}
-
-.vb-btn {
-  background: linear-gradient(180deg, #FFFFFF 0%, #ECE9D8 100%);
-  border-top: 1.5px solid #FFFFFF;
-  border-left: 1.5px solid #FFFFFF;
-  border-right: 1.5px solid #808080;
-  border-bottom: 1.5px solid #808080;
-  padding: 4px 12px;
-  font-size: 11px;
-  font-weight: bold;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: 1px 1px 0px #404040;
-}
-
-.vb-btn:active {
-  border-top: 1.5px solid #808080;
-  border-left: 1.5px solid #808080;
-  border-right: 1.5px solid #FFFFFF;
-  border-bottom: 1.5px solid #FFFFFF;
-  background: #E0DFD8;
-  box-shadow: none;
-  transform: translate(1px, 1px);
-}
-
-.vb-titlebar {
-  background: linear-gradient(90deg, #0A246A 0%, #A6CAF0 100%);
+.vb-titlebar-xp {
+  background: linear-gradient(90deg, #0055EA 0%, #3B88F5 10%, #0055EA 50%, #2070E8 100%);
   color: #FFFFFF;
-  padding: 3px 6px;
+  padding: 4px 6px;
   font-size: 12px;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  text-shadow: 1px 1px 1px #002277;
 }
 
-.vb-grid-header {
-  background-color: #ECE9D8;
-  border-top: 1px solid #FFFFFF;
-  border-left: 1px solid #FFFFFF;
-  border-right: 1px solid #808080;
-  border-bottom: 1px solid #808080;
+/* Classic XP Window Button Chrome */
+.vb-win-btn {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(180deg, #FFFFFF 0%, #D8D4CA 100%);
+  border: 1px solid #002277;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: bold;
+  color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: inset 1px 1px 0px #FFFFFF;
+}
+
+.vb-win-btn-close {
+  background: linear-gradient(180deg, #E06060 0%, #B02020 100%);
+  color: #FFFFFF;
+  border-color: #600000;
+}
+
+/* Classic VB6 Inset Input Controls */
+.vb-input {
+  background-color: #FFFFFF;
+  border-top: 1.5px solid #7F9DB9;
+  border-left: 1.5px solid #7F9DB9;
+  border-right: 1.5px solid #D8D4CA;
+  border-bottom: 1.5px solid #D8D4CA;
+  padding: 2px 4px;
+  font-size: 11px;
+  font-family: 'Tahoma', sans-serif;
+  color: #000000;
+  outline: none;
+}
+
+.vb-input:focus {
+  border-color: #0055EA;
+  background-color: #FFFFF0;
+}
+
+/* Classic VB6 Trapezoidal / Angled Action Buttons */
+.vb-action-btn {
+  background: linear-gradient(180deg, #FFFFFF 0%, #ECE9D8 50%, #D8D4CA 100%);
+  border-top: 1.5px solid #FFFFFF;
+  border-left: 1.5px solid #FFFFFF;
+  border-right: 1.5px solid #808080;
+  border-bottom: 1.5px solid #808080;
+  padding: 3px 10px;
   font-size: 11px;
   font-weight: bold;
-  padding: 4px 8px;
-  text-align: left;
+  font-family: 'Tahoma', sans-serif;
+  color: #000080;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 1px 1px 1px #404040;
+  transition: all 0.05s ease;
 }
 
-.vb-status-panel {
+.vb-action-btn:hover {
+  background: linear-gradient(180deg, #FFFDE0 0%, #F5E8B0 100%);
+  color: #B00000;
+}
+
+.vb-action-btn:active {
   border-top: 1.5px solid #808080;
   border-left: 1.5px solid #808080;
   border-right: 1.5px solid #FFFFFF;
   border-bottom: 1.5px solid #FFFFFF;
-  padding: 2px 8px;
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+/* Classic Grid / DataGrid Styles */
+.vb-grid {
+  border: 1.5px solid #7F9DB9;
+  background-color: #FFFFFF;
+  border-collapse: collapse;
+}
+
+.vb-grid th {
+  background: linear-gradient(180deg, #FFFFFF 0%, #ECE9D8 100%);
+  border: 1px solid #D0D0D0;
   font-size: 11px;
-  background-color: #ECE9D8;
+  font-weight: bold;
+  color: #000000;
+  padding: 3px 6px;
+  text-align: left;
+}
+
+.vb-grid td {
+  border: 1px solid #E8E8E8;
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+.vb-grid tr.selected {
+  background-color: #316AC5;
+  color: #FFFFFF;
+  font-weight: bold;
 }

@@ -31,12 +31,14 @@ export interface Publication {
 export interface Region {
   region_id: number;
   region_name: string;
+  hindi_name?: string;
   zone?: string;
 }
 
 export interface Hawker {
   hawker_id: number;
   name: string;
+  hindi_name?: string;
   address?: string;
   city?: string;
   phone?: string;
