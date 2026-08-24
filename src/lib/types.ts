@@ -86,6 +86,7 @@ export interface CustomerDetail {
   hawk_sub?: number;
   dis?: number;
   dely: number;
+  is_active?: boolean;
 }
 
 export interface Rate {

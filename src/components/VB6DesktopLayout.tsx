@@ -71,6 +71,7 @@ export default function VB6DesktopLayout() {
   const [selectedCustReceipts, setSelectedCustReceipts] = useState<PaymentReceipt[]>([]);
   const [isLoadingCusts, setIsLoadingCusts] = useState(false);
   const [isLoadingSubs, setIsLoadingSubs] = useState(false);
+  const [subsTab, setSubsTab] = useState<'active' | 'all'>('active');
 
   // Publication Rates Form State
   const [selectedPub, setSelectedPub] = useState<Publication | null>(null);
@@ -570,31 +571,91 @@ export default function VB6DesktopLayout() {
                     </div>
 
                     {/* Authentic Subscribed Newspapers List (from 39,681 Dataset) */}
-                    <div className="bg-white p-2 vb-box-inset space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between border-b pb-1 font-bold text-slate-900">
-                        <span>Subscribed Newspapers:</span>
-                        <span className="text-[10px] text-indigo-700">{selectedCustSubs.length} Active</span>
+                    <div className="bg-white p-2 vb-box-inset space-y-2 text-xs">
+                      {/* Header with Active vs All Tabs */}
+                      <div className="flex items-center justify-between border-b pb-1">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setSubsTab('active')}
+                            className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                              subsTab === 'active' 
+                                ? 'bg-emerald-600 text-white shadow-2xs' 
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            Active ({selectedCustSubs.filter(s => s.is_active !== false).length})
+                          </button>
+                          <button
+                            onClick={() => setSubsTab('all')}
+                            className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                              subsTab === 'all' 
+                                ? 'bg-indigo-700 text-white shadow-2xs' 
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            All History ({selectedCustSubs.length})
+                          </button>
+                        </div>
+
+                        <span className="text-[10px] text-slate-500 font-bold">
+                          {selectedCustSubs.filter(s => s.is_active !== false).length} Active • {selectedCustSubs.filter(s => s.is_active === false).length} Discontinued
+                        </span>
                       </div>
 
                       {isLoadingSubs ? (
-                        <div className="text-slate-400 italic text-[11px]">Loading subscriptions...</div>
-                      ) : selectedCustSubs.length > 0 ? (
-                        <div className="space-y-1">
-                          {selectedCustSubs.map((s, idx) => (
-                            <div key={idx} className="p-1.5 bg-slate-50 border border-slate-200 rounded text-[11px]">
-                              <strong className="text-slate-900 block">{s.publication_name}</strong>
-                              <div className="flex justify-between text-[10px] text-slate-600 mt-0.5">
-                                <span>Hawker: <strong>{s.hawker_name}</strong></span>
-                                <span>Qty: <strong>{s.qty}</strong> copy</span>
-                              </div>
-                              <div className="text-[9px] text-indigo-700 mt-0.5">
-                                Schedule: {s.from_day === '1-7' ? 'Daily (All 7 Days)' : `Days ${s.from_day}`}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                        <div className="text-slate-400 italic text-[11px] py-2 text-center">Loading subscriptions...</div>
                       ) : (
-                        <div className="text-slate-400 italic text-[11px]">No active subscriptions found.</div>
+                        <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                          {selectedCustSubs
+                            .filter(s => subsTab === 'all' || s.is_active !== false)
+                            .map((s, idx) => {
+                              const isActive = s.is_active !== false;
+
+                              return (
+                                <div 
+                                  key={idx} 
+                                  className={`p-2 rounded border transition-colors ${
+                                    isActive 
+                                      ? 'bg-emerald-50/60 border-emerald-300' 
+                                      : 'bg-red-50/60 border-red-200 opacity-80'
+                                  }`}
+                                >
+                                  {/* Title & Status Badge */}
+                                  <div className="flex items-center justify-between gap-1">
+                                    <strong className="text-slate-900 text-xs">{s.publication_name}</strong>
+                                    <span className={`px-1.5 py-0.2 rounded font-black text-[9px] ${
+                                      isActive 
+                                        ? 'bg-emerald-600 text-white' 
+                                        : 'bg-red-600 text-white'
+                                    }`}>
+                                      {isActive ? '● ACTIVE DELIVERY' : '✕ DISCONTINUED'}
+                                    </span>
+                                  </div>
+
+                                  {/* Date Range: Subscribed Since & Discontinued On */}
+                                  <div className="text-[10px] text-slate-600 mt-1 flex flex-wrap gap-x-2">
+                                    <span>Started: <strong className="text-slate-800">{s.s_date || 'Initial'}</strong></span>
+                                    {s.c_date && (
+                                      <span className="text-red-700 font-bold">
+                                        Stopped On: <u>{s.c_date}</u>
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Hawker & Delivery Days */}
+                                  <div className="flex justify-between text-[10px] text-slate-600 mt-1 border-t border-slate-200/60 pt-1">
+                                    <span>Hawker: <strong className="text-slate-900">{s.hawker_name}</strong></span>
+                                    <span>Qty: <strong className="text-slate-900">{s.qty}</strong> copy ({s.from_day === '1-7' ? 'Daily' : `Days ${s.from_day}`})</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          {selectedCustSubs.filter(s => subsTab === 'all' || s.is_active !== false).length === 0 && (
+                            <div className="text-slate-400 italic text-[11px] text-center py-2">
+                              No {subsTab === 'active' ? 'active' : ''} subscriptions found.
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
 
