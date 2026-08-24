@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { Customer, Publication, Hawker, Publisher, Region, Rate, RateChange, Holiday, Discontinue, PaymentReceipt, BillHeader, CustomerDetail } from '@/lib/types';
 import { getRateForDate, calculateCustomerMonthlyBill, getLegacyDayOfWeek } from '@/lib/calculations';
+import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 
 // Legacy Day of Week Names (1=Sun .. 7=Sat)
 const LEGACY_DAYS = [
@@ -515,7 +516,7 @@ export default function VB6DesktopLayout() {
                             <td className="p-1.5 font-mono">#{c.customer_id}</td>
                             <td className="p-1.5 font-mono">#{c.priority}</td>
                             <td className="p-1.5">{c.name_eng}</td>
-                            <td className="p-1.5 font-hindi">{c.name_hindi || '-'}</td>
+                            <td className="p-1.5 font-hindi">{cleanOrTransliterateHindi(c.name_hindi, c.name_eng) || '-'}</td>
                             <td className="p-1.5 text-right font-mono">₹{c.dueamount?.toFixed(2) || '0.00'}</td>
                             <td className={`p-1.5 text-right font-mono ${selectedCust?.customer_id === c.customer_id ? 'text-yellow-200' : (c.cbal > 0 ? 'text-red-600' : 'text-emerald-600')}`}>
                               ₹{c.cbal?.toFixed(2) || '0.00'}
@@ -540,12 +541,10 @@ export default function VB6DesktopLayout() {
                     <div className="space-y-1 bg-white p-2 vb-box-inset">
                       <span className="text-[10px] text-slate-500 font-bold block">English Name:</span>
                       <strong className="text-slate-900 text-xs">{selectedCust.name_eng}</strong>
-                      {selectedCust.name_hindi && (
-                        <div className="pt-1">
-                          <span className="text-[10px] text-slate-500 font-bold block">Hindi Name:</span>
-                          <strong className="text-slate-900 font-hindi text-xs">{selectedCust.name_hindi}</strong>
-                        </div>
-                      )}
+                      <div className="pt-1">
+                        <span className="text-[10px] text-slate-500 font-bold block">Hindi Name:</span>
+                        <strong className="text-slate-900 font-hindi text-xs">{cleanOrTransliterateHindi(selectedCust.name_hindi, selectedCust.name_eng) || selectedCust.name_eng}</strong>
+                      </div>
                     </div>
 
                     {/* Accounting Dues Box */}
