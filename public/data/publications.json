@@ -1,0 +1,4754 @@
+[
+  {
+    "publica_id": 1,
+    "public_name": "THE TIMES OF INDIA",
+    "type_p": "Newspaper",
+    "publish_id": 1,
+    "abrv": "TOI",
+    "circulation": "Morning",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 2,
+    "public_name": "HINDUSTAN TIMES",
+    "type_p": "Newspaper",
+    "publish_id": 6,
+    "abrv": "HT",
+    "circulation": "Morning",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 5,
+    "public_name": "RAJASTHAN PATRIKA",
+    "type_p": "Newspaper",
+    "publish_id": 2,
+    "abrv": "RP",
+    "circulation": "Morning",
+    "pub_hindi": "rajasqaana pi~ka"
+  },
+  {
+    "publica_id": 4,
+    "public_name": "DAINIK BHASKAR",
+    "type_p": "Newspaper",
+    "publish_id": 3,
+    "abrv": "DB",
+    "circulation": "Morning",
+    "pub_hindi": "doinak Baaskr"
+  },
+  {
+    "publica_id": 6,
+    "public_name": "ZINDIA TODAY HINDI",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "ITH",
+    "circulation": "",
+    "pub_hindi": "[iNDyaa TuDo"
+  },
+  {
+    "publica_id": 7,
+    "public_name": "EMPLOYMENT NEWS ",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "EN",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 8,
+    "public_name": "ROJGAR SAMACHAR",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "RS",
+    "circulation": "",
+    "pub_hindi": "raojagaar samaacaar"
+  },
+  {
+    "publica_id": 9,
+    "public_name": "ZINDIA TODAY ENGLISH",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "ITE",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 10,
+    "public_name": "MERI SAHELI",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MS",
+    "circulation": "",
+    "pub_hindi": "maorI saholaI"
+  },
+  {
+    "publica_id": 11,
+    "public_name": "GRIHASHOBHA",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "GS",
+    "circulation": "",
+    "pub_hindi": "gaRhSaaoBaa"
+  },
+  {
+    "publica_id": 12,
+    "public_name": "The Economic Times",
+    "type_p": "Newspaper",
+    "publish_id": 1,
+    "abrv": "ET",
+    "circulation": "Morning",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 13,
+    "public_name": "Vanita",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "van",
+    "circulation": "",
+    "pub_hindi": "vainata"
+  },
+  {
+    "publica_id": 14,
+    "public_name": "Wisdom",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Wis",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 15,
+    "public_name": "Magic Pot",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Magic",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 16,
+    "public_name": "Aha Zindgi",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Aha Z",
+    "circulation": "",
+    "pub_hindi": "Aha ijaMdgaI"
+  },
+  {
+    "publica_id": 17,
+    "public_name": "Sarita ",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "sar",
+    "circulation": "",
+    "pub_hindi": "sairta"
+  },
+  {
+    "publica_id": 18,
+    "public_name": "Saras Salil",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Saras",
+    "circulation": "",
+    "pub_hindi": "sarsa sailala"
+  },
+  {
+    "publica_id": 19,
+    "public_name": "Punjab Kesari",
+    "type_p": "Newspaper",
+    "publish_id": 8,
+    "abrv": "PK",
+    "circulation": "Morning",
+    "pub_hindi": "pMjaaba kosarI"
+  },
+  {
+    "publica_id": 20,
+    "public_name": "Nafa Nuksan",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "Nafa",
+    "circulation": "Morning",
+    "pub_hindi": "nafa nauksaana"
+  },
+  {
+    "publica_id": 21,
+    "public_name": "Dainik Navajyoti",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "NJ",
+    "circulation": "Morning",
+    "pub_hindi": "dOinak navajyaaoit"
+  },
+  {
+    "publica_id": 22,
+    "public_name": "Pratiyogita Darpan",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "PD",
+    "circulation": "",
+    "pub_hindi": "p`ityaaoigata dp-Na"
+  },
+  {
+    "publica_id": 23,
+    "public_name": "champak",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "c",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 24,
+    "public_name": "champak(h)",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "chH",
+    "circulation": "",
+    "pub_hindi": "caMpk"
+  },
+  {
+    "publica_id": 89,
+    "public_name": "Inside Outside",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "InsO",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 26,
+    "public_name": "LOTPOT",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Lotp",
+    "circulation": "",
+    "pub_hindi": "laaoTpaoT"
+  },
+  {
+    "publica_id": 27,
+    "public_name": "OUTLOOK(E)",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "OLE",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 28,
+    "public_name": "Outlook(H)",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "OLH",
+    "circulation": "",
+    "pub_hindi": "Aa}Tlauk"
+  },
+  {
+    "publica_id": 29,
+    "public_name": "Vyapar",
+    "type_p": "Magzine",
+    "publish_id": 9,
+    "abrv": "Vyap",
+    "circulation": "",
+    "pub_hindi": "vyaapar"
+  },
+  {
+    "publica_id": 30,
+    "public_name": "Business World",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "BW",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 31,
+    "public_name": "Balhans",
+    "type_p": "Magzine",
+    "publish_id": 2,
+    "abrv": "Balh",
+    "circulation": "",
+    "pub_hindi": "baa;hMsa"
+  },
+  {
+    "publica_id": 32,
+    "public_name": "Rojgar Sandesh",
+    "type_p": "Magzine",
+    "publish_id": 5,
+    "abrv": "Rojs",
+    "circulation": "",
+    "pub_hindi": "raojagaar saMdoSa"
+  },
+  {
+    "publica_id": 33,
+    "public_name": "BalBhaskar",
+    "type_p": "Magzine",
+    "publish_id": 3,
+    "abrv": "BB",
+    "circulation": "",
+    "pub_hindi": "baala Baaskr"
+  },
+  {
+    "publica_id": 34,
+    "public_name": "ChotuMotu",
+    "type_p": "Magzine",
+    "publish_id": 2,
+    "abrv": "CM",
+    "circulation": "",
+    "pub_hindi": "CaoTU maaoTU"
+  },
+  {
+    "publica_id": 35,
+    "public_name": "Dalal Street (H)",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "DSH",
+    "circulation": "",
+    "pub_hindi": "dlaala sT`,IT"
+  },
+  {
+    "publica_id": 36,
+    "public_name": "Femina",
+    "type_p": "Magzine",
+    "publish_id": 11,
+    "abrv": "Femn",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 37,
+    "public_name": "Capital Market",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "CM",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 38,
+    "public_name": "Womens Era",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "WERA",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 39,
+    "public_name": "Business Today",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "BT",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 40,
+    "public_name": "Grihalaxmi",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "GL",
+    "circulation": "",
+    "pub_hindi": "gaRhlaEmaI"
+  },
+  {
+    "publica_id": 41,
+    "public_name": "Vigyan Pragati",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Vigy",
+    "circulation": "",
+    "pub_hindi": "iva&ana p`gait"
+  },
+  {
+    "publica_id": 42,
+    "public_name": "Suman Saurabh",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Sumn",
+    "circulation": "",
+    "pub_hindi": "saumana saaOrBa"
+  },
+  {
+    "publica_id": 43,
+    "public_name": "Nandan",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Nand",
+    "circulation": "",
+    "pub_hindi": "naMdna"
+  },
+  {
+    "publica_id": 44,
+    "public_name": "Yojna",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Yojn",
+    "circulation": "",
+    "pub_hindi": "yaaojanaa"
+  },
+  {
+    "publica_id": 45,
+    "public_name": "Mukta",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Mukt",
+    "circulation": "",
+    "pub_hindi": "mau@ta"
+  },
+  {
+    "publica_id": 46,
+    "public_name": "Kurushetra",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "kuru",
+    "circulation": "",
+    "pub_hindi": "ku$Eaot`"
+  },
+  {
+    "publica_id": 47,
+    "public_name": "Awishkar",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Awsk",
+    "circulation": "",
+    "pub_hindi": "AivaYakar"
+  },
+  {
+    "publica_id": 48,
+    "public_name": "Full Tansion",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "FT",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 49,
+    "public_name": "Current GK Chronology",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CGKC",
+    "circulation": "",
+    "pub_hindi": "krnT jaIko k`aonaaolaa^jaI"
+  },
+  {
+    "publica_id": 50,
+    "public_name": "Manohar Khaniyan",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MK",
+    "circulation": "",
+    "pub_hindi": "manaaohr khainayaaM"
+  },
+  {
+    "publica_id": 51,
+    "public_name": "Kadambini",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Kadm",
+    "circulation": "",
+    "pub_hindi": "kadimbanaI"
+  },
+  {
+    "publica_id": 52,
+    "public_name": "Cricket Samrat",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CS",
+    "circulation": "",
+    "pub_hindi": "ik`koT sama`aT"
+  },
+  {
+    "publica_id": 53,
+    "public_name": "Chandamama(H)",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CMh",
+    "circulation": "",
+    "pub_hindi": "candamaamaa"
+  },
+  {
+    "publica_id": 54,
+    "public_name": "Osho Times",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "OT",
+    "circulation": "",
+    "pub_hindi": "AaoSaao Tašmsa"
+  },
+  {
+    "publica_id": 55,
+    "public_name": "Nanhe Samrat",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Nanh",
+    "circulation": "",
+    "pub_hindi": "nanho sama`aT"
+  },
+  {
+    "publica_id": 56,
+    "public_name": "Computer Sanchar Suchna",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "ComS",
+    "circulation": "",
+    "pub_hindi": "kmpyaUTr saMcaar saUcanaa"
+  },
+  {
+    "publica_id": 57,
+    "public_name": "Stardust(H)",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "SdH",
+    "circulation": "",
+    "pub_hindi": "sTarDsT"
+  },
+  {
+    "publica_id": 58,
+    "public_name": "Hans",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Hans",
+    "circulation": "",
+    "pub_hindi": "hMsa"
+  },
+  {
+    "publica_id": 59,
+    "public_name": "Sakhi Jagran",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Saki",
+    "circulation": "",
+    "pub_hindi": "saKI jaagarNa"
+  },
+  {
+    "publica_id": 60,
+    "public_name": "Ved Amrit",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Veda",
+    "circulation": "",
+    "pub_hindi": "vaod AmaRt"
+  },
+  {
+    "publica_id": 61,
+    "public_name": "Samanya Gyan Darpan",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "SGD",
+    "circulation": "",
+    "pub_hindi": "saamaanya &ana dp-Na"
+  },
+  {
+    "publica_id": 62,
+    "public_name": "Civil Services Chronocle(E)",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "civE",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 63,
+    "public_name": "Health",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "HeaE",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 64,
+    "public_name": "Yojna(E)",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "YojE",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 65,
+    "public_name": "Digit",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Digt",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 66,
+    "public_name": "Chip",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Chip",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 67,
+    "public_name": "Filmfare",
+    "type_p": "Magzine",
+    "publish_id": 11,
+    "abrv": "FF",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 68,
+    "public_name": "Compitition Succes Riview",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CSR",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 69,
+    "public_name": "Readers Digest",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "RD",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 70,
+    "public_name": "Stardust(E)",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "SDE",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 71,
+    "public_name": "Tantra Jyotish",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "TJyo",
+    "circulation": "",
+    "pub_hindi": "tn~ jyaaoitYa"
+  },
+  {
+    "publica_id": 72,
+    "public_name": "Yog Sandesh",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "YogS",
+    "circulation": "",
+    "pub_hindi": "yaaoga saMdoSa"
+  },
+  {
+    "publica_id": 73,
+    "public_name": "Osho World",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "OshW",
+    "circulation": "",
+    "pub_hindi": "AaoSaao valD-"
+  },
+  {
+    "publica_id": 74,
+    "public_name": "Health(H)",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "HelH",
+    "circulation": "",
+    "pub_hindi": "hOlqa"
+  },
+  {
+    "publica_id": 75,
+    "public_name": "Nirog Dham",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "ND",
+    "circulation": "",
+    "pub_hindi": "inaraoga Qaama"
+  },
+  {
+    "publica_id": 76,
+    "public_name": "Gujrat Samachar",
+    "type_p": "Newspaper",
+    "publish_id": 12,
+    "abrv": "Gujs",
+    "circulation": "Morning",
+    "pub_hindi": "gaujarat samaacaar"
+  },
+  {
+    "publica_id": 77,
+    "public_name": "The Hindu",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "THin",
+    "circulation": "Morning",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 78,
+    "public_name": "Business Line",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "BL",
+    "circulation": "Morning",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 79,
+    "public_name": "Jansatta",
+    "type_p": "Newspaper",
+    "publish_id": 13,
+    "abrv": "JS",
+    "circulation": "Morning",
+    "pub_hindi": "janasa%ta"
+  },
+  {
+    "publica_id": 80,
+    "public_name": "Indian Express",
+    "type_p": "Newspaper",
+    "publish_id": 13,
+    "abrv": "IE",
+    "circulation": "Morning",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 81,
+    "public_name": "Financial Express",
+    "type_p": "Newspaper",
+    "publish_id": 13,
+    "abrv": "FE",
+    "circulation": "Morning",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 82,
+    "public_name": "Business Standard",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "BS",
+    "circulation": "Morning",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 83,
+    "public_name": "Navneet",
+    "type_p": "Magzine",
+    "publish_id": 14,
+    "abrv": "Navn",
+    "circulation": "",
+    "pub_hindi": "navanaIt"
+  },
+  {
+    "publica_id": 84,
+    "public_name": "G K Today",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "GKTo",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 85,
+    "public_name": "Jyotish Sagar",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "jyos",
+    "circulation": "",
+    "pub_hindi": "jyaaoitYa saagar"
+  },
+  {
+    "publica_id": 86,
+    "public_name": "RP Special book",
+    "type_p": "Magzine",
+    "publish_id": 2,
+    "abrv": "RPSp",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 87,
+    "public_name": "Civil Services Chronicle",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CSCH",
+    "circulation": "",
+    "pub_hindi": "isaivala saiva-sa k`a^inakla"
+  },
+  {
+    "publica_id": 144,
+    "public_name": "Nirog Sukh ",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "NirSu",
+    "circulation": "",
+    "pub_hindi": "inaraoga sauK"
+  },
+  {
+    "publica_id": 90,
+    "public_name": "Swadeshi Chikitsa Sar",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Swad",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 91,
+    "public_name": "Repidex Computer Course",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "RCom",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 92,
+    "public_name": "Future Samachar",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Futu",
+    "circulation": "",
+    "pub_hindi": "FyaUcar samaacaar"
+  },
+  {
+    "publica_id": 93,
+    "public_name": "Education Today",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "EduT",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 94,
+    "public_name": "Tell Me Why",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Tell",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 95,
+    "public_name": "Yog sadhna SR",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "yogs",
+    "circulation": "",
+    "pub_hindi": "yaaoga saaQanaa"
+  },
+  {
+    "publica_id": 96,
+    "public_name": "Pranayam Rahasya",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "pran",
+    "circulation": "",
+    "pub_hindi": "p`aNaayaama rhsya"
+  },
+  {
+    "publica_id": 97,
+    "public_name": "Aushadh Darshan",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Aush",
+    "circulation": "",
+    "pub_hindi": "AaOYaQa dSa-na"
+  },
+  {
+    "publica_id": 98,
+    "public_name": "Madhur Kathayai",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Madk",
+    "circulation": "",
+    "pub_hindi": "maQaur kqaayaoM"
+  },
+  {
+    "publica_id": 99,
+    "public_name": "Good House Keeping",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "GoodH",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 100,
+    "public_name": "Arogya Sanjeevani",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "ArogS",
+    "circulation": "",
+    "pub_hindi": "Aaraogya saMjaIvanaI"
+  },
+  {
+    "publica_id": 101,
+    "public_name": "Comics40",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Com40",
+    "circulation": "",
+    "pub_hindi": "kaoima@sa 40.00"
+  },
+  {
+    "publica_id": 102,
+    "public_name": "Comics15",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Comic",
+    "circulation": "",
+    "pub_hindi": "kaima@sa 15.00"
+  },
+  {
+    "publica_id": 103,
+    "public_name": "Comisc20",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Comic",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 104,
+    "public_name": "Comics30",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Com30",
+    "circulation": "",
+    "pub_hindi": "kaoima@sa 30.00"
+  },
+  {
+    "publica_id": 105,
+    "public_name": "Ramdev CD 60",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "RcD60",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 106,
+    "public_name": "RamdevCd120",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Rc120",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 107,
+    "public_name": "PariwarRP",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Pari",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 108,
+    "public_name": "ZToday Gyan Sagar",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Gyan",
+    "circulation": "",
+    "pub_hindi": "TuDo &ana saagar"
+  },
+  {
+    "publica_id": 109,
+    "public_name": "Young Bhaskar",
+    "type_p": "Magzine",
+    "publish_id": 3,
+    "abrv": "YB",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 110,
+    "public_name": "Movie Masti",
+    "type_p": "Magzine",
+    "publish_id": 2,
+    "abrv": "MMRP",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 111,
+    "public_name": "RP Year Book",
+    "type_p": "Magzine",
+    "publish_id": 2,
+    "abrv": "RPYB",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 112,
+    "public_name": "Manorama Year Book",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "MYB",
+    "circulation": "",
+    "pub_hindi": "manaaormaa šyar bauk"
+  },
+  {
+    "publica_id": 113,
+    "public_name": "Lakshya Ras Rp",
+    "type_p": "Magzine",
+    "publish_id": 2,
+    "abrv": "LakRP",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 114,
+    "public_name": "Grihanandini",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Grnd",
+    "circulation": "",
+    "pub_hindi": "gaRhnandnaI"
+  },
+  {
+    "publica_id": 115,
+    "public_name": "4th D Meri Sangini",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "4Dsan",
+    "circulation": "",
+    "pub_hindi": "4DI maorI saMgaInaI"
+  },
+  {
+    "publica_id": 116,
+    "public_name": "RAS Rp ",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "RasRp",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 117,
+    "public_name": "PDspVanaspati",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PdVan",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 118,
+    "public_name": "Rashtriya Sahara",
+    "type_p": "Newspaper",
+    "publish_id": 15,
+    "abrv": "Sahar",
+    "circulation": "Evening",
+    "pub_hindi": "raYT`,Iya sahara"
+  },
+  {
+    "publica_id": 119,
+    "public_name": "DBBharat",
+    "type_p": "Magzine",
+    "publish_id": 3,
+    "abrv": "DBsp",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 120,
+    "public_name": "PDSp.Vanijya",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PdSpV",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 121,
+    "public_name": "RPMehandi",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "RpMeh",
+    "circulation": "",
+    "pub_hindi": "pi~ka maohMdI"
+  },
+  {
+    "publica_id": 122,
+    "public_name": "Accupressure100.00",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "acu",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 123,
+    "public_name": "Compitition Scince Vision",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CSV",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 124,
+    "public_name": "India News",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "IndN",
+    "circulation": "",
+    "pub_hindi": "[iNDyaa nyaUja"
+  },
+  {
+    "publica_id": 125,
+    "public_name": "Accupressure100",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Ac100",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 126,
+    "public_name": "Filmy Duniya",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "FilmD",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 127,
+    "public_name": "Digit50.00",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Dig50",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 128,
+    "public_name": "Book10.00",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Book",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 129,
+    "public_name": "Civil Srvices Times",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CST",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 130,
+    "public_name": "Arihant GK",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Argk",
+    "circulation": "",
+    "pub_hindi": "Airhnt jaIko"
+  },
+  {
+    "publica_id": 131,
+    "public_name": "Scince Reporter",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "ScRep",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 132,
+    "public_name": "YogRP",
+    "type_p": "Magzine",
+    "publish_id": 2,
+    "abrv": "Yogrp",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 133,
+    "public_name": "Cosmopolitan",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Cosmo",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 134,
+    "public_name": "Nirog Sukh Atiriktank",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "NsAti",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 135,
+    "public_name": "Mens Health",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MenH",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 136,
+    "public_name": "Nirantar",
+    "type_p": "Newspaper",
+    "publish_id": 16,
+    "abrv": "Niran",
+    "circulation": "Morning",
+    "pub_hindi": "inarntr"
+  },
+  {
+    "publica_id": 137,
+    "public_name": "Telephone directry",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "TeleD",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 138,
+    "public_name": "GK Rajasthan",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "RajGK",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 139,
+    "public_name": "Compitition Wizard 175",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "ComWY",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 140,
+    "public_name": "Madhurima",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Madh",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 141,
+    "public_name": "News Panaroma",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "NPan",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 142,
+    "public_name": "Vishva Ghatna Chakra ",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Vishv",
+    "circulation": "",
+    "pub_hindi": "ivaSva GaTnaa cak`"
+  },
+  {
+    "publica_id": 143,
+    "public_name": "Dalal Street(E)",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "DalEn",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 145,
+    "public_name": "LakshyaDB",
+    "type_p": "Magzine",
+    "publish_id": 3,
+    "abrv": "LakDB",
+    "circulation": "",
+    "pub_hindi": "laEya Baaskr"
+  },
+  {
+    "publica_id": 146,
+    "public_name": "Cyber Edge",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CyEd",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 147,
+    "public_name": "RpResipi",
+    "type_p": "Magzine",
+    "publish_id": 2,
+    "abrv": "RpRes",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 148,
+    "public_name": "My Mobile(E)",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MMob",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 149,
+    "public_name": "My Mobile(H)",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MmobH",
+    "circulation": "",
+    "pub_hindi": "maaš maaobaa[la"
+  },
+  {
+    "publica_id": 150,
+    "public_name": "Over Drive",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Over",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 151,
+    "public_name": "Prevention",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Prev",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 152,
+    "public_name": "Ayushman",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Ayush",
+    "circulation": "",
+    "pub_hindi": "AayauYmaana"
+  },
+  {
+    "publica_id": 153,
+    "public_name": "ChildName50.00",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Ch50",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 154,
+    "public_name": "PocketBook100",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PB100",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 155,
+    "public_name": "Vigyan ki Kasauti pe Yog SR",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "VigSr",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 156,
+    "public_name": "Computer Carrer Disha ",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CompC",
+    "circulation": "",
+    "pub_hindi": "kmpyaUTr kOiryar idSaa"
+  },
+  {
+    "publica_id": 157,
+    "public_name": "PocketBook45",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PB45",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 158,
+    "public_name": "PB73.00",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PB73",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 159,
+    "public_name": "Better Photography",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "BPht",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 160,
+    "public_name": "Jyotish Vastu",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "JyVas",
+    "circulation": "",
+    "pub_hindi": "jyaaoitYa vaastU"
+  },
+  {
+    "publica_id": 161,
+    "public_name": "Bada Bakhan",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "BadaB",
+    "circulation": "",
+    "pub_hindi": "bada baKana"
+  },
+  {
+    "publica_id": 162,
+    "public_name": "Aap Ka Bhavishya",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "AkaBv",
+    "circulation": "",
+    "pub_hindi": "Aap ka BaivaYya"
+  },
+  {
+    "publica_id": 163,
+    "public_name": "Saubhagya Deep",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "SabDe",
+    "circulation": "",
+    "pub_hindi": "saaOBaagya dIp"
+  },
+  {
+    "publica_id": 164,
+    "public_name": "Upanyas40.00",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Upn40",
+    "circulation": "",
+    "pub_hindi": "]pnyaasa"
+  },
+  {
+    "publica_id": 165,
+    "public_name": "Magazine30.00",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Mag30",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 166,
+    "public_name": "Kadve Pravachan",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "KadvP",
+    "circulation": "",
+    "pub_hindi": "kDvao p`vacana"
+  },
+  {
+    "publica_id": 167,
+    "public_name": "Swasthya Watika",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "SwasW",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 168,
+    "public_name": "New Women",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "NewWo",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 169,
+    "public_name": "Compitition Wizard ",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CompW",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 170,
+    "public_name": "Tantra Darshan",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "TantD",
+    "circulation": "",
+    "pub_hindi": "tn~ dSa-na"
+  },
+  {
+    "publica_id": 171,
+    "public_name": "The Week",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "TWeek",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 172,
+    "public_name": "Verve ",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Verve",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 173,
+    "public_name": "Tehalaka",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Tehl",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 174,
+    "public_name": "Economist",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "EcoM",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 175,
+    "public_name": "News Week ",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "NWeek",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 176,
+    "public_name": "Time ",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Time",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 177,
+    "public_name": "Jyotish Manthan ",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "JyMan",
+    "circulation": "",
+    "pub_hindi": "jyaaoitYa maMqana"
+  },
+  {
+    "publica_id": 178,
+    "public_name": "Chanakya GK",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Chana",
+    "circulation": "",
+    "pub_hindi": "caaNa@ya jaIko"
+  },
+  {
+    "publica_id": 179,
+    "public_name": "RPKathasagar",
+    "type_p": "Magzine",
+    "publish_id": 2,
+    "abrv": "RPKat",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 180,
+    "public_name": "Frontline ",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Front",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 181,
+    "public_name": "Society Interier",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "SInt",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 182,
+    "public_name": "Electronic For You",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "EFY",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 183,
+    "public_name": "Arihant Gyamodaya",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "ArGya",
+    "circulation": "",
+    "pub_hindi": "Airhnt &anaaodya"
+  },
+  {
+    "publica_id": 184,
+    "public_name": "Pocket Book",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PBook",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 185,
+    "public_name": "Auto India",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "AutIn",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 186,
+    "public_name": "Vichar Saransh",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "VicSa",
+    "circulation": "",
+    "pub_hindi": "ivacaar saaraMSa"
+  },
+  {
+    "publica_id": 187,
+    "public_name": "CV",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "CV",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 188,
+    "public_name": "Manak",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Mana",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 189,
+    "public_name": "Senior India",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "SenIn",
+    "circulation": "",
+    "pub_hindi": "saInaIyar [iNDyaa"
+  },
+  {
+    "publica_id": 190,
+    "public_name": "Jounior Scince Refresher",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "JSR",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 191,
+    "public_name": "Vastu Jyotish",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "VasJy",
+    "circulation": "",
+    "pub_hindi": "vaastU jyaaoitYa"
+  },
+  {
+    "publica_id": 192,
+    "public_name": "Screen",
+    "type_p": "Magzine",
+    "publish_id": 13,
+    "abrv": "Scrn",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 193,
+    "public_name": "Sadhna Path",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Sadhn",
+    "circulation": "",
+    "pub_hindi": "saaQanaa pqa"
+  },
+  {
+    "publica_id": 194,
+    "public_name": "RPBhawishyafal2008",
+    "type_p": "Magzine",
+    "publish_id": 2,
+    "abrv": "RPBhw",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 195,
+    "public_name": "Manorama Year Book(E)",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "MYBen",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 196,
+    "public_name": "WIT Today",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "WITt",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 197,
+    "public_name": "Business India",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "BI",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 198,
+    "public_name": "Investor",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Inve",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 199,
+    "public_name": "Chronicle Year Book",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CrYb",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 200,
+    "public_name": "Money Today",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MT",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 201,
+    "public_name": "Difference",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Diff",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 202,
+    "public_name": "Chandamama(E)",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "ChanE",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 203,
+    "public_name": "Compitition Sucsess Review(H)",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CSRh",
+    "circulation": "",
+    "pub_hindi": "kmpITISana sa@saosa irvyaU"
+  },
+  {
+    "publica_id": 204,
+    "public_name": "Pratiyogita Kiran",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PratK",
+    "circulation": "",
+    "pub_hindi": "p`ityaaoigata ikrNa"
+  },
+  {
+    "publica_id": 205,
+    "public_name": "Sport Star",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "SpSta",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 206,
+    "public_name": "Sahara Times",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "SahTi",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 207,
+    "public_name": "RPDigest",
+    "type_p": "Magzine",
+    "publish_id": 2,
+    "abrv": "RPDig",
+    "circulation": "",
+    "pub_hindi": "raja pi~ka DašjaOsT"
+  },
+  {
+    "publica_id": 208,
+    "public_name": "Jagran Year Book",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "JagYB",
+    "circulation": "",
+    "pub_hindi": "jaagarNa šyar bauk"
+  },
+  {
+    "publica_id": 209,
+    "public_name": "Asian",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Asin",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 210,
+    "public_name": "Outlook Money",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "OLMon",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 211,
+    "public_name": "Sampadak",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Samp",
+    "circulation": "",
+    "pub_hindi": "sampadk"
+  },
+  {
+    "publica_id": 212,
+    "public_name": "Good Home Maker",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "GHMak",
+    "circulation": "",
+    "pub_hindi": "gauD haoma maokr"
+  },
+  {
+    "publica_id": 213,
+    "public_name": "Pamplate",
+    "type_p": "Magzine",
+    "publish_id": 5,
+    "abrv": "Pemp",
+    "circulation": "",
+    "pub_hindi": "pOmplaoT"
+  },
+  {
+    "publica_id": 214,
+    "public_name": "Arogya Dham",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "ArDh",
+    "circulation": "",
+    "pub_hindi": "Aaraogya Qaama"
+  },
+  {
+    "publica_id": 215,
+    "public_name": "Compitition Master ",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "CMast",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 216,
+    "public_name": "Outlook Business",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "OLBus",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 217,
+    "public_name": "She",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "She",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 218,
+    "public_name": "Cash",
+    "type_p": "Magzine",
+    "publish_id": 5,
+    "abrv": "Cash",
+    "circulation": "",
+    "pub_hindi": "kOSa"
+  },
+  {
+    "publica_id": 219,
+    "public_name": "Business Standard Hindi",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "BSH",
+    "circulation": "Morning",
+    "pub_hindi": "ibajanaosa sTOMDD-"
+  },
+  {
+    "publica_id": 220,
+    "public_name": "Motoring",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Moto",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 221,
+    "public_name": "Pratiyogita Darpan(E)",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PDE",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 222,
+    "public_name": "Jyotish Deep ",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "JyD",
+    "circulation": "",
+    "pub_hindi": "jyaaoitYa dIp"
+  },
+  {
+    "publica_id": 223,
+    "public_name": "Auto Car India",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "ACarI",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 224,
+    "public_name": "Data Quest ",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "DataQ",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 225,
+    "public_name": "Paribodh",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Parib",
+    "circulation": "",
+    "pub_hindi": "pirbaaoQa"
+  },
+  {
+    "publica_id": 226,
+    "public_name": "Computer Duniya",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "ComDu",
+    "circulation": "",
+    "pub_hindi": "kmpyaUTr duinayaa"
+  },
+  {
+    "publica_id": 227,
+    "public_name": "Sampoorna GK",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "SamGK",
+    "circulation": "",
+    "pub_hindi": "sampUNa- jaIko"
+  },
+  {
+    "publica_id": 228,
+    "public_name": "Hanuman",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Hanum",
+    "circulation": "",
+    "pub_hindi": "hnaumaana"
+  },
+  {
+    "publica_id": 229,
+    "public_name": "ET Budget Special",
+    "type_p": "Magzine",
+    "publish_id": 11,
+    "abrv": "ETBug",
+    "circulation": "Evening",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 230,
+    "public_name": "Gladrags",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Gladr",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 231,
+    "public_name": "Comics 25.00",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Com25",
+    "circulation": "",
+    "pub_hindi": "kaoima@sa 25.00"
+  },
+  {
+    "publica_id": 232,
+    "public_name": "4 Ps",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "4 Ps",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 233,
+    "public_name": "FNL",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "FNL",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 234,
+    "public_name": "Incredible India",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "IncIn",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 235,
+    "public_name": "Ayurvedik Jadi Buti rahasya",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "AyuJd",
+    "circulation": "",
+    "pub_hindi": "Aaya-uvaoidk jaDI baUTI rhsya"
+  },
+  {
+    "publica_id": 236,
+    "public_name": "Pratiyogita Target",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PrTar",
+    "circulation": "",
+    "pub_hindi": "p`ityaaoigata Tagao-T"
+  },
+  {
+    "publica_id": 237,
+    "public_name": "ChampakCD",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "ChCD",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 238,
+    "public_name": "SachinDB",
+    "type_p": "Magzine",
+    "publish_id": 3,
+    "abrv": "SchDB",
+    "circulation": "",
+    "pub_hindi": "saicana"
+  },
+  {
+    "publica_id": 239,
+    "public_name": "Pratiyogita Darpan Bed",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PDBed",
+    "circulation": "",
+    "pub_hindi": "p`ityaaoigata dp-Na baIeD"
+  },
+  {
+    "publica_id": 240,
+    "public_name": "Sunday Indian",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "SuInd",
+    "circulation": "",
+    "pub_hindi": "saNDo [iNDyana"
+  },
+  {
+    "publica_id": 241,
+    "public_name": "Astro India",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "AstIn",
+    "circulation": "",
+    "pub_hindi": "esT`,ao [iNDyaa"
+  },
+  {
+    "publica_id": 242,
+    "public_name": "Forms",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Form",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 243,
+    "public_name": "MAN",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MAN",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 244,
+    "public_name": "Shukrawar",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Shuk",
+    "circulation": "",
+    "pub_hindi": "Sauk`vaar"
+  },
+  {
+    "publica_id": 245,
+    "public_name": "Satyakatha",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Saty",
+    "circulation": "",
+    "pub_hindi": "sa%yakqaa"
+  },
+  {
+    "publica_id": 246,
+    "public_name": "DBDigest",
+    "type_p": "Magzine",
+    "publish_id": 3,
+    "abrv": "DBdi",
+    "circulation": "",
+    "pub_hindi": "Baaskr DašjaOsT"
+  },
+  {
+    "publica_id": 247,
+    "public_name": "Jahanvi",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Jhanv",
+    "circulation": "",
+    "pub_hindi": "jahanavaI"
+  },
+  {
+    "publica_id": 248,
+    "public_name": "Bed Pratiyogita Darpan",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "BedPD",
+    "circulation": "",
+    "pub_hindi": "baIeD p`ityaaoigata dp-Na"
+  },
+  {
+    "publica_id": 249,
+    "public_name": "Bed Civil Services Chronicle",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "BedCh",
+    "circulation": "",
+    "pub_hindi": "baIeD isaivala saiva-saoja k`a^inakla"
+  },
+  {
+    "publica_id": 250,
+    "public_name": "P Darpan Samsayiki Warshiki",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PDYea",
+    "circulation": "",
+    "pub_hindi": "p`ityaaoigata dp-Na samasaaiyakI vaaiYa-kI"
+  },
+  {
+    "publica_id": 251,
+    "public_name": "Kadwe Pravachan",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "KadwP",
+    "circulation": "",
+    "pub_hindi": "kDvao p`vacana"
+  },
+  {
+    "publica_id": 252,
+    "public_name": "RP Education Directory",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "RPEdu",
+    "circulation": "",
+    "pub_hindi": "pi~ka ejaUkoSana Da[rO@TrI"
+  },
+  {
+    "publica_id": 253,
+    "public_name": "Naree",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Nare",
+    "circulation": "",
+    "pub_hindi": "naarI"
+  },
+  {
+    "publica_id": 254,
+    "public_name": "Chinta Chodo Sukh Se Jiyo",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Chint",
+    "circulation": "",
+    "pub_hindi": "icanta CaoDao sauK sao ijayaao"
+  },
+  {
+    "publica_id": 255,
+    "public_name": "Judo Aur Jeeto",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Judo",
+    "circulation": "",
+    "pub_hindi": "jauDao AaOr jaItao"
+  },
+  {
+    "publica_id": 256,
+    "public_name": "Mahanagar",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Mahan",
+    "circulation": "",
+    "pub_hindi": "mahanagar"
+  },
+  {
+    "publica_id": 257,
+    "public_name": "People",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Pepl",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 258,
+    "public_name": "Pratiyogita Chronicle ",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PraCh",
+    "circulation": "",
+    "pub_hindi": "p`ityaaoigata k`a^inakla"
+  },
+  {
+    "publica_id": 259,
+    "public_name": "Compitition Target",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "CompT",
+    "circulation": "",
+    "pub_hindi": "kmpITISana TargaoT"
+  },
+  {
+    "publica_id": 260,
+    "public_name": "Public",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "publ",
+    "circulation": "",
+    "pub_hindi": "piblak"
+  },
+  {
+    "publica_id": 261,
+    "public_name": "Money Life",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MonLf",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 262,
+    "public_name": "Outlook Profit",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "OLPr",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 263,
+    "public_name": "Grihasaheli",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "GSahe",
+    "circulation": "",
+    "pub_hindi": "gaRhsaholaI"
+  },
+  {
+    "publica_id": 264,
+    "public_name": "Nirogi Duniya",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "NDun",
+    "circulation": "",
+    "pub_hindi": "inaraogaI duinayaa"
+  },
+  {
+    "publica_id": 265,
+    "public_name": "Renu GK",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "RenuG",
+    "circulation": "",
+    "pub_hindi": "roNau jaIko"
+  },
+  {
+    "publica_id": 266,
+    "public_name": "Rashtradoot",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "Rasd",
+    "circulation": "Morning",
+    "pub_hindi": "raYT`,dUt"
+  },
+  {
+    "publica_id": 267,
+    "public_name": "Nutan Kahaniyan ",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "NutK",
+    "circulation": "",
+    "pub_hindi": "naUtna khainayaa"
+  },
+  {
+    "publica_id": 268,
+    "public_name": "Pratham Pravakta",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PrtPr",
+    "circulation": "",
+    "pub_hindi": "p`qama p`va@ta"
+  },
+  {
+    "publica_id": 269,
+    "public_name": "Lafj",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "laf",
+    "circulation": "",
+    "pub_hindi": "lafja"
+  },
+  {
+    "publica_id": 270,
+    "public_name": "Samsamiyiki GK",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "samgk",
+    "circulation": "",
+    "pub_hindi": "samasaamaiyakI jaI ko"
+  },
+  {
+    "publica_id": 271,
+    "public_name": "Rashifal",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Rashi",
+    "circulation": "",
+    "pub_hindi": "raiSafla"
+  },
+  {
+    "publica_id": 272,
+    "public_name": "Money Mantra",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MonM",
+    "circulation": "",
+    "pub_hindi": "manaI man~"
+  },
+  {
+    "publica_id": 273,
+    "public_name": "Current Affairs",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "curA",
+    "circulation": "",
+    "pub_hindi": "krnT Afoyasa-"
+  },
+  {
+    "publica_id": 274,
+    "public_name": "Civil Buzz",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CivB",
+    "circulation": "",
+    "pub_hindi": "isaivala baja"
+  },
+  {
+    "publica_id": 275,
+    "public_name": "Nayi Duniya",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "NDun",
+    "circulation": "",
+    "pub_hindi": "naš duinayaa"
+  },
+  {
+    "publica_id": 276,
+    "public_name": "Exutive Makers",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "ExuM",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 277,
+    "public_name": "Femina(H)",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "FemH",
+    "circulation": "",
+    "pub_hindi": "fOimanaa"
+  },
+  {
+    "publica_id": 278,
+    "public_name": "Women On Top",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "WOTop",
+    "circulation": "",
+    "pub_hindi": "vaumaOna Aa^na Ta^p"
+  },
+  {
+    "publica_id": 279,
+    "public_name": "Tahalka",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Tahl",
+    "circulation": "",
+    "pub_hindi": "thlaka"
+  },
+  {
+    "publica_id": 280,
+    "public_name": "Drishti Sanchar",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Dris",
+    "circulation": "",
+    "pub_hindi": "dRiYT saMcaar"
+  },
+  {
+    "publica_id": 281,
+    "public_name": "Business & Economy",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "B&E",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 282,
+    "public_name": "Mail Today Education",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MTEdu",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 283,
+    "public_name": "Maya India",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MayaI",
+    "circulation": "",
+    "pub_hindi": "maayaa [iNDyaa"
+  },
+  {
+    "publica_id": 284,
+    "public_name": "Pakhi",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Paki",
+    "circulation": "",
+    "pub_hindi": "paKI"
+  },
+  {
+    "publica_id": 285,
+    "public_name": "Pratiyogita Darpan Yearly",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PDYe",
+    "circulation": "",
+    "pub_hindi": "p`ityaaoigata dp-Na vaaiYa-kaMk"
+  },
+  {
+    "publica_id": 286,
+    "public_name": "Whats Car",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "WhCar",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 287,
+    "public_name": "Indian Management",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "IM",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 288,
+    "public_name": "Power Politics",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PP",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 289,
+    "public_name": "Mahanagar Kahaniyan ",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MahKh",
+    "circulation": "",
+    "pub_hindi": "mahanagar khainayaa"
+  },
+  {
+    "publica_id": 290,
+    "public_name": "Just Careers",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "JusCa",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 291,
+    "public_name": "Vedhraj",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Vedra",
+    "circulation": "",
+    "pub_hindi": "vaOQaraja"
+  },
+  {
+    "publica_id": 292,
+    "public_name": "Carrer 360",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Ca360",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 293,
+    "public_name": "Maths Today",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MathT",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 294,
+    "public_name": "Chemistry Today",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "ChemT",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 295,
+    "public_name": "Physics Today",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PhyT",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 296,
+    "public_name": "Biology Today",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "BioT",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 297,
+    "public_name": "Cricket Today",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CrTo",
+    "circulation": "",
+    "pub_hindi": "ik`koT TuDo"
+  },
+  {
+    "publica_id": 298,
+    "public_name": "Property Expert",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PropE",
+    "circulation": "",
+    "pub_hindi": "p`aop`T`,I e@sapT-"
+  },
+  {
+    "publica_id": 299,
+    "public_name": "Bindiya",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Bind",
+    "circulation": "",
+    "pub_hindi": "ibaMidyaa"
+  },
+  {
+    "publica_id": 300,
+    "public_name": "Bhawishyafal",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Bhaw",
+    "circulation": "",
+    "pub_hindi": "BaivaYyafla"
+  },
+  {
+    "publica_id": 301,
+    "public_name": "Raddi",
+    "type_p": "Magzine",
+    "publish_id": 5,
+    "abrv": "Radi",
+    "circulation": "",
+    "pub_hindi": "rdI"
+  },
+  {
+    "publica_id": 302,
+    "public_name": "RP Vyanjan",
+    "type_p": "Magzine",
+    "publish_id": 2,
+    "abrv": "RPVy",
+    "circulation": "",
+    "pub_hindi": "pi~ka vyaMjana"
+  },
+  {
+    "publica_id": 303,
+    "public_name": "Aha Zindagi Atiriktank",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "AZAt",
+    "circulation": "",
+    "pub_hindi": "Aha ijaMdgaI Aitir@taMk"
+  },
+  {
+    "publica_id": 304,
+    "public_name": "National Geography",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "NGeo",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 305,
+    "public_name": "VyaparAnnual",
+    "type_p": "Magzine",
+    "publish_id": 9,
+    "abrv": "VyAn",
+    "circulation": "",
+    "pub_hindi": "vyaapar vaaiYa-kaMk"
+  },
+  {
+    "publica_id": 306,
+    "public_name": "Forbs",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Forb",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 307,
+    "public_name": "Wedding Book",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "WedB",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 308,
+    "public_name": "Yes Osho",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "YesO",
+    "circulation": "",
+    "pub_hindi": "yasa AaoSaao"
+  },
+  {
+    "publica_id": 309,
+    "public_name": "Jawarilal Khabya A/c",
+    "type_p": "Magzine",
+    "publish_id": 5,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": "javarIlaalaKabyaa Aka}nT"
+  },
+  {
+    "publica_id": 310,
+    "public_name": "Balance Transfer",
+    "type_p": "Magzine",
+    "publish_id": 5,
+    "abrv": "Bala",
+    "circulation": "",
+    "pub_hindi": "baOlaonsa T`,Masfr"
+  },
+  {
+    "publica_id": 311,
+    "public_name": "Times Of India Crest",
+    "type_p": "Magzine",
+    "publish_id": 10,
+    "abrv": "TOIC",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 312,
+    "public_name": "A+D",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "A+D",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 313,
+    "public_name": "A&M",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "A&M",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 314,
+    "public_name": "Success Mirror",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "SMir",
+    "circulation": "",
+    "pub_hindi": "sa@saoja imarr"
+  },
+  {
+    "publica_id": 315,
+    "public_name": "Chuna Hai Rashtrageet",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "chra",
+    "circulation": "",
+    "pub_hindi": "CUnaa hO raYT`,gaIt"
+  },
+  {
+    "publica_id": 316,
+    "public_name": "101 Rashtrageet",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "101R",
+    "circulation": "",
+    "pub_hindi": "101 raYT`,gaIt"
+  },
+  {
+    "publica_id": 317,
+    "public_name": "Banking Service Chronicle",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "BSC",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 318,
+    "public_name": "Bhawans Journal",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "BhJ",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 319,
+    "public_name": "CSR Year Bok",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "CsrYb",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 320,
+    "public_name": "Intelegent Enterpreneur",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "InEm",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 321,
+    "public_name": "Geo",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Geo",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 322,
+    "public_name": "Investment Monitor",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "InMon",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 323,
+    "public_name": "ZMeri Ruchita",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MRuc",
+    "circulation": "",
+    "pub_hindi": "maorI $caIta"
+  },
+  {
+    "publica_id": 324,
+    "public_name": "Complete Well Bieng",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "ComW",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 325,
+    "public_name": "Master In Current Affairs",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MinC",
+    "circulation": "",
+    "pub_hindi": "maasTr [na krnT Afoyasa-"
+  },
+  {
+    "publica_id": 326,
+    "public_name": "Life Positive",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "LP",
+    "circulation": "",
+    "pub_hindi": "laašf pa^isaiTva"
+  },
+  {
+    "publica_id": 327,
+    "public_name": "Pratiyogita Ankur",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PrAn",
+    "circulation": "",
+    "pub_hindi": "p`ityaaoigata AMkur"
+  },
+  {
+    "publica_id": 328,
+    "public_name": "Next Generation Movement",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Next",
+    "circulation": "",
+    "pub_hindi": "nao@sT jaonaoroSana maUvamaOnT"
+  },
+  {
+    "publica_id": 329,
+    "public_name": "Mahasagar",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "mahas",
+    "circulation": "",
+    "pub_hindi": "mahasaagar"
+  },
+  {
+    "publica_id": 330,
+    "public_name": "Compitition Mantra",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "ComMa",
+    "circulation": "",
+    "pub_hindi": "kmpITISana man~"
+  },
+  {
+    "publica_id": 331,
+    "public_name": "Rojgar Carrer India",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "RojI",
+    "circulation": "",
+    "pub_hindi": "raojagaar kOiryar [iNDya"
+  },
+  {
+    "publica_id": 332,
+    "public_name": "Vaidhyaraj",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Vaid",
+    "circulation": "",
+    "pub_hindi": "vaOQaraja"
+  },
+  {
+    "publica_id": 333,
+    "public_name": "Nirog Sanjeevani",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "NSanj",
+    "circulation": "",
+    "pub_hindi": "inaraoga saMjaIvanaI"
+  },
+  {
+    "publica_id": 334,
+    "public_name": "Speaking Tree",
+    "type_p": "Magzine",
+    "publish_id": 10,
+    "abrv": "STre",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 335,
+    "public_name": "Society",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Soc",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 336,
+    "public_name": "Enterpruner",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Enter",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 337,
+    "public_name": "Down To Earth",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "DTE",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 338,
+    "public_name": "Sports Illustrated",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "SpIl",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 339,
+    "public_name": "Pachjanya",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Panc",
+    "circulation": "",
+    "pub_hindi": "paMcajanya"
+  },
+  {
+    "publica_id": 340,
+    "public_name": "Tree Of Knowledge",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Tree",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 341,
+    "public_name": "Jobs Avenue",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Jobs",
+    "circulation": "",
+    "pub_hindi": "jaa^bsa evanyaU"
+  },
+  {
+    "publica_id": 342,
+    "public_name": "Graha Nakshatra",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "GrNa",
+    "circulation": "",
+    "pub_hindi": "ga`h naxa~"
+  },
+  {
+    "publica_id": 343,
+    "public_name": "Compitition In Focus",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Cfoc",
+    "circulation": "",
+    "pub_hindi": "kmpITISana [na faoksa"
+  },
+  {
+    "publica_id": 344,
+    "public_name": "Indian Journey",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "IndJ",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 345,
+    "public_name": "Cine Blitz",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CinB",
+    "circulation": "",
+    "pub_hindi": "isanao iblaTja"
+  },
+  {
+    "publica_id": 346,
+    "public_name": "Overdrive(Hindi)",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "ODH",
+    "circulation": "",
+    "pub_hindi": "AaovarD`,šva"
+  },
+  {
+    "publica_id": 347,
+    "public_name": "Books",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Book",
+    "circulation": "",
+    "pub_hindi": "bau@sa"
+  },
+  {
+    "publica_id": 348,
+    "public_name": "Mukesh GK",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Muke",
+    "circulation": "",
+    "pub_hindi": "maukoSa jaI ko"
+  },
+  {
+    "publica_id": 349,
+    "public_name": "Dastak",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Dast",
+    "circulation": "",
+    "pub_hindi": "dstk"
+  },
+  {
+    "publica_id": 350,
+    "public_name": "Banking & You",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "B&U",
+    "circulation": "",
+    "pub_hindi": "baOikga eND yaU"
+  },
+  {
+    "publica_id": 351,
+    "public_name": "Grihon Ka Khel",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "GKK",
+    "circulation": "",
+    "pub_hindi": "ga`haoM ka Kola"
+  },
+  {
+    "publica_id": 352,
+    "public_name": "Yeh Hai India",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "YehI",
+    "circulation": "",
+    "pub_hindi": "yah hO [iNDyaa"
+  },
+  {
+    "publica_id": 353,
+    "public_name": "Corporate India",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "CorIn",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 354,
+    "public_name": "Show Time",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "STime",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 355,
+    "public_name": "Hindu Book",
+    "type_p": "Magzine",
+    "publish_id": 5,
+    "abrv": "HiBoo",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 356,
+    "public_name": "Saheli Special",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MSsp",
+    "circulation": "",
+    "pub_hindi": "saholaI spoSala"
+  },
+  {
+    "publica_id": 357,
+    "public_name": "Harbel Chikitsa",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Harb",
+    "circulation": "",
+    "pub_hindi": "hba-la icaik%sa"
+  },
+  {
+    "publica_id": 358,
+    "public_name": "Ghumar",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Ghum",
+    "circulation": "",
+    "pub_hindi": "GaUmar"
+  },
+  {
+    "publica_id": 359,
+    "public_name": "Dhankar Arthvyavastha",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "DhaA",
+    "circulation": "",
+    "pub_hindi": "QanakD Aqa-vyavasqaa"
+  },
+  {
+    "publica_id": 360,
+    "public_name": "Vision 2020",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Vis20",
+    "circulation": "",
+    "pub_hindi": "ivajana 2020"
+  },
+  {
+    "publica_id": 361,
+    "public_name": "Ciset Chronicle",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CtChr",
+    "circulation": "",
+    "pub_hindi": "saIsaoT k`a^inakla"
+  },
+  {
+    "publica_id": 362,
+    "public_name": "Dhankar Samsamayiki",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "DhSm",
+    "circulation": "",
+    "pub_hindi": "QanakD samasaamaaiyakI"
+  },
+  {
+    "publica_id": 363,
+    "public_name": "Business Week",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "BWee",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 364,
+    "public_name": "Upper Crest",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "UpCr",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 365,
+    "public_name": "PCMB Today",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PCMB",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 366,
+    "public_name": "Hamara Cinema",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "HaCin",
+    "circulation": "",
+    "pub_hindi": "hmaara isanaomaa"
+  },
+  {
+    "publica_id": 367,
+    "public_name": "Jyotish Guru",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "JyGu",
+    "circulation": "",
+    "pub_hindi": "jyaaoitYa gau$"
+  },
+  {
+    "publica_id": 368,
+    "public_name": "Mehandi GL",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MehGL",
+    "circulation": "",
+    "pub_hindi": "maohndI gaRhlaxmaI"
+  },
+  {
+    "publica_id": 369,
+    "public_name": "Computer & Marketing",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "C&M",
+    "circulation": "",
+    "pub_hindi": "kmpyaUTr eND maako-iTMga"
+  },
+  {
+    "publica_id": 370,
+    "public_name": "Safalta",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Safa",
+    "circulation": "",
+    "pub_hindi": "saflata"
+  },
+  {
+    "publica_id": 371,
+    "public_name": "ELE",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "ELE",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 372,
+    "public_name": "Sujivan",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Suji",
+    "circulation": "",
+    "pub_hindi": "saujaIvana"
+  },
+  {
+    "publica_id": 373,
+    "public_name": "Top Gear",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "TopG",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 374,
+    "public_name": "HT Jobs",
+    "type_p": "Magzine",
+    "publish_id": 6,
+    "abrv": "HTJb",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 375,
+    "public_name": "I Succed",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "ISuc",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 376,
+    "public_name": "Good Health",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "GoHe",
+    "circulation": "",
+    "pub_hindi": "gauD hOlqa"
+  },
+  {
+    "publica_id": 377,
+    "public_name": "Mahakta Aanchal",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "MahA",
+    "circulation": "",
+    "pub_hindi": "mahkta AaMcala"
+  },
+  {
+    "publica_id": 378,
+    "public_name": "GL Special",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "GLSp",
+    "circulation": "",
+    "pub_hindi": "gaRhlaxmaI spoSala"
+  },
+  {
+    "publica_id": 379,
+    "public_name": "Better Photography(Hindi)",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "BPH",
+    "circulation": "",
+    "pub_hindi": "baOTr faoTaoga`afI"
+  },
+  {
+    "publica_id": 380,
+    "public_name": "Sanskar",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Sansk",
+    "circulation": "",
+    "pub_hindi": "saMskar pi~ka"
+  },
+  {
+    "publica_id": 381,
+    "public_name": "Itvar",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "itv",
+    "circulation": "",
+    "pub_hindi": "[tvaar"
+  },
+  {
+    "publica_id": 382,
+    "public_name": "Fortune India",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "FrtI",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 383,
+    "public_name": "Hard News",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Hard",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 384,
+    "public_name": "RPJaipur",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "RPJ",
+    "circulation": "Morning",
+    "pub_hindi": "rajasqaana pi~ka jayapur"
+  },
+  {
+    "publica_id": 385,
+    "public_name": "DB Jaipur",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "DBJ",
+    "circulation": "",
+    "pub_hindi": "dOinak Baaskr jayapur"
+  },
+  {
+    "publica_id": 386,
+    "public_name": "ZDaily News",
+    "type_p": "Newspaper",
+    "publish_id": 2,
+    "abrv": "DNws",
+    "circulation": "Morning",
+    "pub_hindi": "DolaI nyaUja"
+  },
+  {
+    "publica_id": 387,
+    "public_name": "Savvy",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Savy",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 388,
+    "public_name": "Hukamnama",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "hukm",
+    "circulation": "Morning",
+    "pub_hindi": "hukmanaamaa"
+  },
+  {
+    "publica_id": 389,
+    "public_name": "Morning News",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "MNews",
+    "circulation": "Morning",
+    "pub_hindi": "maa^ina-Mga nyaUja"
+  },
+  {
+    "publica_id": 390,
+    "public_name": "Wealth Inside",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Wins",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 391,
+    "public_name": "Make Your Own Destiny",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "MYD",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 392,
+    "public_name": "PSC Chronicle",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "PSCc",
+    "circulation": "",
+    "pub_hindi": "pIesasaI k`aonaIkla"
+  },
+  {
+    "publica_id": 393,
+    "public_name": "Samachar Jagat",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "Sjag",
+    "circulation": "Morning",
+    "pub_hindi": "samaacaar jagat"
+  },
+  {
+    "publica_id": 394,
+    "public_name": "Sajni",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "sajn",
+    "circulation": "",
+    "pub_hindi": "sajanaI"
+  },
+  {
+    "publica_id": 395,
+    "public_name": "Lokswami",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "loks",
+    "circulation": "",
+    "pub_hindi": "laaoksvaamaI"
+  },
+  {
+    "publica_id": 396,
+    "public_name": "Vogue",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 397,
+    "public_name": "Meri Sajni",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MSaj",
+    "circulation": "",
+    "pub_hindi": "maorI sajanaI"
+  },
+  {
+    "publica_id": 398,
+    "public_name": "Jalte Deep",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "Jalt",
+    "circulation": "Morning",
+    "pub_hindi": "jalato dIp"
+  },
+  {
+    "publica_id": 399,
+    "public_name": "Outlook Traveller",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "OLTr",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 400,
+    "public_name": "Whats Hi Fi",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Whif",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 401,
+    "public_name": "T3",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "T3",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 402,
+    "public_name": "Computer Sanchar Tips",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CSST",
+    "circulation": "",
+    "pub_hindi": "kmpyaUTr saMcaar iTpsa iT`,@sa"
+  },
+  {
+    "publica_id": 403,
+    "public_name": "Mayapuri",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Maya",
+    "circulation": "",
+    "pub_hindi": "maayaapurI"
+  },
+  {
+    "publica_id": 404,
+    "public_name": "Vidhya Megh Samsamayiki",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "vidha",
+    "circulation": "",
+    "pub_hindi": "ivaQaamaoGa samasaamaiyakI"
+  },
+  {
+    "publica_id": 405,
+    "public_name": "kathadesh",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "kath",
+    "circulation": "",
+    "pub_hindi": "kqaadoSa"
+  },
+  {
+    "publica_id": 406,
+    "public_name": "BPN Today",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "BPN",
+    "circulation": "",
+    "pub_hindi": "baI pI ena TuDo"
+  },
+  {
+    "publica_id": 407,
+    "public_name": "Grezia",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Grez",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 408,
+    "public_name": "Mutual Fund Inside",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "MFI",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 409,
+    "public_name": "Super Idea",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "SupI",
+    "circulation": "",
+    "pub_hindi": "saupr AašiDyaa"
+  },
+  {
+    "publica_id": 410,
+    "public_name": "Mumal GK",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Mumal",
+    "circulation": "",
+    "pub_hindi": "maUmala jaIko"
+  },
+  {
+    "publica_id": 411,
+    "public_name": "Sunanda",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Suna",
+    "circulation": "",
+    "pub_hindi": "saunaMda"
+  },
+  {
+    "publica_id": 412,
+    "public_name": "Kids",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Kids",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 413,
+    "public_name": "Car India",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Carin",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 414,
+    "public_name": "Bike",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Bike",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 415,
+    "public_name": "New India",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "NewI",
+    "circulation": "",
+    "pub_hindi": "nyaU [iNDyaa"
+  },
+  {
+    "publica_id": 416,
+    "public_name": "ET 17052014",
+    "type_p": "Magzine",
+    "publish_id": 11,
+    "abrv": "etext",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 417,
+    "public_name": "Tinkle",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Tink",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 418,
+    "public_name": "ET Wealth",
+    "type_p": "Magzine",
+    "publish_id": 10,
+    "abrv": "ETW",
+    "circulation": "Morning",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 419,
+    "public_name": "Akkad Bakkad",
+    "type_p": "Magzine",
+    "publish_id": 5,
+    "abrv": "AkBk",
+    "circulation": "",
+    "pub_hindi": "A@kD ba@kD"
+  },
+  {
+    "publica_id": 420,
+    "public_name": "Dev Adhyatm Jyotish",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "DevA",
+    "circulation": "",
+    "pub_hindi": "dova AaQyaa%ma jyaaoitYa"
+  },
+  {
+    "publica_id": 421,
+    "public_name": "The Dollar Business",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 422,
+    "public_name": "Popular Science",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 423,
+    "public_name": "Watch Time",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 424,
+    "public_name": "Carvan",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 425,
+    "public_name": "Better Home",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 426,
+    "public_name": "Architecture+Design",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 427,
+    "public_name": "Child",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 428,
+    "public_name": "Parliamentarian",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 429,
+    "public_name": "Maxim",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 430,
+    "public_name": "Archie",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 431,
+    "public_name": "Business Line Budget",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "BLB",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 432,
+    "public_name": "Budget Bussiness Standard ",
+    "type_p": "Magzine",
+    "publish_id": 5,
+    "abrv": "BBSH",
+    "circulation": "",
+    "pub_hindi": "bajaT ibajanaosa sTONDD-"
+  },
+  {
+    "publica_id": 433,
+    "public_name": "Better Homes",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "BHome",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 434,
+    "public_name": "Paramount Reader",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Pera",
+    "circulation": "",
+    "pub_hindi": "pOramaa}nT rIDr"
+  },
+  {
+    "publica_id": 435,
+    "public_name": "Rashtriya Darpan",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Rahs",
+    "circulation": "",
+    "pub_hindi": "raiYT`,ya dp-Na"
+  },
+  {
+    "publica_id": 436,
+    "public_name": "Rajasthan Chronology",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "rajcr",
+    "circulation": "",
+    "pub_hindi": "rajasqaana k`aonaaolaa^jaI"
+  },
+  {
+    "publica_id": 437,
+    "public_name": "Mainstream",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Main",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 438,
+    "public_name": "Vogue India",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Vog",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 439,
+    "public_name": "Nivesh Manthan",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Nives",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 440,
+    "public_name": "Dalal Times",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "DalT",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 441,
+    "public_name": "Recipe Vanita",
+    "type_p": "Magzine",
+    "publish_id": 5,
+    "abrv": "ResVa",
+    "circulation": "",
+    "pub_hindi": "vainata roisapI"
+  },
+  {
+    "publica_id": 442,
+    "public_name": "Meri Tulsi",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "MTul",
+    "circulation": "",
+    "pub_hindi": "maorI tulasaI"
+  },
+  {
+    "publica_id": 443,
+    "public_name": "Banking Guru",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "BanGu",
+    "circulation": "",
+    "pub_hindi": "baOMikga gau$"
+  },
+  {
+    "publica_id": 444,
+    "public_name": "Duniya In Dino",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Duni",
+    "circulation": "",
+    "pub_hindi": "duinayaa [na idnaaoM"
+  },
+  {
+    "publica_id": 445,
+    "public_name": "Auto X",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "AutX",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 446,
+    "public_name": "Vikas Utprerak Industriel Jodhpur",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "ViJod",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 447,
+    "public_name": "Hello",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Hel",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 448,
+    "public_name": "Good Home India",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "GHIn",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 449,
+    "public_name": "Home Trends",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "HhoTr",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 450,
+    "public_name": "Condenast Traveller Indian",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Cond",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 451,
+    "public_name": "Stuff",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Stuf",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 452,
+    "public_name": "Smart Photography",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "SmPh",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 453,
+    "public_name": "KuKu Books",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Kuku",
+    "circulation": "",
+    "pub_hindi": "kuku bau@sa"
+  },
+  {
+    "publica_id": 454,
+    "public_name": "Dadi Maa Ka Khazana",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Dadi",
+    "circulation": "",
+    "pub_hindi": "dadI maaM ka Kjaanaa"
+  },
+  {
+    "publica_id": 455,
+    "public_name": "ZRajasthan Ek Parichya",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "REP",
+    "circulation": "",
+    "pub_hindi": "rajasqaana ek pircaya"
+  },
+  {
+    "publica_id": 456,
+    "public_name": "Chankya Niti",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "CN",
+    "circulation": "",
+    "pub_hindi": "caaNa@ya inatI"
+  },
+  {
+    "publica_id": 457,
+    "public_name": "Safalta Aapki Mutthi Me",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "sa",
+    "circulation": "",
+    "pub_hindi": "saflata AapkI mauzI maoM"
+  },
+  {
+    "publica_id": 458,
+    "public_name": "Bhrashtachar Niwaran",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "b",
+    "circulation": "",
+    "pub_hindi": "Ba`YTacaar inavaarNa kanaUna"
+  },
+  {
+    "publica_id": 459,
+    "public_name": "Manwadhkar kanun",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "man",
+    "circulation": "",
+    "pub_hindi": "maanavaaiQakar kanaUna"
+  },
+  {
+    "publica_id": 460,
+    "public_name": "Mahapurusho ki Amar Suktiyan",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "maha",
+    "circulation": "",
+    "pub_hindi": "mahapu$YaaoM kI Amar saUi@tyaaM"
+  },
+  {
+    "publica_id": 461,
+    "public_name": "India Home",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 462,
+    "public_name": "Traveller",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 463,
+    "public_name": "Lonley Planet",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 464,
+    "public_name": "Auto Y",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 465,
+    "public_name": "Hauslo ki Udaan",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "Haus",
+    "circulation": "",
+    "pub_hindi": "haOMsalaaoM kI ]Dana"
+  },
+  {
+    "publica_id": 466,
+    "public_name": "Comics",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Coms",
+    "circulation": "",
+    "pub_hindi": "ka^ima@sa"
+  },
+  {
+    "publica_id": 467,
+    "public_name": "Drishti Cuurent Affairs Today Eng",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "DrisE",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 468,
+    "public_name": "Diseny Comics",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Disn",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 469,
+    "public_name": "Dada Dadi ki Kahaniyan",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": "dada dadI kI khainayaaM"
+  },
+  {
+    "publica_id": 470,
+    "public_name": "Ideal Home",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 471,
+    "public_name": "Business",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 472,
+    "public_name": "Discover India",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 473,
+    "public_name": "Travel Leisure",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 474,
+    "public_name": "Better Interior",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 475,
+    "public_name": "Drishti Current Affairs Today",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "DCAT",
+    "circulation": "",
+    "pub_hindi": "dRiYT krOnT Afoyasa- TuDo"
+  },
+  {
+    "publica_id": 476,
+    "public_name": "Yathawat",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": "yaqaavat"
+  },
+  {
+    "publica_id": 477,
+    "public_name": "The Franchising",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "TheFr",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 478,
+    "public_name": "ZToday hawamahal",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "Hawa",
+    "circulation": "Evening",
+    "pub_hindi": "TuDo hvaamahla"
+  },
+  {
+    "publica_id": 479,
+    "public_name": "Living ETC India",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "liv",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 480,
+    "public_name": "Franchising World",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 481,
+    "public_name": "Harpers Bazaar",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 482,
+    "public_name": "Harpers bazaar Bride",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 483,
+    "public_name": "L Official",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 484,
+    "public_name": "Opinion Post",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": "AaopInaIyana paosT"
+  },
+  {
+    "publica_id": 485,
+    "public_name": "Niwesh Manthan",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "niwe",
+    "circulation": "",
+    "pub_hindi": "inavaoYa maMqana"
+  },
+  {
+    "publica_id": 486,
+    "public_name": "News Time",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Ntime",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 487,
+    "public_name": "Open Source",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "OpS",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 488,
+    "public_name": "Rajputana",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "rajp",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 489,
+    "public_name": "Amar Chitra Katha",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Amar",
+    "circulation": "",
+    "pub_hindi": "Amar ica~ kqaa"
+  },
+  {
+    "publica_id": 490,
+    "public_name": "Clever Rabbit",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "cr",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 491,
+    "public_name": "Banking For You",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "BanFU",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 492,
+    "public_name": "DNA",
+    "type_p": "Newspaper",
+    "publish_id": 18,
+    "abrv": "DNA",
+    "circulation": "Evening",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 493,
+    "public_name": "Rashtra Samaj",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": "raYT``, samaaja"
+  },
+  {
+    "publica_id": 494,
+    "public_name": "Nari Shobha",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "Nari",
+    "circulation": "",
+    "pub_hindi": "naarI SaaoBaa"
+  },
+  {
+    "publica_id": 495,
+    "public_name": "The Calculus Affair",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "TCA",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 496,
+    "public_name": "Flight To Sydney",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "Flig",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 497,
+    "public_name": "Varshiki India Today ",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "VIT",
+    "circulation": "",
+    "pub_hindi": "vaaiYa-kI [iNDyaa TuDo"
+  },
+  {
+    "publica_id": 498,
+    "public_name": "India Healthcare",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "InHea",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 499,
+    "public_name": "Healthcare",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 500,
+    "public_name": "TinTin",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 501,
+    "public_name": "P C Quest",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 502,
+    "public_name": "Indian Economy",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "IndE",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 503,
+    "public_name": "Nat Geo Traveller",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 504,
+    "public_name": "Ish Lahar",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": "šSa lahr"
+  },
+  {
+    "publica_id": 505,
+    "public_name": "diabetes Health",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 506,
+    "public_name": "Marwar India",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 507,
+    "public_name": "Startups",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 508,
+    "public_name": "GQ",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "GQ",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 509,
+    "public_name": "First India",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "FI",
+    "circulation": "Morning",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 510,
+    "public_name": "Bhaskar Year Book",
+    "type_p": "Magzine",
+    "publish_id": 3,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": "Baaskr šyar bauk"
+  },
+  {
+    "publica_id": 511,
+    "public_name": "The Man",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 512,
+    "public_name": "Today Hindi",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": "TuDo ihndI"
+  },
+  {
+    "publica_id": 513,
+    "public_name": "Today Eng",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 514,
+    "public_name": "Sahitya Varshiki Today",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": "saaih%ya vaaiYa-kI TuDo"
+  },
+  {
+    "publica_id": 515,
+    "public_name": "Vagarth",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 516,
+    "public_name": "Surf & Drive",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 517,
+    "public_name": "The India Hollywood Reporter",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 518,
+    "public_name": "Esquire",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 519,
+    "public_name": "Ad India",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 520,
+    "public_name": "Happiest Health",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 521,
+    "public_name": "Spice",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 522,
+    "public_name": "Knowledge Quest",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 523,
+    "public_name": "Highlights Genius",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 524,
+    "public_name": "Young World",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 525,
+    "public_name": "Navajyoti",
+    "type_p": "Newspaper",
+    "publish_id": 5,
+    "abrv": "",
+    "circulation": "Morning",
+    "pub_hindi": "navajyaaoit"
+  },
+  {
+    "publica_id": 526,
+    "public_name": "Delivery Charges",
+    "type_p": "Magzine",
+    "publish_id": 17,
+    "abrv": "DC",
+    "circulation": "",
+    "pub_hindi": "iDlaIvarI caaja-"
+  },
+  {
+    "publica_id": 527,
+    "public_name": "ROBB Report",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 528,
+    "public_name": "Mainifset Life",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 529,
+    "public_name": "The Hollywood Reporter India",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 530,
+    "public_name": "Highliths Champs",
+    "type_p": "Magzine",
+    "publish_id": 4,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": ""
+  },
+  {
+    "publica_id": 531,
+    "public_name": "Deleivery Charge 50",
+    "type_p": "Magzine",
+    "publish_id": 7,
+    "abrv": "",
+    "circulation": "",
+    "pub_hindi": "iDlaIvarI caaja- 50"
+  }
+]
