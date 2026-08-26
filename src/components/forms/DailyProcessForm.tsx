@@ -29,32 +29,32 @@ export default function DailyProcessForm({
   const [selectedHawkerId, setSelectedHawkerId] = useState('all');
   const [results, setResults] = useState<any[]>([]);
   const [isCalculated, setIsCalculated] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const dateObj = new Date(supplyDate);
   const dayOfWeek = getLegacyDayOfWeek(dateObj);
   const dayInfo = LEGACY_DAYS.find(d => d.id === dayOfWeek);
 
-  const handleCalculate = () => {
-    // Generate hawker copy manifests
-    const sample = [
-      { hawker_id: 1, hawker_name: 'MOHAN JI', publica_id: 4, publica_name: 'DAINIK BHASKAR', copies: 245, circulation: 'Morning' },
-      { hawker_id: 1, hawker_name: 'MOHAN JI', publica_id: 5, publica_name: 'RAJASTHAN PATRIKA', copies: 180, circulation: 'Morning' },
-      { hawker_id: 1, hawker_name: 'MOHAN JI', publica_id: 1, publica_name: 'THE TIMES OF INDIA', copies: 65, circulation: 'Morning' },
-      { hawker_id: 2, hawker_name: 'Pintu', publica_id: 4, publica_name: 'DAINIK BHASKAR', copies: 195, circulation: 'Morning' },
-      { hawker_id: 2, hawker_name: 'Pintu', publica_id: 5, publica_name: 'RAJASTHAN PATRIKA', copies: 140, circulation: 'Morning' },
-      { hawker_id: 3, hawker_name: 'Bhagwati Prasad', publica_id: 4, publica_name: 'DAINIK BHASKAR', copies: 310, circulation: 'Morning' },
-      { hawker_id: 3, hawker_name: 'Bhagwati Prasad', publica_id: 5, publica_name: 'RAJASTHAN PATRIKA', copies: 275, circulation: 'Morning' },
-    ];
-
-    const filtered = selectedHawkerId === 'all' 
-      ? sample 
-      : sample.filter(s => s.hawker_id.toString() === selectedHawkerId);
-
-    setResults(filtered);
-    setIsCalculated(true);
+  const handleCalculate = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/daily-process?date=${supplyDate}&hawker_id=${selectedHawkerId}`);
+      const data = await res.json();
+      setResults(data.manifest || []);
+      setIsCalculated(true);
+    } catch (err) {
+      console.error('Failed to calculate daily process:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const totalCopies = results.reduce((acc, r) => acc + r.copies, 0);
+  // Initial calculation
+  React.useEffect(() => {
+    handleCalculate();
+  }, [supplyDate, selectedHawkerId]);
+
+  const totalCopies = results.reduce((acc, r) => acc + (r.copies || 0), 0);
 
   return (
     <div className="relative w-[750px] h-[550px] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma">
