@@ -15,19 +15,24 @@ const MONTHS = [
 ];
 
 export default function PeriodForm({ isOpen, onLogin, onExit }: PeriodFormProps) {
-  const currentYear = new Date().getFullYear();
-  const currentMonthIdx = new Date().getMonth();
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonthIdx = now.getMonth();
   
-  const [selectedMonth, setSelectedMonth] = useState<string>(MONTHS[currentMonthIdx] || 'July');
-  const [startYear, setStartYear] = useState<number>(2025);
-  const [endYear, setEndYear] = useState<number>(2026);
-  const [selectedDate, setSelectedDate] = useState<number>(new Date().getDate());
+  // Indian Financial Year calculation (starts April 1st)
+  const defaultStartYear = currentMonthIdx < 3 ? currentYear - 1 : currentYear;
+  const defaultEndYear = defaultStartYear + 1;
+  
+  const [selectedMonth, setSelectedMonth] = useState<string>(MONTHS[currentMonthIdx] || 'August');
+  const [startYear, setStartYear] = useState<number>(defaultStartYear);
+  const [endYear, setEndYear] = useState<number>(defaultEndYear);
+  const [selectedDate, setSelectedDate] = useState<number>(now.getDate());
 
   if (!isOpen) return null;
 
   // Calendar generation for current month
-  const daysInMonth = 31;
-  const firstDay = 2; // Simulated starting weekday
+  const daysInMonth = new Date(startYear, currentMonthIdx + 1, 0).getDate();
+  const firstDay = new Date(startYear, currentMonthIdx, 1).getDay();
 
   const handleYearChange = (start: number) => {
     setStartYear(start);

@@ -367,8 +367,8 @@ export default function CustomerForm({
                       <td className="p-1 border-r font-bold text-center font-mono">{sub.qty}</td>
                       <td className="p-1 border-r text-center">{sub.circulation || 'Daily'}</td>
                       <td className="p-1 border-r font-mono text-center">{sub.from_day || '1-7'}</td>
-                      <td className="p-1 border-r font-mono text-center">{sub.s_date || '01/04/2026'}</td>
-                      <td className="p-1 border-r font-mono text-center text-slate-400">{sub.c_date || '-'}</td>
+                      <td className="p-1 border-r font-mono text-center">{sub.s_date ? new Date(sub.s_date).toLocaleDateString('en-GB') : '-'}</td>
+                      <td className="p-1 border-r font-mono text-center text-slate-400">{sub.c_date ? new Date(sub.c_date).toLocaleDateString('en-GB') : '-'}</td>
                       <td className="p-1 border-r font-mono text-center">{sub.dis || 0}%</td>
                       <td className="p-1 border-r font-mono text-center">₹{sub.dely || 0}</td>
                       <td className="p-1 text-center">

@@ -102,14 +102,14 @@ export default function VB6DesktopLayout() {
   const [processResults, setProcessResults] = useState<any[]>([]);
 
   // Billing Form State
-  const [billingMonth, setBillingMonth] = useState('July');
+  const [billingMonth, setBillingMonth] = useState('August');
   const [billingYear, setBillingYear] = useState(2026);
   const [generatedBills, setGeneratedBills] = useState<BillHeader[]>([]);
   const [isBillingRunning, setIsBillingRunning] = useState(false);
 
   // New Modal States for Full 2008 Master Set
   const [isPeriodOpen, setIsPeriodOpen] = useState(true);
-  const [currentPeriod, setCurrentPeriod] = useState({ month: 'July', startYear: 2025, endYear: 2026 });
+  const [currentPeriod, setCurrentPeriod] = useState({ month: 'August', startYear: 2026, endYear: 2027 });
   const [isRateMatrixOpen, setIsRateMatrixOpen] = useState(false);
   const [isCollectionAgentsOpen, setIsCollectionAgentsOpen] = useState(false);
   const [isUserPermOpen, setIsUserPermOpen] = useState(false);
