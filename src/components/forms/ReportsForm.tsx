@@ -57,12 +57,12 @@ export default function ReportsForm({ onClose }: ReportsFormProps) {
 
   // Calculations
   const totalDue = customers
-    .filter(c => (c.due_amount || (c as any).dueamount || 0) > 0)
-    .reduce((sum, c) => sum + (c.due_amount || (c as any).dueamount || 0), 0);
+    .filter(c => ((c as any).due_amount ?? c.dueamount ?? 0) > 0)
+    .reduce((sum, c) => sum + ((c as any).due_amount ?? c.dueamount ?? 0), 0);
 
   const totalAdvance = customers
-    .filter(c => (c.due_amount || (c as any).dueamount || 0) < 0)
-    .reduce((sum, c) => sum + Math.abs(c.due_amount || (c as any).dueamount || 0), 0);
+    .filter(c => ((c as any).due_amount ?? c.dueamount ?? 0) < 0)
+    .reduce((sum, c) => sum + Math.abs((c as any).due_amount ?? c.dueamount ?? 0), 0);
 
   const netOutstanding = totalDue - totalAdvance;
 

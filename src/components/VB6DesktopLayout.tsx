@@ -605,7 +605,6 @@ export default function VB6DesktopLayout() {
             isOpen={isCounterSaleOpen}
             onClose={() => setIsCounterSaleOpen(false)}
             publications={publications}
-            customers={customerList}
           />
         )}
 
