@@ -49,6 +49,8 @@ import CollectionAgentsForm from './forms/CollectionAgentsForm';
 import UserPermissionsForm from './forms/UserPermissionsForm';
 import CounterSaleForm from './forms/CounterSaleForm';
 import PeriodForm from './forms/PeriodForm';
+import ReportsForm from './forms/ReportsForm';
+import BackupRestoreModal from './forms/BackupRestoreModal';
 
 // Legacy Day of Week Names (1=Sun .. 7=Sat)
 const LEGACY_DAYS = [
@@ -114,6 +116,7 @@ export default function VB6DesktopLayout() {
   const [isCollectionAgentsOpen, setIsCollectionAgentsOpen] = useState(false);
   const [isUserPermOpen, setIsUserPermOpen] = useState(false);
   const [isCounterSaleOpen, setIsCounterSaleOpen] = useState(false);
+  const [backupModalMode, setBackupModalMode] = useState<'backup_master' | 'backup_yearly' | 'restore' | 'balance_forward' | null>(null);
 
   // New Vacation Hold Form State
   const [vacationCustId, setVacationCustId] = useState<string>('1');
@@ -425,17 +428,17 @@ export default function VB6DesktopLayout() {
               <button onClick={() => { setActiveMenu(null); setIsPeriodOpen(true); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 1. Financial Year Selection (वित्तीय वर्ष: {currentPeriod.month} {currentPeriod.startYear}-{currentPeriod.endYear})
               </button>
-              <button onClick={() => { setActiveMenu(null); setStatusMessage('Balance forward completed successfully for all customers.'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+              <button onClick={() => { setActiveMenu(null); setBackupModalMode('balance_forward'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 2. Year-End Balance Forward to Next Year (कैरी फॉरवर्ड)
               </button>
               <div className="h-[1px] bg-[#808080] my-1"></div>
-              <button onClick={() => { setActiveMenu(null); setStatusMessage('Master database backup created: AryanNews_Backup.sql'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+              <button onClick={() => { setActiveMenu(null); setBackupModalMode('backup_master'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 3. Master Database Backup (मास्टर बैकअप)
               </button>
-              <button onClick={() => { setActiveMenu(null); setStatusMessage('Yearly database backup completed.'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+              <button onClick={() => { setActiveMenu(null); setBackupModalMode('backup_yearly'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 4. Yearly Database Backup (वार्षिक बैकअप)
               </button>
-              <button onClick={() => { setActiveMenu(null); setStatusMessage('Database restore system verified.'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+              <button onClick={() => { setActiveMenu(null); setBackupModalMode('restore'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 5. Database Restore (डाटा रिस्टोर)
               </button>
             </div>
@@ -554,35 +557,9 @@ export default function VB6DesktopLayout() {
 
         {/* 10. Outstanding Dues Report */}
         {activeWindow === 'reports' && (
-          <div className="w-full max-w-4xl h-[80vh] bg-[#ECE9D8] vb-box-outset flex flex-col shadow-2xl">
-            <div className="vb-titlebar"><span>Reports: Customer Outstanding Dues (बकाया सूची)</span></div>
-            <div className="p-3 flex-1 bg-white vb-box-inset overflow-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#ECE9D8] sticky top-0">
-                  <tr>
-                    <th className="vb-grid-header">ID</th>
-                    <th className="vb-grid-header">Customer Name</th>
-                    <th className="vb-grid-header">Phone</th>
-                    <th className="vb-grid-header text-right">Starting Due</th>
-                    <th className="vb-grid-header text-right">Closing Balance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customerList.filter(c => c.cbal !== 0).slice(0, 50).map(c => (
-                    <tr key={c.customer_id} className="border-b hover:bg-blue-50">
-                      <td className="p-2 font-mono">#{c.customer_id}</td>
-                      <td className="p-2 font-bold">{c.name_eng}</td>
-                      <td className="p-2">{c.phone || '-'}</td>
-                      <td className="p-2 text-right font-mono">₹{c.dueamount?.toFixed(2)}</td>
-                      <td className={`p-2 text-right font-mono font-bold ${c.cbal > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                        ₹{c.cbal?.toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <ReportsForm 
+            onClose={() => setActiveWindow(null)} 
+          />
         )}
 
         {/* 11. Modal: Authentic Subscriptions Details (screenshot_06.jpg) */}
@@ -622,6 +599,16 @@ export default function VB6DesktopLayout() {
           />
         )}
 
+        {/* 15. Modal: Counter & Walk-in Cash Sale Entry */}
+        {isCounterSaleOpen && (
+          <CounterSaleForm 
+            isOpen={isCounterSaleOpen}
+            onClose={() => setIsCounterSaleOpen(false)}
+            publications={publications}
+            customers={customerList}
+          />
+        )}
+
         {/* 16. Modal: Period Detail Entrance & Selection (screenshot_15.jpg) */}
         {isPeriodOpen && (
           <PeriodForm 
@@ -632,6 +619,14 @@ export default function VB6DesktopLayout() {
               setStatusMessage(`Period: ${m} ${sY}-${eY} logged in successfully.`);
             }}
             onExit={() => setIsPeriodOpen(false)}
+          />
+        )}
+
+        {/* 17. Modal: Backup, Restore & Balance Forward Tools */}
+        {backupModalMode && (
+          <BackupRestoreModal 
+            mode={backupModalMode}
+            onClose={() => setBackupModalMode(null)}
           />
         )}
 
