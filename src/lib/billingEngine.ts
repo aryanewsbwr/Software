@@ -326,7 +326,7 @@ export function calculateBilling({
       }
 
       // Add line items for each rate
-      for (const [rate, daysOrCopies] of rateDaysMap.entries()) {
+      Array.from(rateDaysMap.entries()).forEach(([rate, daysOrCopies]) => {
         const lineAmt = Math.round(rate * qty * daysOrCopies * 100) / 100;
         customerPaperTotal += lineAmt;
         custBreakup.push({
@@ -340,7 +340,7 @@ export function calculateBilling({
           days_or_copies: daysOrCopies,
           amount: lineAmt
         });
-      }
+      });
 
       // Delivery Charges (Sort_order 2)
       const dely = cd.dely || cd.Dely || 0;
