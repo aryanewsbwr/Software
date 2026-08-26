@@ -442,57 +442,9 @@ export default function VB6DesktopLayout() {
           )}
         </div>
 
-        {/* Active Window Indicator */}
-        <div className="flex-1 flex items-center justify-end gap-1 px-2">
-          <span className="text-[10px] text-slate-600 font-bold">Active Form:</span>
-          <span className="px-2 py-0.5 bg-white border border-slate-400 font-bold text-indigo-900 text-xs rounded-xs uppercase">
-            {activeWindow}
-          </span>
-        </div>
       </div>
 
-      {/* 3. CLASSIC 3D TOOLBAR */}
-      <div className="bg-[#ECE9D8] border-b-2 border-[#808080] p-1.5 flex items-center gap-1.5 overflow-x-auto">
-        <button onClick={() => setActiveWindow('customers')} className={`vb-btn ${activeWindow === 'customers' ? 'bg-amber-100' : ''}`} title="Customer Master">
-          <Users className="w-3.5 h-3.5 text-blue-700" />
-          <span>Customers (24,581)</span>
-        </button>
-        <button onClick={() => setActiveWindow('publications')} className={`vb-btn ${activeWindow === 'publications' ? 'bg-amber-100' : ''}`} title="Publications & Weekday Rates">
-          <Newspaper className="w-3.5 h-3.5 text-emerald-700" />
-          <span>Publications & Rates (दर)</span>
-        </button>
-        <button onClick={() => setActiveWindow('dailyprocess')} className={`vb-btn ${activeWindow === 'dailyprocess' ? 'bg-amber-100' : ''}`} title="Daily Process">
-          <Layers className="w-3.5 h-3.5 text-purple-700" />
-          <span>Daily Process (दैनिक वितरण)</span>
-        </button>
-        <button onClick={() => setActiveWindow('hawkers')} className={`vb-btn ${activeWindow === 'hawkers' ? 'bg-amber-100' : ''}`} title="Hawkers">
-          <Truck className="w-3.5 h-3.5 text-amber-700" />
-          <span>Hawkers (हॉकर)</span>
-        </button>
-        <button onClick={() => setActiveWindow('publishers')} className={`vb-btn ${activeWindow === 'publishers' ? 'bg-amber-100' : ''}`} title="Publishers">
-          <Building2 className="w-3.5 h-3.5 text-indigo-700" />
-          <span>Publishers (प्रकाशक)</span>
-        </button>
-        <div className="w-[2px] h-5 bg-[#808080] mx-0.5"></div>
-        <button onClick={() => setActiveWindow('discontinue')} className={`vb-btn ${activeWindow === 'discontinue' ? 'bg-amber-100' : ''}`} title="Vacation / Stop">
-          <Clock className="w-3.5 h-3.5 text-red-700" />
-          <span>Vacation Hold (छुट्टी)</span>
-        </button>
-        <button onClick={() => setActiveWindow('receipts')} className={`vb-btn ${activeWindow === 'receipts' ? 'bg-amber-100' : ''}`} title="Payment Receipts">
-          <Receipt className="w-3.5 h-3.5 text-blue-800" />
-          <span>Receipts (18,382)</span>
-        </button>
-        <button onClick={() => setActiveWindow('billing')} className={`vb-btn ${activeWindow === 'billing' ? 'bg-amber-100' : ''}`} title="Monthly Billing Engine">
-          <DollarSign className="w-3.5 h-3.5 text-emerald-800" />
-          <span>Billing Engine (बिल गणना)</span>
-        </button>
-        <button onClick={() => setActiveWindow('reports')} className={`vb-btn ${activeWindow === 'reports' ? 'bg-amber-100' : ''}`} title="Reports">
-          <Printer className="w-3.5 h-3.5 text-purple-700" />
-          <span>Outstanding Dues (बकाया)</span>
-        </button>
-      </div>
-
-      {/* 4. MAIN MDI DESKTOP CANVAS */}
+      {/* 3. MAIN MDI DESKTOP CANVAS */}
       <div className="flex-1 p-3 overflow-auto flex items-center justify-center relative">
         
         {/* Clean MDI Desktop Wallpaper (When no form is open) */}
