@@ -1,177 +1,271 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Hawker } from '@/lib/types';
+import React, { useState, useEffect } from 'react';
+import { Truck, Save, Trash2, X, Search, RefreshCw } from 'lucide-react';
+import { Hawker, Region } from '@/lib/types';
 
-interface HawkerFormProps {
+interface Props {
+  isOpen?: boolean;
   onClose: () => void;
   hawkers?: Hawker[];
+  regions?: Region[];
+  onSaveHawker?: (hawker: Partial<Hawker>, allottedRegions: number[]) => void;
 }
 
-export default function HawkerForm({ onClose, hawkers = [] }: HawkerFormProps) {
-  const [selectedHawker, setSelectedHawker] = useState<Hawker>(hawkers[0] || {
-    hawker_id: 1,
-    name: 'MOHAN JI',
-    hindi_name: 'मोहन जी',
-    phone: '9829012345',
-    address: 'Old City, Beawar'
-  });
-
+export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regions = [], onSaveHawker }: Props) {
+  const [selectedHawkerId, setSelectedHawkerId] = useState<number | null>(hawkers[0]?.hawker_id || 1);
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [phone, setPhone] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [allottedRegions, setAllottedRegions] = useState<number[]>([]);
   const [isFindOpen, setIsFindOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [msg, setMsg] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [status, setStatus] = useState('');
 
-  const handleSave = () => {
-    setMsg('Hawker profile saved successfully!');
-    setTimeout(() => setMsg(''), 3000);
+  // Load selected hawker
+  useEffect(() => {
+    if (!selectedHawkerId) {
+      if (hawkers.length > 0) setSelectedHawkerId(hawkers[0].hawker_id);
+      return;
+    }
+    const h = hawkers.find(hk => hk.hawker_id === selectedHawkerId);
+    if (h) {
+      setName(h.name || '');
+      setAddress(h.address || '');
+      setCity(h.city || '');
+      setPhone(h.phone || '');
+      setMobile(h.mobile || '');
+      setAllottedRegions(h.region_id ? [h.region_id] : []);
+    }
+  }, [selectedHawkerId, hawkers]);
+
+  if (!isOpen) return null;
+
+  const toggleRegion = (regionId: number) => {
+    if (allottedRegions.includes(regionId)) {
+      setAllottedRegions(allottedRegions.filter(id => id !== regionId));
+    } else {
+      setAllottedRegions([...allottedRegions, regionId]);
+    }
   };
 
-  const filtered = hawkers.filter(h => 
-    h.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    h.hawker_id.toString().includes(searchTerm)
+  const handleSave = () => {
+    if (!name.trim()) {
+      setStatus('Error: Hawker Name cannot be empty');
+      return;
+    }
+    if (onSaveHawker) {
+      onSaveHawker({
+        hawker_id: selectedHawkerId || undefined,
+        name,
+        address,
+        city,
+        phone,
+        mobile,
+        region_id: allottedRegions[0] || 1
+      }, allottedRegions);
+    }
+    setStatus(`Hawker "${name}" saved successfully with ${allottedRegions.length} allotted region(s).`);
+    setTimeout(() => setStatus(''), 3000);
+  };
+
+  const handleNew = () => {
+    setSelectedHawkerId(null);
+    setName('');
+    setAddress('');
+    setCity('');
+    setPhone('');
+    setMobile('');
+    setAllottedRegions([]);
+  };
+
+  const filteredHawkers = hawkers.filter(h => 
+    h.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    h.hawker_id.toString().includes(searchQuery)
   );
 
   return (
-    <div className="relative w-[680px] h-[480px] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma">
-      {/* Title Bar */}
-      <div className="vb-titlebar-xp select-none">
+    <div className="w-full max-w-2xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col relative select-none">
+      {/* Titlebar */}
+      <div className="bg-linear-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-0.5 flex items-center justify-between font-bold text-xs">
         <div className="flex items-center gap-1.5">
-          <img src="/legacy_images/paper.ico" alt="ico" className="w-3.5 h-3.5" onError={(e) => (e.currentTarget.style.display = 'none')} />
-          <span>Hawker Master (हॉकर विवरण) - ID #{selectedHawker.hawker_id}</span>
+          <Truck className="w-3.5 h-3.5 text-yellow-300" />
+          <span>Hawker Master</span>
         </div>
         <div className="flex items-center gap-1">
-          <button className="vb-win-btn">_</button>
-          <button className="vb-win-btn">□</button>
-          <button onClick={onClose} className="vb-win-btn vb-win-btn-close">✕</button>
+          <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">_</button>
+          <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">□</button>
+          <button onClick={onClose} className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-red-600 hover:text-white cursor-pointer">✕</button>
         </div>
       </div>
 
-      {/* Main Body */}
-      <div 
-        className="flex-1 relative p-4 flex flex-col justify-between bg-cover bg-center"
-        style={{ backgroundImage: "url('/legacy_images/Hawker.jpg'), linear-gradient(135deg, #E6F0FA 0%, #FFFFFF 100%)" }}
-      >
-        {/* Header */}
-        <div className="text-center pt-0.5">
-          <h1 className="text-xl font-black text-[#8B0000] tracking-wider uppercase drop-shadow-xs">
-            HAWKER MASTER (हॉकर मास्टर)
-          </h1>
+      {/* Main Form Body matching screenshot_04.jpg */}
+      <div className="p-4 space-y-4 text-xs">
+        <h2 className="text-center font-black text-maroon-800 text-lg tracking-wider text-[#800000]">
+          HAWKER DETAIL
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+          {/* Left Inputs */}
+          <div className="md:col-span-2 space-y-2.5">
+            <div className="flex items-center gap-3">
+              <label className="w-20 font-bold text-[#800000]">Name</label>
+              <input 
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white font-bold text-blue-900 shadow-inner"
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="w-20 font-bold text-[#800000]">Address</label>
+              <input 
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white shadow-inner"
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="w-20 font-bold text-[#800000]">City</label>
+              <input 
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white shadow-inner"
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="w-20 font-bold text-[#800000]">Phone</label>
+              <input 
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white shadow-inner font-mono"
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="w-20 font-bold text-[#800000]">Mobile</label>
+              <input 
+                type="text"
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
+                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white shadow-inner font-mono"
+              />
+            </div>
+          </div>
+
+          {/* Right Region Allotment Checklist matching screenshot_04.jpg */}
+          <div className="border border-[#808080] bg-white shadow-inner flex flex-col h-44">
+            <div className="bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 font-bold text-[11px] text-slate-800 flex justify-between items-center">
+              <span>Region Allotment</span>
+              <span className="text-[10px] text-blue-800">({allottedRegions.length} checked)</span>
+            </div>
+            <div className="p-1 overflow-auto flex-1 space-y-1">
+              {regions.map((reg) => {
+                const isChecked = allottedRegions.includes(reg.region_id);
+                return (
+                  <label 
+                    key={reg.region_id}
+                    className={`flex items-center gap-2 px-1.5 py-0.5 text-[11px] cursor-pointer select-none rounded-xs ${isChecked ? 'bg-blue-100 font-bold text-blue-900' : 'hover:bg-slate-100 text-slate-800'}`}
+                  >
+                    <input 
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleRegion(reg.region_id)}
+                      className="rounded-xs"
+                    />
+                    <span className="truncate">{reg.region_name}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
-        {/* Input Fields */}
-        <div className="grid grid-cols-12 gap-y-2 gap-x-2 text-xs font-bold text-black items-center max-w-[560px] mx-auto w-full pt-1">
-          
-          <label className="col-span-4 text-right pr-2 text-[#8B0000]">Hawker ID</label>
-          <input 
-            type="text" 
-            value={selectedHawker.hawker_id} 
-            readOnly
-            className="col-span-8 vb-input font-bold bg-slate-100 font-mono"
-          />
-
-          <label className="col-span-4 text-right pr-2 text-[#8B0000]">Hawker Name</label>
-          <input 
-            type="text" 
-            value={selectedHawker.name || ''} 
-            onChange={(e) => setSelectedHawker({ ...selectedHawker, name: e.target.value })}
-            className="col-span-8 vb-input font-bold"
-          />
-
-          <label className="col-span-4 text-right pr-2 text-[#8B0000]">Hindi Name</label>
-          <input 
-            type="text" 
-            value={selectedHawker.hindi_name || ''} 
-            onChange={(e) => setSelectedHawker({ ...selectedHawker, hindi_name: e.target.value })}
-            className="col-span-8 vb-input font-hindi font-bold"
-          />
-
-          <label className="col-span-4 text-right pr-2 text-[#8B0000]">Phone Number</label>
-          <input 
-            type="text" 
-            value={selectedHawker.phone || ''} 
-            onChange={(e) => setSelectedHawker({ ...selectedHawker, phone: e.target.value })}
-            className="col-span-8 vb-input font-bold"
-          />
-
-          <label className="col-span-4 text-right pr-2 text-[#8B0000]">Address</label>
-          <input 
-            type="text" 
-            value={selectedHawker.address || ''} 
-            onChange={(e) => setSelectedHawker({ ...selectedHawker, address: e.target.value })}
-            className="col-span-8 vb-input"
-          />
-        </div>
-
-        {/* Message Banner */}
-        {msg && (
-          <div className="text-center text-xs font-bold text-emerald-800 bg-emerald-100 py-0.5 border border-emerald-400">
-            {msg}
+        {status && (
+          <div className="p-1.5 bg-emerald-100 text-emerald-800 border border-emerald-400 font-bold text-center text-xs">
+            {status}
           </div>
         )}
 
-        {/* Action Buttons matching screenshot_04.jpg */}
-        <div className="flex items-center justify-center gap-2 pt-2 border-t border-slate-300/80">
-          <button onClick={handleSave} className="vb-action-btn">
-            <span>💾 Save</span>
+        {/* Bottom Action Slanted Buttons matching screenshot_04.jpg */}
+        <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-[#808080]">
+          <button 
+            onClick={handleSave}
+            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+          >
+            💾 <u>S</u>ave
           </button>
-          <button onClick={handleSave} className="vb-action-btn">
-            <span>🔄 Update</span>
+          <button 
+            onClick={handleSave}
+            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+          >
+            ↪ <u>U</u>pdate
           </button>
-          <button onClick={() => setMsg('Hawker record removed.')} className="vb-action-btn">
-            <span>🗑️ Del</span>
+          <button 
+            onClick={handleNew}
+            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+          >
+            🗑 <u>D</u>el
           </button>
-          <button onClick={() => setIsFindOpen(true)} className="vb-action-btn bg-yellow-50">
-            <span>🔍 Find ({hawkers.length})</span>
+          <button 
+            onClick={() => setIsFindOpen(true)}
+            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+          >
+            🔍 <u>F</u>ind
           </button>
-          <button onClick={() => setSelectedHawker(hawkers[0])} className="vb-action-btn">
-            <span>❌ Cancel</span>
+          <button 
+            onClick={handleNew}
+            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+          >
+            ✖ <u>C</u>ancel
           </button>
-          <button onClick={onClose} className="vb-action-btn text-red-700">
-            <span>🛑 Exit</span>
+          <button 
+            onClick={onClose}
+            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+          >
+            🛑 <u>E</u>xit
           </button>
         </div>
       </div>
 
-      {/* Find Hawker Modal */}
+      {/* Find Hawker Modal Dialog */}
       {isFindOpen && (
-        <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="w-[500px] h-[360px] bg-[#ECE9D8] vb-window flex flex-col">
-            <div className="vb-titlebar-xp">
-              <span>Find Hawker (1,560 Records)</span>
-              <button onClick={() => setIsFindOpen(false)} className="vb-win-btn vb-win-btn-close">✕</button>
+        <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#ECE9D8] border-2 border-white shadow-2xl p-3 w-full max-w-md space-y-2 text-xs">
+            <div className="bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
+              <span>Find Hawker</span>
+              <button onClick={() => setIsFindOpen(false)} className="text-white hover:text-red-300 font-bold">✕</button>
             </div>
-            <div className="p-2 flex-1 flex flex-col gap-2 overflow-hidden text-xs">
-              <input 
-                type="text" 
-                placeholder="Search hawker name or ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="vb-input w-full"
-              />
-              <div className="flex-1 bg-white vb-grid overflow-auto">
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-[#ECE9D8]">
-                    <tr>
-                      <th className="p-1">ID</th>
-                      <th className="p-1">Hawker Name</th>
-                      <th className="p-1">Hindi Name</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.slice(0, 50).map(h => (
-                      <tr 
-                        key={h.hawker_id}
-                        onClick={() => { setSelectedHawker(h); setIsFindOpen(false); }}
-                        className="cursor-pointer hover:bg-[#316AC5] hover:text-white border-b"
-                      >
-                        <td className="p-1 font-mono">#{h.hawker_id}</td>
-                        <td className="p-1 font-bold">{h.name}</td>
-                        <td className="p-1 font-hindi">{h.hindi_name || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <input 
+              type="text"
+              placeholder="Search by Hawker Name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-2 py-1 border border-slate-400 bg-white"
+              autoFocus
+            />
+            <div className="max-h-48 overflow-auto border border-slate-300 bg-white">
+              {filteredHawkers.map(h => (
+                <button
+                  key={h.hawker_id}
+                  onClick={() => {
+                    setSelectedHawkerId(h.hawker_id);
+                    setIsFindOpen(false);
+                  }}
+                  className="w-full text-left px-2 py-1 border-b hover:bg-blue-100 flex justify-between items-center"
+                >
+                  <span className="font-bold">{h.name}</span>
+                  <span className="text-slate-500 font-mono text-[10px]">#{h.hawker_id}</span>
+                </button>
+              ))}
             </div>
           </div>
         </div>

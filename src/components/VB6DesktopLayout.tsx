@@ -493,256 +493,20 @@ export default function VB6DesktopLayout() {
       <div className="flex-1 p-3 overflow-auto flex items-center justify-center">
         
         {/* ========================================================================= */}
-        {/* FORM 5: CUSTOMER MASTER (দ্বিभाषी ग्राहक - 24,581 RECORDS) */}
+        {/* 1. CUSTOMER MASTER (screenshot_05.jpg) - EXACT 2008 REPLICA */}
         {/* ========================================================================= */}
         {activeWindow === 'customers' && (
-          <div className="w-full max-w-6xl h-[88vh] bg-[#ECE9D8] vb-box-outset flex flex-col shadow-2xl">
-            <div className="vb-titlebar">
-              <span>Form 5: Customer Master (द्विभाषी ग्राहक विवरण) - Complete 24,581 Records</span>
-              <span className="text-[10px]">Indexed Real-Time Search</span>
-            </div>
-
-            <div className="p-3 flex-1 flex flex-col gap-2.5 overflow-hidden text-xs">
-              
-              {/* Search & Pagination Bar */}
-              <div className="flex items-center justify-between gap-3 bg-white p-2 vb-box-inset">
-                <div className="flex items-center gap-2 flex-1">
-                  <Search className="w-4 h-4 text-slate-500 shrink-0" />
-                  <input 
-                    type="text"
-                    placeholder="Search by Customer ID (1..24581), Name in English / Hindi, Route Priority, or Phone..."
-                    value={custSearch}
-                    onChange={(e) => setCustSearch(e.target.value)}
-                    className="w-full outline-none font-bold text-slate-800 text-xs"
-                  />
-                  {custSearch && (
-                    <button onClick={() => setCustSearch('')} className="text-slate-400 hover:text-slate-600 font-bold px-1.5">
-                      ✕
-                    </button>
-                  )}
-                </div>
-
-                {/* Pagination Controls */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-[11px] font-bold text-slate-600">
-                    Total: <strong className="text-indigo-900">{custTotal.toLocaleString()}</strong> ({custPage} / {custTotalPages})
-                  </span>
-                  <button 
-                    disabled={custPage <= 1}
-                    onClick={() => setCustPage(p => Math.max(1, p - 1))}
-                    className="vb-btn px-2 py-0.5 disabled:opacity-40"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <button 
-                    disabled={custPage >= custTotalPages}
-                    onClick={() => setCustPage(p => Math.min(custTotalPages, p + 1))}
-                    className="vb-btn px-2 py-0.5 disabled:opacity-40"
-                  >
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Two Column Layout: Customer Grid + 360 Details */}
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 overflow-hidden">
-                
-                {/* Left: 50 Records per Page Grid */}
-                <div className="md:col-span-2 bg-white vb-box-inset overflow-auto flex flex-col">
-                  {isLoadingCusts ? (
-                    <div className="p-8 text-center text-slate-500 font-bold">Loading customers...</div>
-                  ) : (
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead className="sticky top-0 bg-[#ECE9D8] z-10">
-                        <tr>
-                          <th className="vb-grid-header w-14">Cust ID</th>
-                          <th className="vb-grid-header w-14">Priority</th>
-                          <th className="vb-grid-header">Customer Name (English)</th>
-                          <th className="vb-grid-header">Hindi Name</th>
-                          <th className="vb-grid-header w-20 text-right">Starting Due</th>
-                          <th className="vb-grid-header w-20 text-right">Closing Bal</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {customerList.map((c) => (
-                          <tr 
-                            key={c.customer_id}
-                            onClick={() => setSelectedCust(c)}
-                            className={`cursor-pointer border-b border-slate-100 ${
-                              selectedCust?.customer_id === c.customer_id 
-                                ? 'bg-[#316AC5] text-white font-bold' 
-                                : 'hover:bg-blue-50 text-slate-800'
-                            }`}
-                          >
-                            <td className="p-1.5 font-mono">#{c.customer_id}</td>
-                            <td className="p-1.5 font-mono">#{c.priority}</td>
-                            <td className="p-1.5">{c.name_eng}</td>
-                            <td className="p-1.5 font-hindi">{cleanOrTransliterateHindi(c.name_hindi, c.name_eng) || '-'}</td>
-                            <td className="p-1.5 text-right font-mono">₹{c.dueamount?.toFixed(2) || '0.00'}</td>
-                            <td className={`p-1.5 text-right font-mono ${selectedCust?.customer_id === c.customer_id ? 'text-yellow-200' : (c.cbal > 0 ? 'text-red-600' : 'text-emerald-600')}`}>
-                              ₹{c.cbal?.toFixed(2) || '0.00'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-
-                {/* Right: Selected Customer Profile, Subscriptions & Receipts */}
-                {selectedCust && (
-                  <div className="bg-[#ECE9D8] p-3 vb-box-outset flex flex-col gap-2.5 overflow-y-auto">
-                    <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white p-2.5 rounded-xs font-bold text-xs flex items-center justify-between">
-                      <span>ID #{selectedCust.customer_id} (Priority #{selectedCust.priority})</span>
-                      <span className="bg-emerald-500 text-white text-[10px] px-1.5 py-0.2 rounded">
-                        Region #{selectedCust.region_id}
-                      </span>
-                    </div>
-
-                    <div className="space-y-1 bg-white p-2 vb-box-inset">
-                      <span className="text-[10px] text-slate-500 font-bold block">English Name:</span>
-                      <strong className="text-slate-900 text-xs">{selectedCust.name_eng}</strong>
-                      <div className="pt-1">
-                        <span className="text-[10px] text-slate-500 font-bold block">Hindi Name:</span>
-                        <strong className="text-slate-900 font-hindi text-xs">{cleanOrTransliterateHindi(selectedCust.name_hindi, selectedCust.name_eng) || selectedCust.name_eng}</strong>
-                      </div>
-                    </div>
-
-                    {/* Accounting Dues Box */}
-                    <div className="bg-white p-2 vb-box-inset space-y-1 text-xs">
-                      <div className="flex justify-between border-b pb-1">
-                        <span className="text-slate-500">Starting Due (dueamount):</span>
-                        <strong className="font-mono text-slate-900">₹{selectedCust.dueamount?.toFixed(2) || '0.00'}</strong>
-                      </div>
-                      <div className="flex justify-between border-b pb-1">
-                        <span className="text-slate-500">Current Balance (Cbal):</span>
-                        <strong className={`font-mono ${selectedCust.cbal > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                          ₹{selectedCust.cbal?.toFixed(2) || '0.00'}
-                        </strong>
-                      </div>
-                      <div className="flex justify-between border-b pb-1">
-                        <span className="text-slate-500">Delivery Charge:</span>
-                        <strong className="font-mono text-slate-900">₹{selectedCust.delivery?.toFixed(2) || '0.00'}</strong>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Security Deposit:</span>
-                        <strong className="font-mono text-slate-900">₹{selectedCust.security_deposit?.toFixed(2) || '0.00'}</strong>
-                      </div>
-                    </div>
-
-                    {/* Authentic Subscribed Newspapers List (from 39,681 Dataset) */}
-                    <div className="bg-white p-2 vb-box-inset space-y-2 text-xs">
-                      {/* Header with Active vs All Tabs */}
-                      <div className="flex items-center justify-between border-b pb-1">
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => setSubsTab('active')}
-                            className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
-                              subsTab === 'active' 
-                                ? 'bg-emerald-600 text-white shadow-2xs' 
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                          >
-                            Active ({selectedCustSubs.filter(s => s.is_active !== false).length})
-                          </button>
-                          <button
-                            onClick={() => setSubsTab('all')}
-                            className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
-                              subsTab === 'all' 
-                                ? 'bg-indigo-700 text-white shadow-2xs' 
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                          >
-                            All History ({selectedCustSubs.length})
-                          </button>
-                        </div>
-
-                        <span className="text-[10px] text-slate-500 font-bold">
-                          {selectedCustSubs.filter(s => s.is_active !== false).length} Active • {selectedCustSubs.filter(s => s.is_active === false).length} Discontinued
-                        </span>
-                      </div>
-
-                      {isLoadingSubs ? (
-                        <div className="text-slate-400 italic text-[11px] py-2 text-center">Loading subscriptions...</div>
-                      ) : (
-                        <div className="space-y-1.5 max-h-56 overflow-y-auto">
-                          {selectedCustSubs
-                            .filter(s => subsTab === 'all' || s.is_active !== false)
-                            .map((s, idx) => {
-                              const isActive = s.is_active !== false;
-
-                              return (
-                                <div 
-                                  key={idx} 
-                                  className={`p-2 rounded border transition-colors ${
-                                    isActive 
-                                      ? 'bg-emerald-50/60 border-emerald-300' 
-                                      : 'bg-red-50/60 border-red-200 opacity-80'
-                                  }`}
-                                >
-                                  {/* Title & Status Badge */}
-                                  <div className="flex items-center justify-between gap-1">
-                                    <strong className="text-slate-900 text-xs">{s.publication_name}</strong>
-                                    <span className={`px-1.5 py-0.2 rounded font-black text-[9px] ${
-                                      isActive 
-                                        ? 'bg-emerald-600 text-white' 
-                                        : 'bg-red-600 text-white'
-                                    }`}>
-                                      {isActive ? '● ACTIVE DELIVERY' : '✕ DISCONTINUED'}
-                                    </span>
-                                  </div>
-
-                                  {/* Date Range: Subscribed Since & Discontinued On */}
-                                  <div className="text-[10px] text-slate-600 mt-1 flex flex-wrap gap-x-2">
-                                    <span>Started: <strong className="text-slate-800">{s.s_date || 'Initial'}</strong></span>
-                                    {s.c_date && (
-                                      <span className="text-red-700 font-bold">
-                                        Stopped On: <u>{s.c_date}</u>
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  {/* Hawker & Delivery Days */}
-                                  <div className="flex justify-between text-[10px] text-slate-600 mt-1 border-t border-slate-200/60 pt-1">
-                                    <span>Hawker: <strong className="text-slate-900">{s.hawker_name}</strong></span>
-                                    <span>Qty: <strong className="text-slate-900">{s.qty}</strong> copy ({s.from_day === '1-7' ? 'Daily' : `Days ${s.from_day}`})</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          {selectedCustSubs.filter(s => subsTab === 'all' || s.is_active !== false).length === 0 && (
-                            <div className="text-slate-400 italic text-[11px] text-center py-2">
-                              No {subsTab === 'active' ? 'active' : ''} subscriptions found.
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Past Payment Receipts */}
-                    {selectedCustReceipts.length > 0 && (
-                      <div className="bg-white p-2 vb-box-inset space-y-1 text-xs">
-                        <span className="font-bold text-slate-900 block border-b pb-1">Payment History:</span>
-                        {selectedCustReceipts.slice(0, 3).map((r, idx) => (
-                          <div key={idx} className="flex justify-between text-[10px] text-slate-700">
-                            <span>Receipt #{r.receipt_no || r.receipt_id} ({r.mal_recp_dt || r.month}):</span>
-                            <strong className="text-emerald-700 font-mono">₹{r.r_amt?.toFixed(2)}</strong>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <CustomerForm 
+            onClose={() => setActiveWindow('customers')}
+            customer={selectedCust}
+            publications={publications}
+            hawkers={hawkers}
+            regions={regions}
+            onSelectCustomer={(c) => setSelectedCust(c)}
+          />
         )}
 
-        {/* ========================================================================= */}
-        {/* EXACT FORM REPLICAS MATCHING ORIGINAL 2008 VB6 SCREENSHOTS */}
-        {/* ========================================================================= */}
-        
-        {/* 1. Publisher Master Form (screenshot_01.jpg) */}
+        {/* 2. Publisher Master Form (screenshot_01.jpg) */}
         {activeWindow === 'publishers' && (
           <PublisherForm 
             onClose={() => setActiveWindow('customers')} 
@@ -750,26 +514,13 @@ export default function VB6DesktopLayout() {
           />
         )}
 
-        {/* 2. Publication Master & Weekday Rates (screenshot_02.jpg) */}
+        {/* 3. Publication Master & Weekday Rates (screenshot_02.jpg) */}
         {activeWindow === 'publications' && (
           <PublicationForm 
             onClose={() => setActiveWindow('customers')} 
             publications={publications}
             publishers={publishers}
             rates={rates}
-          />
-        )}
-
-        {/* 3. Customer Master Form (screenshot_05.jpg) */}
-        {activeWindow === 'customer_form' && (
-          <CustomerForm 
-            onClose={() => setActiveWindow('customers')} 
-            customer={selectedCust}
-            regions={regions}
-            onOpenSubscriptions={(c) => {
-              setSelectedCustForModal(c);
-              setIsSubsModalOpen(true);
-            }}
           />
         )}
 
@@ -785,7 +536,8 @@ export default function VB6DesktopLayout() {
         {activeWindow === 'hawkers' && (
           <HawkerForm 
             onClose={() => setActiveWindow('customers')} 
-            hawkers={hawkers} 
+            hawkers={hawkers}
+            regions={regions}
           />
         )}
 

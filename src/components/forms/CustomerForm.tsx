@@ -1,296 +1,537 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Customer, Region, CustomerDetail } from '@/lib/types';
+import { Users, Save, Trash2, X, Search, Plus, Calendar, Edit3, CheckSquare, Square } from 'lucide-react';
+import { Customer, CustomerDetail, Publication, Hawker, Region } from '@/lib/types';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 
-interface CustomerFormProps {
+interface Props {
+  isOpen?: boolean;
   onClose: () => void;
   customer?: Customer | null;
+  publications?: Publication[];
+  hawkers?: Hawker[];
   regions?: Region[];
-  onOpenSubscriptions?: (cust: Customer) => void;
+  onSelectCustomer?: (customer: Customer) => void;
+  onSaveCustomer?: (customer: Partial<Customer>, subs: Partial<CustomerDetail>[]) => void;
 }
 
-export default function CustomerForm({ 
-  onClose, 
-  customer, 
+export default function CustomerForm({
+  isOpen = true,
+  onClose,
+  customer,
+  publications = [],
+  hawkers = [],
   regions = [],
-  onOpenSubscriptions 
-}: CustomerFormProps) {
-  const [selectedCust, setSelectedCust] = useState<Customer>(customer || {
-    customer_id: 1,
-    name_eng: 'Ambuja VIP Guest House',
-    name_hindi: 'अंबुजा वीआईपी गेस्ट हाउस',
-    add1: 'VIP Colony, Ambuja Nagar',
-    add2: '',
-    hindi_add: 'वीआईपी कॉलोनी, अंबुजा नगर',
-    region_id: 1,
-    phone: '9829011111',
-    priority: 455,
-    security_deposit: 0.0,
-    dueamount: 206.0,
-    cbal: -991.0,
-    delivery: 20.0,
-    discount: 0.0,
-    paid: 'P',
-    type_cust: -1
-  });
+  onSelectCustomer,
+  onSaveCustomer
+}: Props) {
+  // Form State
+  const [selectedCustId, setSelectedCustId] = useState<number>(customer?.customer_id || 1);
+  const [nameEng, setNameEng] = useState(customer?.name_eng || '');
+  const [nameHindi, setNameHindi] = useState(customer?.name_hindi || '');
+  const [add1, setAdd1] = useState(customer?.add1 || '');
+  const [hindiAdd, setHindiAdd] = useState(customer?.hindi_add || '');
+  const [phone, setPhone] = useState(customer?.phone || '');
+  const [regionId, setRegionId] = useState<number>(customer?.region_id || regions[0]?.region_id || 1);
+  const [securityDeposit, setSecurityDeposit] = useState<number>(customer?.security_deposit || 0);
+  const [dueAmount, setDueAmount] = useState<number>(customer?.dueamount || 0);
+  const [priority, setPriority] = useState<number>(customer?.priority || 1);
+  const [isCustomerType, setIsCustomerType] = useState<boolean>(true);
+  const [isSubAgentType, setIsSubAgentType] = useState<boolean>(false);
+  const [isSusha05, setIsSusha05] = useState<boolean>(true);
+  const [isSelf, setIsSelf] = useState<boolean>(true);
+  const [isGovtSupply, setIsGovtSupply] = useState<boolean>(false);
 
+  // Subscriptions Table
+  const [subscriptions, setSubscriptions] = useState<CustomerDetail[]>([]);
+  const [isLoadingSubs, setIsLoadingSubs] = useState(false);
+
+  // Find Dialog State
   const [isFindOpen, setIsFindOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Customer[]>([]);
-  const [isLoadingSearch, setIsLoadingSearch] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
+  const [status, setStatus] = useState('');
+
+  // Sync with current customer prop
   useEffect(() => {
-    if (customer) setSelectedCust(customer);
-  }, [customer]);
+    if (!customer) return;
+    setSelectedCustId(customer.customer_id);
+    setNameEng(customer.name_eng || '');
+    setNameHindi(cleanOrTransliterateHindi(customer.name_hindi || '', customer.name_eng));
+    setAdd1(customer.add1 || '');
+    setHindiAdd(cleanOrTransliterateHindi(customer.hindi_add || '', customer.add1 || ''));
+    setPhone(customer.phone || '');
+    setRegionId(customer.region_id || regions[0]?.region_id || 1);
+    setSecurityDeposit(customer.security_deposit || 0);
+    setDueAmount(customer.dueamount || 0);
+    setPriority(customer.priority || 1);
+  }, [customer, regions]);
 
-  // Dynamic server-side search across all 24,581 customers
+  // Load Subscriptions for current customer
+  useEffect(() => {
+    if (!selectedCustId) return;
+    setIsLoadingSubs(true);
+    fetch(`/api/subscriptions?customer_id=${selectedCustId}`)
+      .then(r => r.json())
+      .then(data => {
+        setSubscriptions(data.subscriptions || []);
+      })
+      .catch(() => setSubscriptions([]))
+      .finally(() => setIsLoadingSubs(false));
+  }, [selectedCustId]);
+
+  // Search when typing in Find Dialog
   useEffect(() => {
     if (!isFindOpen) return;
     const timer = setTimeout(() => {
-      setIsLoadingSearch(true);
-      fetch(`/api/customers?search=${encodeURIComponent(searchTerm)}&limit=30`)
+      setIsSearching(true);
+      fetch(`/api/customers?search=${encodeURIComponent(searchQuery)}&page=1&limit=25`)
         .then(r => r.json())
-        .then(data => setSearchResults(data.customers || []))
+        .then(data => {
+          setSearchResults(data.customers || []);
+        })
         .catch(() => setSearchResults([]))
-        .finally(() => setIsLoadingSearch(false));
+        .finally(() => setIsSearching(false));
     }, 200);
     return () => clearTimeout(timer);
-  }, [searchTerm, isFindOpen]);
+  }, [searchQuery, isFindOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSelectFoundCustomer = (cust: Customer) => {
+    setSelectedCustId(cust.customer_id);
+    setNameEng(cust.name_eng || '');
+    setNameHindi(cleanOrTransliterateHindi(cust.name_hindi || '', cust.name_eng));
+    setAdd1(cust.add1 || '');
+    setHindiAdd(cleanOrTransliterateHindi(cust.hindi_add || '', cust.add1 || ''));
+    setPhone(cust.phone || '');
+    setRegionId(cust.region_id || 1);
+    setSecurityDeposit(cust.security_deposit || 0);
+    setDueAmount(cust.dueamount || 0);
+    setPriority(cust.priority || 1);
+    if (onSelectCustomer) onSelectCustomer(cust);
+    setIsFindOpen(false);
+  };
+
+  const handleAddSubscriptionRow = () => {
+    const pub = publications[0];
+    const hwk = hawkers[0];
+    const newSub: CustomerDetail = {
+      sno: subscriptions.length + 1,
+      customer_id: selectedCustId,
+      publica_id: pub?.publica_id || 1,
+      publication_name: pub?.public_name || 'Newspaper',
+      hawker_id: hwk?.hawker_id || 1,
+      hawker_name: hwk?.name || 'Hawker',
+      qty: 1,
+      circulation: 'Daily',
+      s_date: new Date().toISOString().split('T')[0],
+      c_date: null,
+      from_day: '1-7',
+      dely: 0,
+      dis: 0,
+      is_active: true
+    };
+    setSubscriptions([...subscriptions, newSub]);
+  };
+
+  const handleDeleteSubscriptionRow = (sno: number) => {
+    setSubscriptions(subscriptions.filter(s => s.sno !== sno));
+  };
 
   const handleSave = () => {
-    setMsg('Customer record saved successfully!');
-    setTimeout(() => setMsg(''), 3000);
+    if (!nameEng.trim()) {
+      setStatus('Error: Customer English Name is required.');
+      return;
+    }
+    const updatedCust: Partial<Customer> = {
+      customer_id: selectedCustId,
+      name_eng: nameEng,
+      name_hindi: nameHindi,
+      add1,
+      hindi_add: hindiAdd,
+      phone,
+      region_id: regionId,
+      security_deposit: Number(securityDeposit),
+      dueamount: Number(dueAmount),
+      priority: Number(priority)
+    };
+    if (onSaveCustomer) {
+      onSaveCustomer(updatedCust, subscriptions);
+    }
+    setStatus(`Customer #${selectedCustId} - ${nameEng} saved successfully.`);
+    setTimeout(() => setStatus(''), 3000);
   };
 
   return (
-    <div className="relative w-[760px] h-[580px] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma">
-      {/* Title Bar */}
-      <div className="vb-titlebar-xp select-none">
+    <div className="w-full max-w-4xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col relative select-none">
+      
+      {/* Titlebar */}
+      <div className="bg-linear-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-0.5 flex items-center justify-between font-bold text-xs">
         <div className="flex items-center gap-1.5">
-          <img src="/legacy_images/paper.ico" alt="ico" className="w-3.5 h-3.5" onError={(e) => (e.currentTarget.style.display = 'none')} />
-          <span>Customer Master (द्विभाषी ग्राहक विवरण) - ID #{selectedCust.customer_id}</span>
+          <Users className="w-3.5 h-3.5 text-yellow-300" />
+          <span>Customer Info - [Customer ID: #{selectedCustId}]</span>
         </div>
         <div className="flex items-center gap-1">
-          <button className="vb-win-btn">_</button>
-          <button className="vb-win-btn">□</button>
-          <button onClick={onClose} className="vb-win-btn vb-win-btn-close">✕</button>
+          <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">_</button>
+          <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">□</button>
+          <button onClick={onClose} className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-red-600 hover:text-white cursor-pointer">✕</button>
         </div>
       </div>
 
-      {/* Main Body with Background Texture matching Customer.jpg */}
-      <div 
-        className="flex-1 relative p-4 flex flex-col justify-between bg-cover bg-center"
-        style={{ backgroundImage: "url('/legacy_images/Customer.jpg'), linear-gradient(135deg, #E6F0FA 0%, #FFFFFF 100%)" }}
-      >
-        {/* Header */}
-        <div className="text-center pt-0.5">
-          <h1 className="text-xl font-black text-[#8B0000] tracking-wider uppercase drop-shadow-xs">
-            CUSTOMER MASTER (द्विभाषी ग्राहक)
-          </h1>
-        </div>
+      {/* Main Body matching screenshot_05.jpg */}
+      <div className="p-3 space-y-2 text-xs">
+        
+        {/* Header Title */}
+        <h2 className="text-center font-black text-[#000080] text-base tracking-wider">
+          Customer Info
+        </h2>
 
-        {/* Input Fields Form Grid matching screenshot_05.jpg */}
-        <div className="grid grid-cols-12 gap-y-1.5 gap-x-2 text-xs font-bold text-black items-center max-w-[680px] mx-auto w-full pt-1">
+        {/* 2-Column Form Fields */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start bg-pink-50/20 p-2.5 border border-pink-100 rounded-xs">
           
-          <label className="col-span-3 text-right pr-2 text-[#8B0000]">Customer ID</label>
-          <div className="col-span-3">
-            <input 
-              type="text" 
-              value={selectedCust.customer_id || ''} 
-              readOnly
-              className="w-full vb-input font-bold bg-slate-100 font-mono"
-            />
+          {/* Left Column (2 Cols) */}
+          <div className="md:col-span-2 space-y-2">
+            <div className="flex items-center gap-2">
+              <label className="w-24 font-bold text-slate-800">Name (Eng)</label>
+              <input 
+                type="text" 
+                value={nameEng}
+                onChange={(e) => setNameEng(e.target.value)}
+                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white font-bold text-blue-900 shadow-inner"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="w-24 font-bold text-slate-800">Name (Hindi)</label>
+              <input 
+                type="text" 
+                value={nameHindi}
+                onChange={(e) => setNameHindi(e.target.value)}
+                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white font-bold text-indigo-900 shadow-inner"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="w-24 font-bold text-slate-800">Address</label>
+              <input 
+                type="text" 
+                value={add1}
+                onChange={(e) => setAdd1(e.target.value)}
+                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white shadow-inner"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="w-24 font-bold text-slate-800">Add. (Hindi)</label>
+              <input 
+                type="text" 
+                value={hindiAdd}
+                onChange={(e) => setHindiAdd(e.target.value)}
+                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white shadow-inner"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="w-24 font-bold text-slate-800">Region</label>
+              <select 
+                value={regionId}
+                onChange={(e) => setRegionId(Number(e.target.value))}
+                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white font-bold text-slate-800"
+              >
+                {regions.map(r => (
+                  <option key={r.region_id} value={r.region_id}>{r.region_name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1">
+                <label className="font-bold text-slate-800 text-[11px]">Security Deposit</label>
+                <input 
+                  type="number" 
+                  value={securityDeposit}
+                  onChange={(e) => setSecurityDeposit(Number(e.target.value))}
+                  className="w-20 px-1.5 py-0.5 border border-[#808080] bg-white font-mono text-center font-bold"
+                />
+              </div>
+
+              <div className="flex items-center gap-1">
+                <label className="font-bold text-slate-800 text-[11px]">Due Amt.</label>
+                <input 
+                  type="number" 
+                  value={dueAmount}
+                  onChange={(e) => setDueAmount(Number(e.target.value))}
+                  className="w-20 px-1.5 py-0.5 border border-[#808080] bg-white font-mono text-center font-bold text-red-700"
+                />
+              </div>
+            </div>
           </div>
 
-          <label className="col-span-3 text-right pr-2 text-[#8B0000]">Route Priority</label>
-          <div className="col-span-3">
-            <input 
-              type="number" 
-              value={selectedCust.priority || ''} 
-              onChange={(e) => setSelectedCust({ ...selectedCust, priority: Number(e.target.value) })}
-              className="w-full vb-input font-bold text-indigo-900"
-            />
+          {/* Right Column (Checkboxes & Extras matching screenshot_05.jpg) */}
+          <div className="space-y-2 border-l border-slate-300 pl-3">
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-1 cursor-pointer font-bold text-blue-900">
+                <input type="checkbox" checked={isCustomerType} onChange={(e) => setIsCustomerType(e.target.checked)} />
+                <span>Customer</span>
+              </label>
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input type="checkbox" checked={isSubAgentType} onChange={(e) => setIsSubAgentType(e.target.checked)} />
+                <span>Sub Agent</span>
+              </label>
+            </div>
+
+            <div className="flex items-center gap-1 text-[11px]">
+              <label className="flex items-center gap-1 cursor-pointer font-bold text-red-900">
+                <input type="checkbox" checked={isSusha05} onChange={(e) => setIsSusha05(e.target.checked)} />
+                <span>Susha 05</span>
+              </label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="w-14 font-bold text-slate-800">Phone</label>
+              <input 
+                type="text" 
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="flex-1 px-1.5 py-0.5 border border-[#808080] bg-white font-mono"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="w-14 font-bold text-slate-800">Priority</label>
+              <input 
+                type="number" 
+                value={priority}
+                onChange={(e) => setPriority(Number(e.target.value))}
+                className="w-20 px-1.5 py-0.5 border border-[#808080] bg-white font-mono font-bold text-center"
+              />
+            </div>
+
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-1 cursor-pointer font-bold text-emerald-900">
+                <input type="checkbox" checked={isSelf} onChange={(e) => setIsSelf(e.target.checked)} />
+                <span>Self</span>
+              </label>
+              <label className="flex items-center gap-1 cursor-pointer">
+                <input type="checkbox" checked={!isSelf} onChange={(e) => setIsSelf(!e.target.checked)} />
+                <span>Other</span>
+              </label>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <label className="flex items-center gap-1 cursor-pointer font-bold text-purple-900 text-[11px]">
+                <input type="checkbox" checked={isGovtSupply} onChange={(e) => setIsGovtSupply(e.target.checked)} />
+                <span>Govt Supply</span>
+              </label>
+            </div>
           </div>
 
-          <label className="col-span-3 text-right pr-2 text-[#8B0000]">Name (English)</label>
-          <input 
-            type="text" 
-            value={selectedCust.name_eng || ''} 
-            onChange={(e) => setSelectedCust({ ...selectedCust, name_eng: e.target.value })}
-            className="col-span-9 vb-input font-bold"
-          />
-
-          <label className="col-span-3 text-right pr-2 text-[#8B0000]">Name (Hindi)</label>
-          <input 
-            type="text" 
-            value={cleanOrTransliterateHindi(selectedCust.name_hindi, selectedCust.name_eng)} 
-            onChange={(e) => setSelectedCust({ ...selectedCust, name_hindi: e.target.value })}
-            className="col-span-9 vb-input font-hindi font-bold"
-          />
-
-          <label className="col-span-3 text-right pr-2 text-[#8B0000]">Address Line 1</label>
-          <input 
-            type="text" 
-            value={selectedCust.add1 || ''} 
-            onChange={(e) => setSelectedCust({ ...selectedCust, add1: e.target.value })}
-            className="col-span-9 vb-input"
-          />
-
-          <label className="col-span-3 text-right pr-2 text-[#8B0000]">Hindi Address</label>
-          <input 
-            type="text" 
-            value={selectedCust.hindi_add || ''} 
-            onChange={(e) => setSelectedCust({ ...selectedCust, hindi_add: e.target.value })}
-            className="col-span-9 vb-input font-hindi"
-          />
-
-          <label className="col-span-3 text-right pr-2 text-[#8B0000]">Region / Zone</label>
-          <select 
-            value={selectedCust.region_id || 1} 
-            onChange={(e) => setSelectedCust({ ...selectedCust, region_id: Number(e.target.value) })}
-            className="col-span-5 vb-input bg-white font-bold"
-          >
-            {regions.map(r => (
-              <option key={r.region_id} value={r.region_id}>Region #{r.region_id} ({r.region_name})</option>
-            ))}
-          </select>
-
-          <label className="col-span-2 text-right pr-2 text-[#8B0000]">Phone</label>
-          <input 
-            type="text" 
-            value={selectedCust.phone || ''} 
-            onChange={(e) => setSelectedCust({ ...selectedCust, phone: e.target.value })}
-            className="col-span-2 vb-input font-bold"
-          />
-
-          {/* Dues & Balances Row */}
-          <label className="col-span-3 text-right pr-2 text-[#8B0000]">Opening Due</label>
-          <input 
-            type="number" 
-            step="0.5"
-            value={selectedCust.dueamount || 0} 
-            onChange={(e) => setSelectedCust({ ...selectedCust, dueamount: parseFloat(e.target.value) || 0 })}
-            className="col-span-3 vb-input font-mono font-bold text-slate-900"
-          />
-
-          <label className="col-span-3 text-right pr-2 text-[#8B0000]">Current Balance</label>
-          <input 
-            type="number" 
-            step="0.5"
-            value={selectedCust.cbal || 0} 
-            readOnly
-            className={`col-span-3 vb-input font-mono font-bold bg-slate-100 ${selectedCust.cbal > 0 ? 'text-red-700' : 'text-emerald-700'}`}
-          />
-
-          <label className="col-span-3 text-right pr-2 text-[#8B0000]">Delivery Charge</label>
-          <input 
-            type="number" 
-            step="0.5"
-            value={selectedCust.delivery || 0} 
-            onChange={(e) => setSelectedCust({ ...selectedCust, delivery: parseFloat(e.target.value) || 0 })}
-            className="col-span-3 vb-input font-mono"
-          />
-
-          <label className="col-span-3 text-right pr-2 text-[#8B0000]">Security Deposit</label>
-          <input 
-            type="number" 
-            step="0.5"
-            value={selectedCust.security_deposit || 0} 
-            onChange={(e) => setSelectedCust({ ...selectedCust, security_deposit: parseFloat(e.target.value) || 0 })}
-            className="col-span-3 vb-input font-mono"
-          />
         </div>
 
-        {/* Message Banner */}
-        {msg && (
-          <div className="text-center text-xs font-bold text-emerald-800 bg-emerald-100 py-0.5 border border-emerald-400">
-            {msg}
+        {/* Subscriptions Grid matching screenshot_05.jpg */}
+        <div className="space-y-1">
+          <div className="border border-[#808080] bg-white shadow-inner overflow-auto max-h-48">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead className="bg-[#ECE9D8] text-slate-900 font-bold border-b sticky top-0 text-[11px]">
+                <tr>
+                  <th className="p-1 border-r text-center">S No</th>
+                  <th className="p-1 border-r">Item (Publication)</th>
+                  <th className="p-1 border-r text-center">HW/SA</th>
+                  <th className="p-1 border-r">Hawker</th>
+                  <th className="p-1 border-r text-center">Qty</th>
+                  <th className="p-1 border-r text-center">Circulation</th>
+                  <th className="p-1 border-r text-center">Def.Days</th>
+                  <th className="p-1 border-r text-center">St.Dt.</th>
+                  <th className="p-1 border-r text-center">Cl.Dt.</th>
+                  <th className="p-1 border-r text-center">Dis.</th>
+                  <th className="p-1 border-r text-center">Del.</th>
+                  <th className="p-1 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoadingSubs ? (
+                  <tr>
+                    <td colSpan={12} className="p-4 text-center text-slate-500 font-bold">Loading subscriptions...</td>
+                  </tr>
+                ) : subscriptions.length > 0 ? (
+                  subscriptions.map((sub, idx) => (
+                    <tr key={sub.sno || idx} className="border-b hover:bg-amber-50 text-[11px]">
+                      <td className="p-1 border-r font-mono text-center">{idx + 1}</td>
+                      <td className="p-1 border-r font-bold text-blue-900">{sub.publication_name || `Pub #${sub.publica_id}`}</td>
+                      <td className="p-1 border-r font-mono text-center">HW</td>
+                      <td className="p-1 border-r text-slate-700">{sub.hawker_name || `Hwk #${sub.hawker_id}`}</td>
+                      <td className="p-1 border-r font-bold text-center font-mono">{sub.qty}</td>
+                      <td className="p-1 border-r text-center">{sub.circulation || 'Daily'}</td>
+                      <td className="p-1 border-r font-mono text-center">{sub.from_day || '1-7'}</td>
+                      <td className="p-1 border-r font-mono text-center">{sub.s_date || '01/04/2026'}</td>
+                      <td className="p-1 border-r font-mono text-center text-slate-400">{sub.c_date || '-'}</td>
+                      <td className="p-1 border-r font-mono text-center">{sub.dis || 0}%</td>
+                      <td className="p-1 border-r font-mono text-center">₹{sub.dely || 0}</td>
+                      <td className="p-1 text-center">
+                        <button 
+                          onClick={() => handleDeleteSubscriptionRow(sub.sno)}
+                          className="text-red-600 hover:text-red-800 font-bold"
+                          title="Delete Subscription Line"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={12} className="p-3 text-center text-slate-500 italic">No active newspaper subscriptions for this customer. Click [+ Insert Item] to add.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Red Legacy Shortcut Notice from screenshot_05.jpg */}
+          <div className="flex items-center justify-between text-[11px] px-1">
+            <span className="font-bold text-[#800000]">
+              Note :- Press F1 to Insert Items - Press F2 to Delete Selected Items - Press F10 to Delete Empty Grid
+            </span>
+            <button 
+              onClick={handleAddSubscriptionRow}
+              className="px-2 py-0.5 bg-blue-100 hover:bg-blue-200 border border-blue-400 text-blue-900 font-bold rounded-xs flex items-center gap-1"
+            >
+              <Plus className="w-3 h-3" /> + Insert Item
+            </button>
+          </div>
+        </div>
+
+        {status && (
+          <div className="p-1.5 bg-emerald-100 text-emerald-800 border border-emerald-400 font-bold text-center text-xs">
+            {status}
           </div>
         )}
 
-        {/* Bottom Trapezoidal 3D Button Bar matching screenshot_05.jpg */}
-        <div className="flex items-center justify-center gap-2 pt-2 border-t border-slate-300/80">
-          <button onClick={handleSave} className="vb-action-btn">
-            <span>💾 Save</span>
+        {/* Bottom Buttons matching screenshot_05.jpg */}
+        <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-[#808080]">
+          <button 
+            onClick={handleSave}
+            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+          >
+            💾 <u>S</u>ave
           </button>
-          <button onClick={handleSave} className="vb-action-btn">
-            <span>🔄 Update</span>
+          <button 
+            onClick={handleSave}
+            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+          >
+            ↪ <u>U</u>pdate
           </button>
-          <button onClick={() => setMsg('Customer marked inactive.')} className="vb-action-btn">
-            <span>🗑️ Del</span>
+          <button 
+            onClick={() => {
+              setSelectedCustId(0);
+              setNameEng('');
+              setNameHindi('');
+              setAdd1('');
+              setHindiAdd('');
+              setPhone('');
+              setSubscriptions([]);
+            }}
+            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+          >
+            🗑 <u>D</u>elete
           </button>
-          <button onClick={() => setIsFindOpen(true)} className="vb-action-btn bg-yellow-50">
-            <span>🔍 Find (24,581)</span>
+          <button 
+            onClick={() => setIsFindOpen(true)}
+            className="px-5 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer ring-2 ring-blue-400"
+          >
+            🔍 <u>F</u>ind Customer
           </button>
-          {onOpenSubscriptions && (
-            <button onClick={() => onOpenSubscriptions(selectedCust)} className="vb-action-btn bg-blue-100 text-blue-900">
-              <span>📰 Subscriptions</span>
-            </button>
-          )}
-          <button onClick={() => setIsFindOpen(true)} className="vb-action-btn">
-            <span>❌ Cancel</span>
+          <button 
+            onClick={() => {
+              setNameEng('');
+              setNameHindi('');
+            }}
+            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+          >
+            ✖ <u>C</u>ancel
           </button>
-          <button onClick={onClose} className="vb-action-btn text-red-700">
-            <span>🛑 Exit</span>
+          <button 
+            onClick={onClose}
+            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+          >
+            🛑 <u>E</u>xit
           </button>
         </div>
+
       </div>
 
-      {/* Find Customer Dialog (24,581 Indexed Records Search) */}
+      {/* Find Customer Popup Dialog */}
       {isFindOpen && (
-        <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="w-[620px] h-[420px] bg-[#ECE9D8] vb-window flex flex-col">
-            <div className="vb-titlebar-xp">
-              <span>Find Customer (Search 24,581 Records)</span>
-              <button onClick={() => setIsFindOpen(false)} className="vb-win-btn vb-win-btn-close">✕</button>
+        <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#ECE9D8] border-2 border-white shadow-2xl p-3 w-full max-w-xl space-y-2 text-xs flex flex-col max-h-[85vh]">
+            <div className="bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
+              <span>Find Customer (ग्राहक खोजें - 24,581 Records)</span>
+              <button onClick={() => setIsFindOpen(false)} className="text-white hover:text-red-300 font-bold">✕</button>
             </div>
-            <div className="p-2 flex-1 flex flex-col gap-2 overflow-hidden text-xs">
+            
+            <div className="flex gap-2">
               <input 
-                type="text" 
-                placeholder="Type Customer ID (e.g. 1, 5040), Name (Eng/Hindi), Priority, or Phone..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="vb-input w-full font-bold"
+                type="text"
+                placeholder="Type Name, Hindi Name, Customer ID, or Phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 px-2.5 py-1 border border-slate-400 bg-white font-bold text-blue-900"
+                autoFocus
               />
-              <div className="flex-1 bg-white vb-grid overflow-auto">
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-[#ECE9D8]">
+            </div>
+
+            <div className="flex-1 overflow-auto border border-slate-300 bg-white max-h-72">
+              {isSearching ? (
+                <div className="p-4 text-center text-slate-500 font-bold">Searching 24,581 customers...</div>
+              ) : searchResults.length > 0 ? (
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-[#ECE9D8] sticky top-0 border-b font-bold">
                     <tr>
-                      <th className="p-1">ID</th>
-                      <th className="p-1">Priority</th>
-                      <th className="p-1">Name (English)</th>
-                      <th className="p-1">Hindi Name</th>
-                      <th className="p-1 text-right">Balance</th>
+                      <th className="p-1.5 border-r">ID</th>
+                      <th className="p-1.5 border-r">Customer Name</th>
+                      <th className="p-1.5 border-r">Hindi Name</th>
+                      <th className="p-1.5 border-r">Phone</th>
+                      <th className="p-1.5">Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {isLoadingSearch ? (
-                      <tr><td colSpan={5} className="p-4 text-center text-slate-400">Searching 24,581 records...</td></tr>
-                    ) : (
-                      searchResults.map(c => (
-                        <tr 
-                          key={c.customer_id}
-                          onClick={() => { setSelectedCust(c); setIsFindOpen(false); }}
-                          className="cursor-pointer hover:bg-[#316AC5] hover:text-white border-b"
-                        >
-                          <td className="p-1 font-mono">#{c.customer_id}</td>
-                          <td className="p-1">#{c.priority}</td>
-                          <td className="p-1 font-bold">{c.name_eng}</td>
-                          <td className="p-1 font-hindi">{cleanOrTransliterateHindi(c.name_hindi, c.name_eng)}</td>
-                          <td className="p-1 text-right font-mono font-bold">₹{c.cbal?.toFixed(2)}</td>
-                        </tr>
-                      ))
-                    )}
+                    {searchResults.map(c => (
+                      <tr 
+                        key={c.customer_id}
+                        onClick={() => handleSelectFoundCustomer(c)}
+                        className="border-b hover:bg-blue-100 cursor-pointer"
+                      >
+                        <td className="p-1.5 border-r font-mono font-bold text-blue-900">#{c.customer_id}</td>
+                        <td className="p-1.5 border-r font-bold text-slate-800">{c.name_eng}</td>
+                        <td className="p-1.5 border-r text-indigo-900 font-bold">{cleanOrTransliterateHindi(c.name_hindi || '', c.name_eng)}</td>
+                        <td className="p-1.5 border-r font-mono text-slate-600">{c.phone || '-'}</td>
+                        <td className="p-1.5">
+                          <span className="px-2 py-0.5 bg-blue-700 text-white font-bold text-[10px] rounded-xs">
+                            Select
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
-              </div>
+              ) : (
+                <div className="p-4 text-center text-slate-500">Type in the search box to find any of the 24,581 customers.</div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button onClick={() => setIsFindOpen(false)} className="px-4 py-1 bg-[#ECE9D8] border border-black font-bold">
+                Close
+              </button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }
