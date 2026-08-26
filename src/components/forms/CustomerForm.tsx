@@ -16,6 +16,19 @@ interface Props {
   onSaveCustomer?: (customer: Partial<Customer>, subs: Partial<CustomerDetail>[]) => void;
 }
 
+function formatLegacyDate(dateStr: string | null | undefined): string {
+  if (!dateStr || dateStr.trim() === '' || dateStr === 'null') return '-';
+  const clean = dateStr.trim();
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(clean)) return clean;
+  if (/^\d{4}-\d{2}-\d{2}/.test(clean)) {
+    const [y, m, d] = clean.split('T')[0].split('-');
+    return `${d}/${m}/${y}`;
+  }
+  const d = new Date(clean);
+  if (isNaN(d.getTime())) return clean;
+  return d.toLocaleDateString('en-GB');
+}
+
 export default function CustomerForm({
   isOpen = true,
   onClose,
@@ -367,8 +380,8 @@ export default function CustomerForm({
                       <td className="p-1 border-r font-bold text-center font-mono">{sub.qty}</td>
                       <td className="p-1 border-r text-center">{sub.circulation || 'Daily'}</td>
                       <td className="p-1 border-r font-mono text-center">{sub.from_day || '1-7'}</td>
-                      <td className="p-1 border-r font-mono text-center">{sub.s_date ? new Date(sub.s_date).toLocaleDateString('en-GB') : '-'}</td>
-                      <td className="p-1 border-r font-mono text-center text-slate-400">{sub.c_date ? new Date(sub.c_date).toLocaleDateString('en-GB') : '-'}</td>
+                      <td className="p-1 border-r font-mono text-center">{formatLegacyDate(sub.s_date)}</td>
+                      <td className="p-1 border-r font-mono text-center text-slate-400">{formatLegacyDate(sub.c_date)}</td>
                       <td className="p-1 border-r font-mono text-center">{sub.dis || 0}%</td>
                       <td className="p-1 border-r font-mono text-center">₹{sub.dely || 0}</td>
                       <td className="p-1 text-center">
