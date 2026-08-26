@@ -24,7 +24,9 @@ interface PurchaseFormProps {
 
 export default function PurchaseForm({ onClose, publishers = [], publications = [] }: PurchaseFormProps) {
   const [purchaseDate, setPurchaseDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [selectedPublisher, setSelectedPublisher] = useState<string>(publishers[0]?.publisher_id?.toString() || '1');
+  const [selectedPublisher, setSelectedPublisher] = useState<string>(
+    ((publishers[0] as any)?.publisher_id ?? (publishers[0] as any)?.publish_id ?? 1).toString()
+  );
   const [invoiceNo, setInvoiceNo] = useState('');
   const [freightCharges, setFreightCharges] = useState(0);
   const [items, setItems] = useState<PurchaseItem[]>([
@@ -150,9 +152,10 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
               onChange={(e) => setSelectedPublisher(e.target.value)}
               className="vb-input w-full bg-white font-bold"
             >
-              {publishers.map(p => (
-                <option key={p.publisher_id} value={p.publisher_id}>{p.name}</option>
-              ))}
+              {publishers.map((p, pIdx) => {
+                const pid = (p as any).publisher_id ?? (p as any).publish_id ?? pIdx;
+                return <option key={pid} value={pid}>{p.name}</option>;
+              })}
             </select>
           </div>
 
