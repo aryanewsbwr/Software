@@ -159,8 +159,8 @@ export default function PublisherForm({ onClose, publishers = [] }: PublisherFor
             className="col-span-9 vb-input bg-white"
           >
             <option value="Newspaper">Newspaper (समाचार पत्र)</option>
-            <option value="Magazine">Magazine (पत्रिका)</option>
-            <option value="Periodical">Periodical (आवधिक)</option>
+            <option value="Magzine">Magzine (पत्रिका)</option>
+            <option value="Both">Both (दोनों - समाचार पत्र व पत्रिका)</option>
           </select>
 
           <label className="col-span-3 text-right pr-2 text-[#8B0000]">Type</label>
@@ -170,8 +170,7 @@ export default function PublisherForm({ onClose, publishers = [] }: PublisherFor
             className="col-span-9 vb-input bg-white"
           >
             <option value="Publisher">Publisher (प्रकाशक)</option>
-            <option value="Distributor">Distributor (वितरक)</option>
-            <option value="Agency">Agency (एजेंसी)</option>
+            <option value="Dealer">Dealer (डीलर)</option>
           </select>
         </div>
 
