@@ -51,6 +51,9 @@ import CounterSaleForm from './forms/CounterSaleForm';
 import PeriodForm from './forms/PeriodForm';
 import ReportsForm from './forms/ReportsForm';
 import BackupRestoreModal from './forms/BackupRestoreModal';
+import DiscontinueForm from './forms/DiscontinueForm';
+import CompanyForm from './forms/CompanyForm';
+import PurchaseForm from './forms/PurchaseForm';
 
 // Legacy Day of Week Names (1=Sun .. 7=Sat)
 const LEGACY_DAYS = [
@@ -378,6 +381,9 @@ export default function VB6DesktopLayout() {
               <button onClick={() => { setActiveWindow('billing'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 6. Monthly Billing Generation Engine (मासिक बिल निर्माण)
               </button>
+              <button onClick={() => { setActiveWindow('purchase'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                7. Publisher Newspaper Purchase Invoice (अखबार खरीद / आवक प्रविष्टि)
+              </button>
             </div>
           )}
         </div>
@@ -552,6 +558,30 @@ export default function VB6DesktopLayout() {
             rates={rates}
             holidays={holidays}
             discontinues={discontinues}
+          />
+        )}
+
+        {/* 9b. Customer Vacation Hold / Discontinue Form (screenshot_11.jpg) */}
+        {activeWindow === 'discontinue' && (
+          <DiscontinueForm 
+            onClose={() => setActiveWindow(null)} 
+            publications={publications}
+          />
+        )}
+
+        {/* 9c. Company & Agency Profile Form (Companyback copy.jpg) */}
+        {activeWindow === 'company' && (
+          <CompanyForm 
+            onClose={() => setActiveWindow(null)} 
+          />
+        )}
+
+        {/* 9d. Publisher Purchase Invoice Entry (Purchase.jpg) */}
+        {activeWindow === 'purchase' && (
+          <PurchaseForm 
+            onClose={() => setActiveWindow(null)} 
+            publishers={publishers}
+            publications={publications}
           />
         )}
 
