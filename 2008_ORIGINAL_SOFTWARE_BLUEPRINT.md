@@ -1,0 +1,278 @@
+# Complete 2008 Desktop Software System Blueprint
+
+Decompiled and reverse-engineered from `AryanNewsAgency.exe`.
+
+## 1. Master Data Entities
+- '  and Customer_detail.S_Date <='
+- '  and Region_id ='
+- '  and TempCustomer_detail.S_Date <='
+- '  and customer_id='
+- '  group by customer_id
+- '  where customer_id='
+- ' ) order by customer.priority
+- ' ) order by customer_detail.customer_id
+- ' ) order by customer_id
+- ' and Customer_Detail.S_Date='
+- ' and Customer_detail.S_Date <='
+- ' and Customer_id ='
+- ' and Hawker_id = '
+- ' and Publication.TypeP ='Magzine'
+- ' and Region_id  ='
+- ' and Region_id = '
+- ' and Region_id ='
+- ' and TempCustomer_detail.S_Date <='
+- ' and customer_detail.S_Date <='
+- ' and customer_id = '
+- ' and customer_id ='
+- ' and pmonth >" and pyear >"  order by customer_id
+- ' and rate = '
+- ' and rate like '
+- ' and region_id ='
+- ' group by Customer_id
+- ' group by customer_id
+- ' group by publica_id,rate,sno
+- ' group by rate
+- ' group by rate,sno
+- ' order by Customer.Priority
+- ' order by Customer.customer_id
+- ' order by Publication.Public_name
+- ' order by TempCustomer.customer_id
+- ' order by customer.name_eng,Customer_Detail.Sno
+- ' order by customer_detail.customer_id
+- ' where customer_id = '
+- ' where customer_id='
+- ') order by TempCustomer.Priority
+- ') order by customer.name_eng
+- ') order by customer_detail.customer_id
+- ')order by Tempcustomer.customer_id
+- ')order by customer_id
+- 'and (Customer_Detail.C_Date >= '
+- 'and (sno = retail_id)and Region_id ='
+- 'and Customer_Detail.S_Date='
+- 'and Customer_Detail.sno = '
+- 'and Customer_Detail.sno like '
+- 'and Customer_Detail.sno= '
+- 'and Customer_detail.S_Date <='
+- 'and Publication.TypeP='Magzine'
+- 'and Region_id  ='
+- 'and Region_id = '
+- 'and Region_id ='
+- 'and TempCustomer_Detail.sno = '
+- 'and Tempcustomer_detail.Circulation = '
+- 'and customer_detail.Circulation = '
+- 'and customer_detail.sno = '
+- 'and customer_id = '
+- 'and hawker_id ='
+- 'and rate like '
+- 'and region_id ='
+- 'and tempcustomer_detail.sno = '
+- 'group by customer_id
+- 'group by publica_id, hawker_id
+- 'group by publica_id,rate
+- 'or sno = retail_id or sqty > 0  )and Region_id ='
+- 'order by Customer.customer_id,Customer_Detail.sno
+- 'order by Customer.customer_id,customer_detail.sno
+- 'order by tempCustomer.customer_id,Tempcustomer_detail.sno
+- (Customer_id int,Collect_id int)
+- )  group by Customer_id
+- )group by customer_id
+- .*, customer.* from
+- .*,Tempcustomer_detail.* from
+- .*,customer_detail.* from
+- .*,tempcustomer_detail.* from
+- .Customer_id  ='
+- .Customer_id = '
+- .Customer_id,
+- .Customer_id= '
+- .Temp_Perma='P')  and tempcustomer_detail.S_Date <='
+- .Temp_Perma='P') and TempCustomer_detail.S_Date <='
+- .customer_id
+- .customer_id   where
+- .customer_id = Tempcustomer_detail.customer_id and
+- .customer_id = customer_detail.customer_id  and
+- .customer_id = customer_detail.customer_id and
+- .customer_id = tempcustomer_detail.customer_id and
+- .customer_id='
+- .customer_id=customer.customer_id where
+- .region_id ='
+- .sno=Customer_Detail.sno where
+- .sno=TempCustomer_Detail.sno where
+- .sno=customer_detail.sno
+
+## 2. Operations & Daily Processes
+- '  and bill_id not in (select bill_id from
+- '  order by ReceiptFrom
+- ' )and (bill_id not in (Select bill_id from
+- ' )order by bill_id
+- ' and Bill_id in (Select Bill_id from
+- ' and Bill_id not in (Select Bill_id from
+- ' and bill_id  in (select bill_id from
+- ' and bill_id not in (select bill_id from
+- ' where Receipt_id ='
+- ' where bill_id='
+- ')  order by receipt_id
+- ')order by Receipt_id
+- ')order by bill_id
+- 'and ReceiptFrom ='
+- 'and ReceiptTo='
+- 'and bill_no= '
+- 'order by receipt_id
+- )order by bill_id
+- .Bill_id
+- .Bill_id  where
+- .Bill_id =
+- .Bill_id where
+- .Bill_id where ManualRepNo >= '
+- .Bill_id,
+- .bill_id
+- .bill_id order by
+- .bill_id where
+- .bill_id=
+- Bill
+- Bill NO.
+- Bill No
+- Bill No.
+- Bill No. Already Exist
+- Bill No. Should Not Be Empty
+- Bill No|Year|Month|Bill Amt.
+- BillDate
+- BillDel
+- BillNo
+- BillProcess
+- Bill_Date
+- Bill_No
+- Bill_id
+- Billdel
+- Completed Processing !!!
+- DailyProcess
+- Data Transfer In Progress
+- Data Transfer Is Completed
+- Discontinue
+- Discontinue Transfer In Progress
+- Discontinue Transfer Is Completed
+- Do You Want to Creat Bill ?
+- Process
+- Processing Is Completed....
+- Processing is Completed ....
+- Receipt
+- ReceiptFrom
+- ReceiptIssue
+- ReceiptNo
+- ReceiptTo
+- Receipt_id
+- RetailSale
+- S No|Date|Receipt Amt.|Balance|Less Amt.|Actual Amt.
+- SNO|Receipt From|Receipt To|Allot.Date|Rec.Date
+- Sale Date
+- Sale_Date
+- Select * from BalanceTransfer
+- Select * from CounterSale
+- Select * from CounterSale where Sale_Date = '
+- Select * from PurchaseDetail where Bill_No ='
+- Select distinct * from CounterSale where Sale_Date = '
+- Select purchase_id from Purchase where Bill_No='
+- StickerProcess
+- TempBill
+- TempBillNo
+- TempStartingPublicProcess
+- Transfer Completed
+- Transfering Completed
+- Wrong Receipt No !!!
+- You Are Not Allowed/Already Transfer
+- balancetransfer
+- bill
+- billamt
+- billdel
+- billno
+- billprocess
+- countersale
+- dailyprocess
+- discontinue
+- discontinue_id
+- order by ReceiptNo
+- receipt
+- receiptissue
+- retailsale
+- select * from CounterSale
+- select * from Purchase where Bill_No = '
+- select * from Purchase where Bill_No='
+- select ReceiptFrom,ReceiptTo from
+- select bill_id,year,billamt,debit,balance from
+- where  Bill_id in (Select Bill_id from
+- where  bill_id  in (Select bill_id from
+- where  bill_id = '
+- where Bill_id ='
+- where ReceiptNo ='
+- where Receipt_id='
+- where bill_id  ='
+- where bill_id  in (select bill_id from
+- where bill_id= '
+
+## 3. Reports & Print Modules
+- **** PRINTING CANCLED ****
+- Collection Wise Dues Report
+- Counter Sale Publication Date Wise Report
+- Customer Reciept Report
+- Customer Report
+- Customer Wise Publication Report
+- Customer Wise Starting Publication Report
+- Daily  Qty Report
+- Daily Qty Report
+- Discontinue Hawker Wise Report
+- Dues Report
+- Excel Report to Save
+- Hawker's Customer Priority Report
+- Hawkerwise Daily  Qty Report
+- List
+- ListIndex
+- PrintDialog
+- Printed At:
+- Printed:
+- Printer
+- Printing page
+- Publication Wise Report
+- Purchase Publisher Date Wise Report
+- Retail Sale To Permanent Customer Date Wise Report
+- Retail Sale To Permanent Customer Region Date Wise Report
+- SALE CONSOLIDATED REPORT
+- Sales Report
+
+## 4. UI Actions & Controls
+- ',credit = '
+- ',credit='
+- ADDRESS
+- Add
+- AddItem
+- Addless
+- Address
+- Are you sure to Delete this User
+- Cancel.
+- Close
+- Close Date
+- Credit
+- Delete from
+- Delete from Login Where user='
+- Do You Want To Delete?
+- Edit
+- Entry is Deleted
+- File Is Saved
+- File is Saved!!!
+- Hindi_Add
+- No Record found to Deleted
+- Please Select Month Then Click Ok
+- Record Is Save
+- Record Is Saved
+- Record Is Saved !!
+- Record is Deleted
+- Record is Saved
+- Saving is Cancel....
+- activeworkbook
+- add1
+- add2
+- address
+- delete  from
+- delete from
+- delete from MESSAGE where DATED ='
+- delete from collect where name = '
+- saveas
+- workbooks

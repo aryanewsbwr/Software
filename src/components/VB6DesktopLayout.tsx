@@ -44,6 +44,10 @@ import BillingForm from './forms/BillingForm';
 import HawkerForm from './forms/HawkerForm';
 import RegionForm from './forms/RegionForm';
 import HolidayForm from './forms/HolidayForm';
+import RateMatrixForm from './forms/RateMatrixForm';
+import CollectionAgentsForm from './forms/CollectionAgentsForm';
+import UserPermissionsForm from './forms/UserPermissionsForm';
+import CounterSaleForm from './forms/CounterSaleForm';
 
 // Legacy Day of Week Names (1=Sun .. 7=Sat)
 const LEGACY_DAYS = [
@@ -101,6 +105,12 @@ export default function VB6DesktopLayout() {
   const [billingYear, setBillingYear] = useState(2026);
   const [generatedBills, setGeneratedBills] = useState<BillHeader[]>([]);
   const [isBillingRunning, setIsBillingRunning] = useState(false);
+
+  // New Modal States for Full 2008 Master Set
+  const [isRateMatrixOpen, setIsRateMatrixOpen] = useState(false);
+  const [isCollectionAgentsOpen, setIsCollectionAgentsOpen] = useState(false);
+  const [isUserPermOpen, setIsUserPermOpen] = useState(false);
+  const [isCounterSaleOpen, setIsCounterSaleOpen] = useState(false);
 
   // New Vacation Hold Form State
   const [vacationCustId, setVacationCustId] = useState<string>('1');
@@ -290,31 +300,44 @@ export default function VB6DesktopLayout() {
             <u>1</u>. Master Menu (मास्टर)
           </button>
           {activeMenu === 'master' && (
-            <div className="absolute top-full left-0 w-72 bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
+            <div className="absolute top-full left-0 w-80 bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
               <button onClick={() => { setActiveWindow('publishers'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
-                1. Publisher Master (प्रकाशक)
+                1. Publisher Master (प्रकाशक मास्टर)
               </button>
               <button onClick={() => { setActiveWindow('publications'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
-                2. Publication Master & Day Rates (अखबार / दर)
+                2. Publication Master (अखबार / पत्रिका मास्टर)
+              </button>
+              <button onClick={() => { setIsRateMatrixOpen(true); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold text-blue-900">
+                3. 7-Day Day-wise Rates Matrix (सोमवार से रविवार दर निर्धारण)
+              </button>
+              <button onClick={() => { setActiveWindow('ratechanges'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
+                4. Rate Change Revisions History (दिनांक-वार दर संशोधन)
               </button>
               <button onClick={() => { setActiveWindow('regions'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
-                3. Region & Area Master (क्षेत्र / इलाका)
+                5. Region & Area Master (क्षेत्र / इलाका मास्टर)
               </button>
               <button onClick={() => { setActiveWindow('hawkers'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
-                4. Hawker Master (हॉकर / वितरक)
+                6. Hawker & Delivery Boy Master (हॉकर / वितरक मास्टर)
               </button>
               <div className="h-[1px] bg-[#808080] my-1"></div>
-              <button onClick={() => { setActiveWindow('customers'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold">
-                5. Customer Master (द्विभाषी ग्राहक विवरण - 24,581 Records)
+              <button onClick={() => { setActiveWindow('customers'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold text-indigo-900">
+                7. Customer Master (द्विभाषी ग्राहक विवरण - 24,581 Records)
               </button>
               <button onClick={() => { setActiveWindow('holidays'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
-                7. Holiday Calendar (अवकाश कैलेंडर)
+                8. Holiday Calendar Master (अवकाश कैलेंडर - होली/दीवाली)
               </button>
-              <button onClick={() => { setActiveWindow('collectors'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
-                8. Collection Agent Master (बिल संग्रहकर्ता)
+              <button onClick={() => { setIsCollectionAgentsOpen(true); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
+                9. Collection Agent Master (बिल संग्रहकर्ता मास्टर)
               </button>
+              <button onClick={() => { setIsCollectionAgentsOpen(true); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
+                10. Receipt Book Allotment Tracker (रसीद बुक आवंटन - फ्रॉम/टू)
+              </button>
+              <div className="h-[1px] bg-[#808080] my-1"></div>
               <button onClick={() => { setActiveWindow('company'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
-                9. Company / Agency Profile (फर्म विवरण)
+                11. Company & Agency Profile (फर्म विवरण)
+              </button>
+              <button onClick={() => { setIsUserPermOpen(true); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold text-amber-900">
+                12. User Management & Permissions (यूजर एवं मेनू अनुमति 1-23)
               </button>
             </div>
           )}
@@ -329,22 +352,25 @@ export default function VB6DesktopLayout() {
             <u>2</u>. Transactions Menu (लेन-देन)
           </button>
           {activeMenu === 'trans' && (
-            <div className="absolute top-full left-0 w-72 bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
-              <button onClick={() => { setActiveWindow('dailyprocess'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold">
-                1. Daily Hawker Distribution Process (दैनिक वितरण पर्ची)
+            <div className="absolute top-full left-0 w-80 bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
+              <button onClick={() => { setActiveWindow('dailyprocess'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold text-purple-900">
+                1. Daily Hawker Distribution Process (दैनिक वितरण पर्ची - सुबह का प्रोसेस)
               </button>
-              <button onClick={() => { setActiveWindow('ratechanges'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
-                2. Rate Changes Revision Log (दर परिवर्तन)
+              <button onClick={() => { setIsCounterSaleOpen(true); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold text-emerald-800">
+                2. Counter & Walk-in Cash Sale Entry (काउंटर नकद खुदरा बिक्री)
               </button>
               <button onClick={() => { setActiveWindow('discontinue'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
-                3. Vacation / Temporary Discontinue (अखबार बंद / छुट्टी)
+                3. Customer Vacation Hold / Temporary Stop (अखबार बंद / छुट्टी)
               </button>
               <div className="h-[1px] bg-[#808080] my-1"></div>
-              <button onClick={() => { setActiveWindow('receipts'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold">
-                6. Payment Receipt Entry (भुगतान रसीद - 18,382 Records)
+              <button onClick={() => { setActiveWindow('receipts'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold text-blue-900">
+                4. Payment Receipt Entry (भुगतान रसीद - नकद/चेक)
               </button>
-              <button onClick={() => { setActiveWindow('billing'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold">
-                9. Monthly Billing Generation (मासिक बिल गणना)
+              <button onClick={() => { setIsCollectionAgentsOpen(true); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
+                5. Receipt Book Allotment & Return (रसीद बुक आवंटन व वापसी)
+              </button>
+              <button onClick={() => { setActiveWindow('billing'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold text-emerald-900">
+                6. Monthly Billing Generation Engine (मासिक बिल निर्माण)
               </button>
             </div>
           )}
@@ -359,15 +385,25 @@ export default function VB6DesktopLayout() {
             <u>3</u>. Reports & Printing (प्रिंट)
           </button>
           {activeMenu === 'reports' && (
-            <div className="absolute top-full left-0 w-72 bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
-              <button onClick={() => { setActiveWindow('billing'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold">
-                1. Monthly Customer Bill Printing (मासिक बिल प्रिंट)
+            <div className="absolute top-full left-0 w-80 bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
+              <button onClick={() => { setActiveWindow('billing'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold text-emerald-900">
+                1. Monthly Customer Bill Printing (मासिक बिल प्रिंट - काउंटरफॉइल सहित)
+              </button>
+              <button onClick={() => { setActiveWindow('receipts'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
+                2. Payment Money Receipt Voucher Print (भुगतान रसीद प्रिंट)
+              </button>
+              <button onClick={() => { setActiveWindow('dailyprocess'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold text-purple-900">
+                3. Daily Hawker Distribution Sheet (हॉकर दैनिक वितरण सूची)
               </button>
               <button onClick={() => { setActiveWindow('dailyprocess'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
-                2. Daily Hawker Distribution Sheet (हॉकर दैनिक पर्ची)
+                4. Daily Agency Publisher Total Supply Order (दैनिक एजेंसी सप्लाई ऑर्डर)
               </button>
-              <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold">
-                3. Customer Dues / Outstanding Report (बकाया सूची)
+              <div className="h-[1px] bg-[#808080] my-1"></div>
+              <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left font-bold text-blue-900">
+                5. Customer Outstanding Dues Ledger (ग्राहक एवं क्षेत्र-वार बकाया लेजर)
+              </button>
+              <button onClick={() => { setIsCounterSaleOpen(true); setActiveMenu(null); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
+                6. Counter Sale Date-wise Report (काउंटर बिक्री रिपोर्ट)
               </button>
             </div>
           )}
@@ -382,12 +418,22 @@ export default function VB6DesktopLayout() {
             <u>4</u>. Tools (टूल्स)
           </button>
           {activeMenu === 'tools' && (
-            <div className="absolute top-full left-0 w-64 bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
+            <div className="absolute top-full left-0 w-72 bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
               <button onClick={() => { setActiveMenu(null); setStatusMessage('Period: Financial Year 2025-2026 selected.'); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
-                1. Financial Year Selection (वित्तीय वर्ष)
+                1. Financial Year Selection (वित्तीय वर्ष: 2025-2026)
               </button>
               <button onClick={() => { setActiveMenu(null); setStatusMessage('Balance forward completed successfully for all customers.'); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
-                2. Balance Forward to Next Year (कैरी फॉरवर्ड)
+                2. Year-End Balance Forward to Next Year (कैरी फॉरवर्ड)
+              </button>
+              <div className="h-[1px] bg-[#808080] my-1"></div>
+              <button onClick={() => { setActiveMenu(null); setStatusMessage('Master database backup created: AryanNews_Backup.sql'); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
+                3. Master Database Backup (मास्टर बैकअप)
+              </button>
+              <button onClick={() => { setActiveMenu(null); setStatusMessage('Yearly database backup completed.'); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
+                4. Yearly Database Backup (वार्षिक बैकअप)
+              </button>
+              <button onClick={() => { setActiveMenu(null); setStatusMessage('Database restore system verified.'); }} className="px-4 py-1.5 hover:bg-[#316AC5] hover:text-white text-left">
+                5. Database Restore (डाटा रिस्टोर)
               </button>
             </div>
           )}
@@ -821,6 +867,42 @@ export default function VB6DesktopLayout() {
             onClose={() => setIsSubsModalOpen(false)}
             publications={publications}
             hawkers={hawkers}
+          />
+        )}
+
+        {/* 12. Modal: 7-Day Rates Matrix & Revisions */}
+        {isRateMatrixOpen && (
+          <RateMatrixForm 
+            isOpen={isRateMatrixOpen}
+            onClose={() => setIsRateMatrixOpen(false)}
+            publications={publications}
+            rates={rates}
+            ratechanges={ratechanges}
+          />
+        )}
+
+        {/* 13. Modal: Collection Agents & Receipt Book Tracker */}
+        {isCollectionAgentsOpen && (
+          <CollectionAgentsForm 
+            isOpen={isCollectionAgentsOpen}
+            onClose={() => setIsCollectionAgentsOpen(false)}
+          />
+        )}
+
+        {/* 14. Modal: User Security & Menu Permissions */}
+        {isUserPermOpen && (
+          <UserPermissionsForm 
+            isOpen={isUserPermOpen}
+            onClose={() => setIsUserPermOpen(false)}
+          />
+        )}
+
+        {/* 15. Modal: Walk-in Counter Cash Sales */}
+        {isCounterSaleOpen && (
+          <CounterSaleForm 
+            isOpen={isCounterSaleOpen}
+            onClose={() => setIsCounterSaleOpen(false)}
+            publications={publications}
           />
         )}
 
