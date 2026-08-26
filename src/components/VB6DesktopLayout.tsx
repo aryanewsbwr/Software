@@ -62,8 +62,8 @@ const LEGACY_DAYS = [
 ];
 
 export default function VB6DesktopLayout() {
-  // Active Form Window
-  const [activeWindow, setActiveWindow] = useState<string>('customers');
+  // Active Form Window (starts null on clean MDI desktop)
+  const [activeWindow, setActiveWindow] = useState<string | null>(null);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
   // Core Static Lists
@@ -493,15 +493,33 @@ export default function VB6DesktopLayout() {
       </div>
 
       {/* 4. MAIN MDI DESKTOP CANVAS */}
-      <div className="flex-1 p-3 overflow-auto flex items-center justify-center">
+      <div className="flex-1 p-3 overflow-auto flex items-center justify-center relative">
         
+        {/* Clean MDI Desktop Wallpaper (When no form is open) */}
+        {activeWindow === null && (
+          <div className="flex flex-col items-center justify-center text-center p-8 opacity-85 select-none pointer-events-none">
+            <div className="w-24 h-24 rounded-full bg-white/20 border-2 border-white/40 shadow-2xl flex items-center justify-center mb-3 backdrop-blur-xs">
+              <span className="text-3xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-wider font-serif">ANA</span>
+            </div>
+            <h1 className="text-2xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] tracking-wide">
+              ARYAN NEWS AGENCY
+            </h1>
+            <p className="text-sm font-bold text-yellow-200 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] mt-0.5">
+              Beawar, Rajasthan • Newspaper Distribution Management System
+            </p>
+            <span className="text-xs text-white/80 mt-2 font-mono">
+              Ready. Select an option from Master, Transactions, or Reports menu to open a form.
+            </span>
+          </div>
+        )}
+
         {/* ========================================================================= */}
         {/* 1. CUSTOMER MASTER (screenshot_05.jpg) - EXACT 2008 REPLICA */}
         {/* ========================================================================= */}
         {activeWindow === 'customers' && (
           <CustomerForm 
-            onClose={() => setActiveWindow('customers')}
-            customer={selectedCust}
+            onClose={() => setActiveWindow(null)}
+            customer={null}
             publications={publications}
             hawkers={hawkers}
             regions={regions}
@@ -512,7 +530,7 @@ export default function VB6DesktopLayout() {
         {/* 2. Publisher Master Form (screenshot_01.jpg) */}
         {activeWindow === 'publishers' && (
           <PublisherForm 
-            onClose={() => setActiveWindow('customers')} 
+            onClose={() => setActiveWindow(null)} 
             publishers={publishers} 
           />
         )}
@@ -520,7 +538,7 @@ export default function VB6DesktopLayout() {
         {/* 3. Publication Master & Weekday Rates (screenshot_02.jpg) */}
         {activeWindow === 'publications' && (
           <PublicationForm 
-            onClose={() => setActiveWindow('customers')} 
+            onClose={() => setActiveWindow(null)} 
             publications={publications}
             publishers={publishers}
             rates={rates}
@@ -530,7 +548,7 @@ export default function VB6DesktopLayout() {
         {/* 4. Region Master Form (screenshot_03.jpg) */}
         {activeWindow === 'regions' && (
           <RegionForm 
-            onClose={() => setActiveWindow('customers')} 
+            onClose={() => setActiveWindow(null)} 
             regions={regions} 
           />
         )}
@@ -538,7 +556,7 @@ export default function VB6DesktopLayout() {
         {/* 5. Hawker Master Form (screenshot_04.jpg) */}
         {activeWindow === 'hawkers' && (
           <HawkerForm 
-            onClose={() => setActiveWindow('customers')} 
+            onClose={() => setActiveWindow(null)} 
             hawkers={hawkers}
             regions={regions}
           />
@@ -547,7 +565,7 @@ export default function VB6DesktopLayout() {
         {/* 6. Holiday Master Form (screenshot_07.jpg) */}
         {activeWindow === 'holidays' && (
           <HolidayForm 
-            onClose={() => setActiveWindow('customers')} 
+            onClose={() => setActiveWindow(null)} 
             holidays={holidays}
             publications={publications}
           />
@@ -556,7 +574,7 @@ export default function VB6DesktopLayout() {
         {/* 7. Daily Hawker Distribution Process (screenshot_08.jpg) */}
         {activeWindow === 'dailyprocess' && (
           <DailyProcessForm 
-            onClose={() => setActiveWindow('customers')} 
+            onClose={() => setActiveWindow(null)} 
             hawkers={hawkers}
             publications={publications}
           />
@@ -565,7 +583,7 @@ export default function VB6DesktopLayout() {
         {/* 8. Payment Receipt Entry Form (screenshot_12.jpg) */}
         {activeWindow === 'receipts' && (
           <ReceiptForm 
-            onClose={() => setActiveWindow('customers')} 
+            onClose={() => setActiveWindow(null)} 
             receipts={selectedCustReceipts}
           />
         )}
@@ -573,7 +591,7 @@ export default function VB6DesktopLayout() {
         {/* 9. Monthly Billing Generation Engine (screenshot_13.jpg) */}
         {activeWindow === 'billing' && (
           <BillingForm 
-            onClose={() => setActiveWindow('customers')} 
+            onClose={() => setActiveWindow(null)} 
             customers={customerList}
             publications={publications}
             rates={rates}

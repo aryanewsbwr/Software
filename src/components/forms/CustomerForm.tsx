@@ -57,7 +57,7 @@ export default function CustomerForm({
 
   // Sync with current customer prop
   useEffect(() => {
-    if (!customer) return;
+    if (!customer || !customer.customer_id) return;
     setSelectedCustId(customer.customer_id);
     setNameEng(customer.name_eng || '');
     setNameHindi(cleanOrTransliterateHindi(customer.name_hindi || '', customer.name_eng));
