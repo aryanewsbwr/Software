@@ -13,7 +13,7 @@ interface Props {
 }
 
 export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regions = [], onSaveHawker }: Props) {
-  const [selectedHawkerId, setSelectedHawkerId] = useState<number | null>(hawkers[0]?.hawker_id || 1);
+  const [selectedHawkerId, setSelectedHawkerId] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
@@ -26,10 +26,7 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
 
   // Load selected hawker
   useEffect(() => {
-    if (!selectedHawkerId) {
-      if (hawkers.length > 0) setSelectedHawkerId(hawkers[0].hawker_id);
-      return;
-    }
+    if (!selectedHawkerId) return;
     const h = hawkers.find(hk => hk.hawker_id === selectedHawkerId);
     if (h) {
       setName(h.name || '');

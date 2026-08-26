@@ -11,18 +11,18 @@ interface PublisherFormProps {
 }
 
 export default function PublisherForm({ onClose, publishers = [] }: PublisherFormProps) {
-  const [selectedPub, setSelectedPub] = useState<Publisher>(publishers[0] || {
-    publish_id: 1,
-    name: 'BENNETT COLEMAN & CO. LTD.',
-    address: 'Times House, 7 Bahadurshah Zafar Marg',
-    city: 'NEW DELHI',
-    state: 'Delhi',
-    pincode: '110002',
-    phone: '011-23275000',
-    mobile: '9829012345',
-    fax: '011-23275001',
-    email: 'timesgroup@delhi.com',
-    website: 'www.timesofindia.com',
+  const [selectedPub, setSelectedPub] = useState<Publisher>({
+    publish_id: 0,
+    name: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: '',
+    phone: '',
+    mobile: '',
+    fax: '',
+    email: '',
+    website: '',
     category: 'Newspaper',
     type: 'Publisher'
   });
@@ -30,12 +30,6 @@ export default function PublisherForm({ onClose, publishers = [] }: PublisherFor
   const [isFindOpen, setIsFindOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [msg, setMsg] = useState('');
-
-  useEffect(() => {
-    if (publishers.length > 0 && !selectedPub) {
-      setSelectedPub(publishers[0]);
-    }
-  }, [publishers]);
 
   const handleSave = () => {
     setMsg('Publisher details saved successfully!');

@@ -27,16 +27,16 @@ export default function CustomerForm({
   onSaveCustomer
 }: Props) {
   // Form State
-  const [selectedCustId, setSelectedCustId] = useState<number>(customer?.customer_id || 1);
-  const [nameEng, setNameEng] = useState(customer?.name_eng || '');
-  const [nameHindi, setNameHindi] = useState(customer?.name_hindi || '');
-  const [add1, setAdd1] = useState(customer?.add1 || '');
-  const [hindiAdd, setHindiAdd] = useState(customer?.hindi_add || '');
-  const [phone, setPhone] = useState(customer?.phone || '');
-  const [regionId, setRegionId] = useState<number>(customer?.region_id || regions[0]?.region_id || 1);
-  const [securityDeposit, setSecurityDeposit] = useState<number>(customer?.security_deposit || 0);
-  const [dueAmount, setDueAmount] = useState<number>(customer?.dueamount || 0);
-  const [priority, setPriority] = useState<number>(customer?.priority || 1);
+  const [selectedCustId, setSelectedCustId] = useState<number>(0);
+  const [nameEng, setNameEng] = useState('');
+  const [nameHindi, setNameHindi] = useState('');
+  const [add1, setAdd1] = useState('');
+  const [hindiAdd, setHindiAdd] = useState('');
+  const [phone, setPhone] = useState('');
+  const [regionId, setRegionId] = useState<number>(regions[0]?.region_id || 1);
+  const [securityDeposit, setSecurityDeposit] = useState<number>(0);
+  const [dueAmount, setDueAmount] = useState<number>(0);
+  const [priority, setPriority] = useState<number>(1);
   const [isCustomerType, setIsCustomerType] = useState<boolean>(true);
   const [isSubAgentType, setIsSubAgentType] = useState<boolean>(false);
   const [isSusha05, setIsSusha05] = useState<boolean>(true);

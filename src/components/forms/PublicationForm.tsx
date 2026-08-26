@@ -27,11 +27,11 @@ export default function PublicationForm({
   publishers = [],
   rates = []
 }: PublicationFormProps) {
-  const [selectedPub, setSelectedPub] = useState<Publication>(publications[0] || {
-    publica_id: 4,
-    public_name: 'DAINIK BHASKAR',
-    pub_hindi: 'दैनिक भास्कर',
-    abrv: 'DB',
+  const [selectedPub, setSelectedPub] = useState<Publication>({
+    publica_id: 0,
+    public_name: '',
+    pub_hindi: '',
+    abrv: '',
     type_p: 'Daily',
     circulation: 'Morning',
     duration: 'Daily',
@@ -39,7 +39,7 @@ export default function PublicationForm({
   });
 
   const [weekdayRates, setWeekdayRates] = useState<Record<number, number>>({
-    1: 7.0, 2: 5.0, 3: 5.0, 4: 5.0, 5: 5.0, 6: 5.0, 7: 5.0
+    1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0
   });
 
   const [delChargesChecked, setDelChargesChecked] = useState(false);
@@ -49,7 +49,7 @@ export default function PublicationForm({
   const [selectedDayRow, setSelectedDayRow] = useState<number>(1);
 
   useEffect(() => {
-    if (!selectedPub) return;
+    if (!selectedPub || selectedPub.publica_id === 0) return;
     const pubRates = rates.filter(r => r.publica_id === selectedPub.publica_id);
     const map: Record<number, number> = { 1: 7.0, 2: 5.0, 3: 5.0, 4: 5.0, 5: 5.0, 6: 5.0, 7: 5.0 };
     pubRates.forEach(r => { map[r.dayofweek] = r.rate; });

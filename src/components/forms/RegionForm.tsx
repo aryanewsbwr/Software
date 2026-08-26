@@ -9,10 +9,10 @@ interface RegionFormProps {
 }
 
 export default function RegionForm({ onClose, regions = [] }: RegionFormProps) {
-  const [selectedRegion, setSelectedRegion] = useState<Region>(regions[0] || {
-    region_id: 1,
-    region_name: 'SENDRA ROAD',
-    hindi_name: 'सेंदड़ा रोड'
+  const [selectedRegion, setSelectedRegion] = useState<Region>({
+    region_id: 0,
+    region_name: '',
+    hindi_name: ''
   });
 
   const [isFindOpen, setIsFindOpen] = useState(false);

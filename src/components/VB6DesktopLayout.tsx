@@ -48,6 +48,7 @@ import RateMatrixForm from './forms/RateMatrixForm';
 import CollectionAgentsForm from './forms/CollectionAgentsForm';
 import UserPermissionsForm from './forms/UserPermissionsForm';
 import CounterSaleForm from './forms/CounterSaleForm';
+import PeriodForm from './forms/PeriodForm';
 
 // Legacy Day of Week Names (1=Sun .. 7=Sat)
 const LEGACY_DAYS = [
@@ -107,6 +108,8 @@ export default function VB6DesktopLayout() {
   const [isBillingRunning, setIsBillingRunning] = useState(false);
 
   // New Modal States for Full 2008 Master Set
+  const [isPeriodOpen, setIsPeriodOpen] = useState(true);
+  const [currentPeriod, setCurrentPeriod] = useState({ month: 'July', startYear: 2025, endYear: 2026 });
   const [isRateMatrixOpen, setIsRateMatrixOpen] = useState(false);
   const [isCollectionAgentsOpen, setIsCollectionAgentsOpen] = useState(false);
   const [isUserPermOpen, setIsUserPermOpen] = useState(false);
@@ -419,8 +422,8 @@ export default function VB6DesktopLayout() {
           </button>
           {activeMenu === 'tools' && (
             <div className="absolute top-full left-0 min-w-[340px] bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
-              <button onClick={() => { setActiveMenu(null); setStatusMessage('Period: Financial Year 2025-2026 selected.'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                1. Financial Year Selection (वित्तीय वर्ष: 2025-2026)
+              <button onClick={() => { setActiveMenu(null); setIsPeriodOpen(true); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                1. Financial Year Selection (वित्तीय वर्ष: {currentPeriod.month} {currentPeriod.startYear}-{currentPeriod.endYear})
               </button>
               <button onClick={() => { setActiveMenu(null); setStatusMessage('Balance forward completed successfully for all customers.'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 2. Year-End Balance Forward to Next Year (कैरी फॉरवर्ड)
@@ -649,12 +652,16 @@ export default function VB6DesktopLayout() {
           />
         )}
 
-        {/* 15. Modal: Walk-in Counter Cash Sales */}
-        {isCounterSaleOpen && (
-          <CounterSaleForm 
-            isOpen={isCounterSaleOpen}
-            onClose={() => setIsCounterSaleOpen(false)}
-            publications={publications}
+        {/* 16. Modal: Period Detail Entrance & Selection (screenshot_15.jpg) */}
+        {isPeriodOpen && (
+          <PeriodForm 
+            isOpen={isPeriodOpen}
+            onLogin={(m, sY, eY) => {
+              setCurrentPeriod({ month: m, startYear: sY, endYear: eY });
+              setIsPeriodOpen(false);
+              setStatusMessage(`Period: ${m} ${sY}-${eY} logged in successfully.`);
+            }}
+            onExit={() => setIsPeriodOpen(false)}
           />
         )}
 
@@ -665,8 +672,12 @@ export default function VB6DesktopLayout() {
         <div className="vb-status-panel flex-1 truncate">
           <strong>Status:</strong> {statusMessage}
         </div>
-        <div className="vb-status-panel w-32 text-center font-bold">
-          Year: 2025-2026
+        <div 
+          onClick={() => setIsPeriodOpen(true)} 
+          className="vb-status-panel w-44 text-center font-bold text-blue-900 cursor-pointer hover:bg-blue-100"
+          title="Click to Change Financial Period"
+        >
+          📅 Period: {currentPeriod.month} {currentPeriod.startYear}-{currentPeriod.endYear}
         </div>
         <div className="vb-status-panel w-28 text-center font-bold text-blue-900">
           User: ADMIN
