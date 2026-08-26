@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Customer, Publication, Rate, Holiday, Discontinue } from '@/lib/types';
-import { Printer, RefreshCw, X, Search, FileText } from 'lucide-react';
+import { Printer, RefreshCw, X, Search, FileText, Eye, ChevronRight } from 'lucide-react';
+import { CustomerMonthlyBill, BillingLineItem } from '@/lib/billingEngine';
 
 interface BillingFormProps {
   onClose: () => void;
@@ -19,22 +20,18 @@ const MONTHS = [
 ];
 
 export default function BillingForm({
-  onClose,
-  customers = [],
-  publications = [],
-  rates = [],
-  holidays = [],
-  discontinues = []
+  onClose
 }: BillingFormProps) {
   const [month, setMonth] = useState('August');
   const [year, setYear] = useState(2026);
   const [selectedRegion, setSelectedRegion] = useState('all');
   const [regions, setRegions] = useState<any[]>([]);
-  const [bills, setBills] = useState<any[]>([]);
+  const [bills, setBills] = useState<CustomerMonthlyBill[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [msg, setMsg] = useState('');
-  const [selectedBillForPrint, setSelectedBillForPrint] = useState<any | null>(null);
+  const [selectedBillForBreakup, setSelectedBillForBreakup] = useState<CustomerMonthlyBill | null>(null);
+  const [selectedBillForPrint, setSelectedBillForPrint] = useState<CustomerMonthlyBill | null>(null);
 
   // Load regions
   useEffect(() => {
@@ -46,13 +43,13 @@ export default function BillingForm({
 
   const handleGenerate = async () => {
     setIsGenerating(true);
-    setMsg('Calculating date-effective monthly bills from customer subscriptions...');
+    setMsg('Calculating 2008 authentic date-effective monthly bills...');
 
     try {
       const res = await fetch(`/api/billing?month=${month}&year=${year}&region_id=${selectedRegion}`);
       const data = await res.json();
       setBills(data.bills || []);
-      setMsg(`Successfully calculated ${data.total_bills || 0} customer bills for ${month} ${year}! Total: ₹${(data.grand_total || 0).toFixed(2)}`);
+      setMsg(`Successfully calculated ${data.total_bills || 0} customer bills for ${month} ${year}! Grand Total: ₹${(data.grand_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`);
     } catch (err: any) {
       setMsg(`Error calculating bills: ${err.message}`);
     } finally {
@@ -67,7 +64,7 @@ export default function BillingForm({
 
   const filteredBills = bills.filter(b => 
     !searchQuery || 
-    b.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    b.name_eng?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     b.customer_id?.toString().includes(searchQuery) ||
     b.region_name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -75,7 +72,7 @@ export default function BillingForm({
   const totalBillingAmount = filteredBills.reduce((acc, b) => acc + (b.total_payable || 0), 0);
 
   return (
-    <div className="relative w-[820px] h-[580px] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma">
+    <div className="relative w-[860px] h-[600px] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma">
       {/* Title Bar */}
       <div className="vb-titlebar-xp select-none">
         <div className="flex items-center gap-1.5">
@@ -98,13 +95,13 @@ export default function BillingForm({
             MONTHLY CUSTOMER BILL CALCULATION & PRINTING
           </h1>
           <p className="text-[11px] text-slate-700 font-bold">
-            Accounting Rule: Selling rate is calculated date-by-date (1=Sun..7=Sat) minus vacation holds.
+            Accounting Rule: Day-by-Day (1=Sun..7=Sat) Rates + Rate Change History - Holidays - Discontinue Holds
           </p>
         </div>
 
         {/* Controls Bar */}
-        <div className="bg-white p-2 vb-box-inset flex items-center justify-between gap-3 text-xs font-bold my-1">
-          <div className="flex items-center gap-2">
+        <div className="bg-white p-2 vb-box-inset flex items-center justify-between gap-2 text-xs font-bold my-1 flex-wrap">
+          <div className="flex items-center gap-1.5">
             <label className="text-[#8B0000]">Region:</label>
             <select 
               value={selectedRegion}
@@ -118,7 +115,7 @@ export default function BillingForm({
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <label className="text-[#8B0000]">Billing Month:</label>
             <select 
               value={month}
@@ -131,13 +128,13 @@ export default function BillingForm({
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <label className="text-[#8B0000]">Year:</label>
             <input 
               type="number" 
               value={year} 
               onChange={(e) => setYear(parseInt(e.target.value, 10) || 2026)}
-              className="vb-input w-20 text-center font-bold"
+              className="vb-input w-16 text-center font-bold"
             />
           </div>
 
@@ -147,7 +144,7 @@ export default function BillingForm({
             className="vb-btn bg-yellow-100 hover:bg-yellow-200 text-slate-900 font-bold flex items-center gap-1 shadow-xs cursor-pointer px-3 py-1"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-amber-700 ${isGenerating ? 'animate-spin' : ''}`} />
-            <span>{isGenerating ? 'Calculating...' : 'Generate Monthly Bills'}</span>
+            <span>{isGenerating ? 'Calculating...' : 'Recalculate Bills'}</span>
           </button>
         </div>
 
@@ -182,7 +179,7 @@ export default function BillingForm({
                 <th className="p-1.5 border text-right">Current Papers</th>
                 <th className="p-1.5 border text-right">Delivery</th>
                 <th className="p-1.5 border text-right">Total Payable</th>
-                <th className="p-1.5 border text-center">Action</th>
+                <th className="p-1.5 border text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -190,29 +187,39 @@ export default function BillingForm({
                 <tr key={idx} className="border-b hover:bg-blue-50 text-[11px]">
                   <td className="p-1 border-r font-mono text-center font-bold">#{b.bill_no}</td>
                   <td className="p-1 border-r font-bold text-blue-900">
-                    {b.customer_name} <span className="text-slate-500 font-normal">({b.customer_hindi})</span>
+                    {b.name_eng}
                   </td>
                   <td className="p-1 border-r text-slate-600">{b.region_name}</td>
                   <td className="p-1 border-r text-right font-mono text-slate-700">₹{b.previous_due.toFixed(2)}</td>
-                  <td className="p-1 border-r text-right font-mono font-bold text-slate-800">₹{b.current_papers.toFixed(2)}</td>
-                  <td className="p-1 border-r text-right font-mono text-slate-600">₹{b.delivery.toFixed(2)}</td>
+                  <td className="p-1 border-r text-right font-mono font-bold text-slate-800">₹{b.paper_amount.toFixed(2)}</td>
+                  <td className="p-1 border-r text-right font-mono text-slate-600">₹{b.delivery_amount.toFixed(2)}</td>
                   <td className="p-1 border-r text-right font-mono font-bold text-blue-900 bg-blue-50/50">
                     ₹{b.total_payable.toFixed(2)}
                   </td>
                   <td className="p-1 text-center">
-                    <button 
-                      onClick={() => setSelectedBillForPrint(b)}
-                      className="px-2 py-0.5 bg-blue-100 hover:bg-blue-200 border border-blue-400 text-blue-900 font-bold rounded-xs text-[10px] cursor-pointer"
-                    >
-                      Print Slip
-                    </button>
+                    <div className="flex items-center justify-center gap-1">
+                      <button 
+                        onClick={() => setSelectedBillForBreakup(b)}
+                        className="px-1.5 py-0.5 bg-amber-100 hover:bg-amber-200 border border-amber-400 text-amber-900 font-bold rounded-xs text-[10px] cursor-pointer flex items-center gap-0.5"
+                        title="View SQL Itemized Line Breakup"
+                      >
+                        <Eye className="w-2.5 h-2.5" />
+                        <span>Breakup</span>
+                      </button>
+                      <button 
+                        onClick={() => setSelectedBillForPrint(b)}
+                        className="px-1.5 py-0.5 bg-blue-100 hover:bg-blue-200 border border-blue-400 text-blue-900 font-bold rounded-xs text-[10px] cursor-pointer"
+                      >
+                        Slip
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
               {filteredBills.length === 0 && !isGenerating && (
                 <tr>
                   <td colSpan={8} className="p-8 text-center text-slate-400 italic">
-                    No customer bills found for {month} {year}. Click [Generate Monthly Bills] above to calculate.
+                    No customer bills found for {month} {year}. Click [Recalculate Bills] above.
                   </td>
                 </tr>
               )}
@@ -223,7 +230,7 @@ export default function BillingForm({
         {/* Footer */}
         <div className="bg-[#ECE9D8] pt-2 border-t border-slate-300 flex items-center justify-between text-xs font-bold">
           <div className="text-slate-800">
-            Total Calculated Bills: <strong className="text-indigo-900">{filteredBills.length}</strong> | Total Billing Amount: <strong className="text-blue-900 font-mono text-sm">₹{totalBillingAmount.toFixed(2)}</strong>
+            Total Bills: <strong className="text-indigo-900">{filteredBills.length}</strong> | Total Amount: <strong className="text-blue-900 font-mono text-sm">₹{totalBillingAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
           </div>
           <div className="flex items-center gap-2">
             <button 
@@ -243,6 +250,57 @@ export default function BillingForm({
 
       </div>
 
+      {/* Breakup Modal (Matching Exact SQL Query Output) */}
+      {selectedBillForBreakup && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-black border-b-black shadow-2xl p-3 flex flex-col max-h-[85vh]">
+            
+            <div className="vb-titlebar-xp select-none mb-2">
+              <span>Itemized Billing Breakup - Customer #{selectedBillForBreakup.customer_id}: {selectedBillForBreakup.name_eng}</span>
+              <button onClick={() => setSelectedBillForBreakup(null)} className="vb-win-btn vb-win-btn-close">✕</button>
+            </div>
+
+            <div className="bg-white p-2 vb-box-inset flex-1 overflow-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-[#ECE9D8] sticky top-0">
+                  <tr>
+                    <th className="p-1.5 border text-left">Sort</th>
+                    <th className="p-1.5 border text-left">Item Name</th>
+                    <th className="p-1.5 border text-right">Rate</th>
+                    <th className="p-1.5 border text-center">Qty</th>
+                    <th className="p-1.5 border text-center">Days / Copies</th>
+                    <th className="p-1.5 border text-right">Amount (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedBillForBreakup.breakup?.map((item, idx) => (
+                    <tr key={idx} className={`border-b text-[11px] ${item.sort_order === 9 ? 'bg-amber-100 font-bold text-blue-900 border-t-2 border-black' : item.sort_order === 4 ? 'bg-slate-50 italic text-slate-700' : 'hover:bg-blue-50'}`}>
+                      <td className="p-1 border-r text-center font-mono">{item.sort_order}</td>
+                      <td className="p-1 border-r font-bold">{item.item}</td>
+                      <td className="p-1 border-r text-right font-mono">{item.rate !== null ? `₹${item.rate.toFixed(2)}` : '-'}</td>
+                      <td className="p-1 border-r text-center font-mono">{item.qty !== null ? item.qty : '-'}</td>
+                      <td className="p-1 border-r text-center font-mono font-bold text-indigo-900">{item.days_or_copies !== null ? item.days_or_copies : '-'}</td>
+                      <td className="p-1 text-right font-mono font-bold">₹{item.amount.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-between items-center pt-2 text-xs font-bold">
+              <span>Total Payable: <strong className="text-blue-900 text-sm font-mono">₹{selectedBillForBreakup.total_payable.toFixed(2)}</strong></span>
+              <button 
+                onClick={() => setSelectedBillForBreakup(null)}
+                className="vb-btn bg-white hover:bg-slate-100 px-4"
+              >
+                Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* Bill Slip Print Modal */}
       {selectedBillForPrint && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
@@ -256,7 +314,7 @@ export default function BillingForm({
             <div className="space-y-0.5 text-[11px]">
               <div><strong>Bill No:</strong> #{selectedBillForPrint.bill_no}</div>
               <div><strong>Cust ID:</strong> #{selectedBillForPrint.customer_id}</div>
-              <div><strong>Customer:</strong> {selectedBillForPrint.customer_name}</div>
+              <div><strong>Customer:</strong> {selectedBillForPrint.name_eng}</div>
               <div><strong>Region:</strong> {selectedBillForPrint.region_name}</div>
             </div>
 
@@ -267,11 +325,11 @@ export default function BillingForm({
               </div>
               <div className="flex justify-between">
                 <span>Current Papers (चालू माह):</span>
-                <span>₹{selectedBillForPrint.current_papers.toFixed(2)}</span>
+                <span>₹{selectedBillForPrint.paper_amount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Delivery Charges:</span>
-                <span>₹{selectedBillForPrint.delivery.toFixed(2)}</span>
+                <span>₹{selectedBillForPrint.delivery_amount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-bold text-sm border-t pt-1">
                 <span>Total Payable (कुल देय):</span>
@@ -282,13 +340,13 @@ export default function BillingForm({
             <div className="flex justify-end gap-2 pt-2 print:hidden">
               <button 
                 onClick={() => window.print()}
-                className="px-3 py-1 bg-[#0A246A] text-white font-bold text-xs"
+                className="px-3 py-1 bg-[#0A246A] text-white font-bold text-xs cursor-pointer"
               >
                 Print
               </button>
               <button 
                 onClick={() => setSelectedBillForPrint(null)}
-                className="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-black font-bold text-xs"
+                className="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-black font-bold text-xs cursor-pointer"
               >
                 Close
               </button>
