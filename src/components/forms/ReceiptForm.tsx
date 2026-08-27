@@ -62,8 +62,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       .select('receipt_id', { count: 'exact', head: true })
       .then(({ count }) => {
         if (count && count > 0) setReceiptNo(18383 + count);
-      })
-      .catch(() => {});
+      });
   }, []);
 
   // Fetch Customer info when Customer ID is typed
