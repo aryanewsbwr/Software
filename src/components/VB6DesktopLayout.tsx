@@ -541,11 +541,10 @@ export default function VB6DesktopLayout() {
           />
         )}
 
-        {/* 8. Payment Receipt Entry Form (screenshot_12.jpg) */}
+        {/* 8. Payment Receipt Entry Form (screenshot_13.jpg) */}
         {activeWindow === 'receipts' && (
           <ReceiptForm 
             onClose={() => setActiveWindow(null)} 
-            receipts={selectedCustReceipts}
           />
         )}
 
