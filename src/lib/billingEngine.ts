@@ -1,14 +1,18 @@
 /**
- * 2008 AUTHENTIC BILLING CALCULATION ENGINE
- * Directly implements the legacy SQL logic:
- * 1. Daily papers (Date-by-date accumulation with 7-day rate & ratechange history)
- * 2. Weekly magazines (MagzineDay matching DAYOFWEEK)
- * 3. Fortnightly (1st and 16th dates)
- * 4. Monthly & Quarterly (1st date; Pub #75 quarterly in Jan/Apr/Jul/Oct)
- * 5. Delivery charges (cd.Dely)
- * 6. Retail sales (retailsale)
- * 7. Previous due (Opening dues + prior bills + delivery - receipts - less amount)
- * 8. Grand Total aggregation
+ * 2008 AUTHENTIC VB6 BILLING ENGINE (REVERSE-ENGINEERED)
+ * Directly implements legacy 2008 VB6 billing logic:
+ * 1. Financial Year aware (April-March calendar year split)
+ * 2. Daily newspapers (date-by-date delivery with RateChange & 7-Day DayOfWeek matrix)
+ * 3. Weekly magazines (MagzineDay matching DayOfWeek)
+ * 4. Fortnightly & Bi-Monthly periodicals (1st and 16th dates)
+ * 5. Monthly & Quarterly periodicals (1st of month)
+ * 6. Holiday exclusions (oc_date in Holiday table)
+ * 7. Discontinue tracking (Permanent 'P' and Temporary 'T' date ranges)
+ * 8. Subscriptions schedule filtering (From_Day 1-7 or specific weekdays)
+ * 9. Delivery charges (cd.delivery_charge / cd.Dely in BillDel / BillNo)
+ * 10. Customer discounts (cust.dis / cd.discount_percent in BillNo Dis_Amt)
+ * 11. Previous due ledger bringing forward (Opening Dues + prior paper totals + delivery - receipts)
+ * 12. 100% schema alignment with billYYYYYYYY and billnoYYYYYYYY tables
  */
 
 export interface BillingLineItem {
@@ -31,7 +35,7 @@ export interface CustomerMonthlyBill {
   region_id: number;
   region_name: string;
   month: string;
-  year: number;
+  year: string | number;
   previous_due: number;
   paper_amount: number;
   delivery_amount: number;
@@ -39,6 +43,8 @@ export interface CustomerMonthlyBill {
   retail_sale_amount: number;
   total_payable: number;
   breakup: BillingLineItem[];
+  db_bill_items?: any[];
+  db_billno_item?: any;
 }
 
 const MONTH_NAMES = [
@@ -46,9 +52,9 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-const FORTNIGHTLY_PUBS = new Set([13, 11, 17, 23, 24, 18, 216]);
+const FORTNIGHTLY_PUBS = new Set([11, 13, 17, 18, 23, 24, 33, 109, 216]);
 
-// Parse DD/MM/YYYY to YYYY-MM-DD string
+// Parse DD/MM/YYYY or YYYY-MM-DD to YYYY-MM-DD
 function parseLegacyDateToIso(dStr: string | null | undefined): string | null {
   if (!dStr || dStr.trim() === '' || dStr === 'null') return null;
   const clean = dStr.trim();
@@ -57,7 +63,7 @@ function parseLegacyDateToIso(dStr: string | null | undefined): string | null {
     if (parts.length === 3) {
       const d = parts[0].padStart(2, '0');
       const m = parts[1].padStart(2, '0');
-      const y = parts[2];
+      const y = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
       return `${y}-${m}-${d}`;
     }
   }
@@ -83,7 +89,7 @@ export function calculateBilling({
   regions = []
 }: {
   monthName: string;
-  year: number;
+  year: number | string;
   regionId?: string | number;
   customers: any[];
   subscriptions: any[];
@@ -96,73 +102,116 @@ export function calculateBilling({
   receipts: any[];
   regions: any[];
 }) {
-  let monthIdx = MONTH_NAMES.indexOf(monthName);
+  let monthIdx = MONTH_NAMES.findIndex(m => m.toLowerCase() === monthName.toLowerCase() || m.toLowerCase().startsWith(monthName.toLowerCase().slice(0, 3)));
   if (monthIdx === -1) monthIdx = 7; // August default
 
+  const standardMonthName = MONTH_NAMES[monthIdx];
   const monthNum = monthIdx + 1; // 1-12
-  const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
-  const monthStartIso = `${year}-${String(monthNum).padStart(2, '0')}-01`;
-  const monthEndIso = `${year}-${String(monthNum).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+  // Parse financial year (e.g. 2025, '2025', '20252026', '2025-2026')
+  let startYear = 2025;
+  const yStr = String(year);
+  if (yStr.length === 8) {
+    startYear = parseInt(yStr.slice(0, 4), 10);
+  } else if (yStr.includes('-')) {
+    startYear = parseInt(yStr.split('-')[0], 10);
+  } else {
+    startYear = parseInt(yStr, 10) || 2025;
+  }
+
+  // In Indian fiscal year: April (monthIdx=3) to Dec (monthIdx=11) is startYear, Jan-Mar (0-2) is startYear+1
+  const calendarYear = monthIdx >= 3 ? startYear : startYear + 1;
+  const daysInMonth = new Date(calendarYear, monthIdx + 1, 0).getDate();
+  const monthStartIso = `${calendarYear}-${String(monthNum).padStart(2, '0')}-01`;
+  const monthEndIso = `${calendarYear}-${String(monthNum).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
   // Index Publications
   const pubMap = new Map<number, any>();
   for (const p of publications) {
-    pubMap.set(p.publica_id, p);
+    const pid = p.publication_id || p.publica_id || p.Publica_id;
+    if (pid) pubMap.set(pid, p);
   }
 
   // Index Regions
   const regMap = new Map<number, any>();
   for (const r of regions) {
-    regMap.set(r.region_id, r);
+    const rid = r.region_id || r.Region_id;
+    if (rid) regMap.set(rid, r);
   }
 
-  // Rate lookup function: ratechanges priority over standard rates
+  // Rate lookup function: ratechange table takes priority over standard rate table
   const getEffectiveRate = (publicaId: number, dayOfWeek: number, targetDateIso: string): number => {
-    // 1. Check ratechanges: rc.Publica_id = publica_id AND rc.Dayofweek = dayOfWeek AND rc.Dated <= targetDateIso ORDER BY rc.Dated DESC LIMIT 1
-    const matchingChanges = ratechanges.filter(rc => 
-      rc.publica_id === publicaId && 
-      (rc.dayofweek === dayOfWeek || rc.dayofweek === 0 || !rc.dayofweek) &&
-      rc.dated && rc.dated <= targetDateIso
-    );
+    // 1. Check ratechanges: rc.Publica_id = publica_id AND (rc.Dayofweek = dayOfWeek OR rc.Dayofweek = 0) AND rc.Dated <= targetDateIso ORDER BY rc.Dated DESC LIMIT 1
+    const matchingChanges = ratechanges.filter(rc => {
+      const rPub = rc.Publica_id || rc.publica_id;
+      const rDay = rc.Dayofweek !== undefined ? rc.Dayofweek : rc.dayofweek;
+      const rDated = rc.Dated || rc.dated;
+      const rDatedIso = parseLegacyDateToIso(rDated);
+      return (
+        rPub === publicaId &&
+        (rDay === dayOfWeek || rDay === 0 || rDay === null || rDay === undefined) &&
+        rDatedIso && rDatedIso <= targetDateIso
+      );
+    });
+
     if (matchingChanges.length > 0) {
-      matchingChanges.sort((a, b) => b.dated.localeCompare(a.dated));
-      return matchingChanges[0].new_rate || matchingChanges[0].newrate || 0;
+      matchingChanges.sort((a, b) => {
+        const dA = parseLegacyDateToIso(a.Dated || a.dated) || '';
+        const dB = parseLegacyDateToIso(b.Dated || b.dated) || '';
+        return dB.localeCompare(dA);
+      });
+      const top = matchingChanges[0];
+      return top.NewRate !== undefined ? top.NewRate : (top.new_rate !== undefined ? top.new_rate : (top.newrate || 0));
     }
 
-    // 2. Fallback to standard rates table: r2.Publica_id = publica_id AND r2.Dayofweek = dayOfWeek
-    const stdRate = rates.find(r => r.publica_id === publicaId && r.dayofweek === dayOfWeek);
-    if (stdRate && stdRate.rate) return stdRate.rate;
+    // 2. Fallback to standard rates table: r.Publica_id = publica_id AND r.Dayofweek = dayOfWeek
+    const stdRate = rates.find(r => {
+      const rPub = r.Publica_id || r.publica_id;
+      const rDay = r.Dayofweek !== undefined ? r.Dayofweek : r.dayofweek;
+      return rPub === publicaId && rDay === dayOfWeek;
+    });
+    if (stdRate) {
+      const val = stdRate.Rate !== undefined ? stdRate.Rate : stdRate.rate;
+      if (val !== undefined && val !== null && val > 0) return Number(val);
+    }
 
     // 3. Fallback any standard rate for publication
-    const anyRate = rates.find(r => r.publica_id === publicaId);
-    if (anyRate && anyRate.rate) return anyRate.rate;
+    const anyRate = rates.find(r => (r.Publica_id || r.publica_id) === publicaId);
+    if (anyRate) {
+      const val = anyRate.Rate !== undefined ? anyRate.Rate : anyRate.rate;
+      if (val !== undefined && val !== null && val > 0) return Number(val);
+    }
 
     return 5.0; // Standard fallback
   };
 
-  // Holiday check: hol.Publica_id = sub.publica_id AND Oc_Date = targetDateIso
+  // Holiday check: Occasion date matches targetDate and publica_id matches or is null
   const isHoliday = (publicaId: number, targetDateIso: string): boolean => {
     return holidays.some(h => {
-      const hIso = parseLegacyDateToIso(h.oc_date || h.Oc_Date);
+      const hIso = parseLegacyDateToIso(h.oc_date || h.Oc_Date || h.dated || h.Dated);
       if (!hIso) return false;
-      return hIso === targetDateIso && (!h.publica_id || h.publica_id === publicaId);
+      const hPub = h.publication_id || h.publica_id || h.Publica_id;
+      return hIso === targetDateIso && (!hPub || hPub === 0 || hPub === publicaId);
     });
   };
 
-  // Discontinue check: disc.Customer_id = cd.Customer_id AND disc.Publica_id IN (cd.Publica_id, 0, NULL)
+  // Discontinue check: checks active suspension / permanent stop
   const isDiscontinued = (custId: number, publicaId: number, targetDateIso: string): boolean => {
     return discontinues.some(d => {
-      if (d.customer_id !== custId) return false;
-      if (d.publica_id && d.publica_id !== 0 && d.publica_id !== publicaId) return false;
+      const dCust = d.customer_id || d.Customer_id;
+      if (dCust !== custId) return false;
 
-      const tempFrom = d.temp_from || parseLegacyDateToIso(d.Temp_From || d.entry_date);
+      const dPub = d.publica_id || d.Publica_id;
+      if (dPub && dPub !== 0 && dPub !== publicaId) return false;
+
+      const tempFrom = parseLegacyDateToIso(d.temp_from || d.Temp_From || d.entry_date || d.EntryDate);
       if (!tempFrom) return false;
 
-      const isPerm = (d.temp_perma || d.Temp_Perma || '').toUpperCase().startsWith('P');
+      const isPerm = (d.temp_perma || d.Temp_Perma || 'P').toUpperCase().startsWith('P');
       if (isPerm) {
         return targetDateIso >= tempFrom;
       } else {
-        const tempTo = d.temp_to || parseLegacyDateToIso(d.Temp_To);
+        const tempTo = parseLegacyDateToIso(d.temp_to || d.Temp_To);
         if (!tempTo) return targetDateIso >= tempFrom;
         return targetDateIso >= tempFrom && targetDateIso <= tempTo;
       }
@@ -170,15 +219,20 @@ export function calculateBilling({
   };
 
   // Check schedule day filter (cd.From_Day)
-  const isScheduleMatch = (fromDay: string | null | undefined, dayOfWeek: number): boolean => {
-    if (!fromDay || fromDay === '' || fromDay === '1-7' || fromDay === 'Daily') return true;
-    if (fromDay.includes('-')) {
-      const parts = fromDay.split('-').map(Number);
+  const isScheduleMatch = (fromDay: any, dayOfWeek: number): boolean => {
+    if (!fromDay) return true;
+    if (Array.isArray(fromDay)) {
+      return fromDay.includes(dayOfWeek);
+    }
+    const str = String(fromDay).trim();
+    if (str === '' || str === '1-7' || str.toLowerCase() === 'daily') return true;
+    if (str.includes('-')) {
+      const parts = str.split('-').map(Number);
       if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
         return dayOfWeek >= parts[0] && dayOfWeek <= parts[1];
       }
     }
-    const daysList = fromDay.split(',').map(Number);
+    const daysList = str.split(',').map(Number);
     return daysList.includes(dayOfWeek);
   };
 
@@ -186,73 +240,86 @@ export function calculateBilling({
   let targetCustomers = customers;
   if (regionId && regionId !== 'all') {
     const rId = typeof regionId === 'string' ? parseInt(regionId, 10) : regionId;
-    targetCustomers = targetCustomers.filter(c => c.region_id === rId);
+    targetCustomers = targetCustomers.filter(c => (c.region_id || c.Region_id) === rId);
   }
 
   // Group subscriptions by customer_id
   const subsByCust = new Map<number, any[]>();
   for (const s of subscriptions) {
-    if (!subsByCust.has(s.customer_id)) {
-      subsByCust.set(s.customer_id, []);
+    const cid = s.customer_id || s.Customer_id;
+    if (!subsByCust.has(cid)) {
+      subsByCust.set(cid, []);
     }
-    subsByCust.get(s.customer_id)!.push(s);
+    subsByCust.get(cid)!.push(s);
   }
 
   // Pre-index prior bills and receipts for Previous Due calculation
   const duesByCust = new Map<number, number>();
   for (const b of bills) {
-    const prev = duesByCust.get(b.customer_id) || 0;
-    const dueAmt = (b.month === 'Dues' || b.Month === 'Dues') ? (b.due_amt || b.Due_Amt || 0) : 0;
-    const totalAmt = (b.month !== 'Dues' && b.Month !== 'Dues') ? (b.balance || b.totalamt || b.Totalamt || 0) : 0;
-    const delAmt = b.dely || b.del_amt || b.Dely || 0;
-    duesByCust.set(b.customer_id, prev + dueAmt + totalAmt + delAmt);
+    const cid = b.customer_id || b.Customer_id;
+    const prev = duesByCust.get(cid) || 0;
+    const bMonth = b.month || b.Month || '';
+    const dueAmt = (bMonth.toLowerCase() === 'dues') ? (b.due_amt || b.Due_Amt || 0) : 0;
+    const totalAmt = (bMonth.toLowerCase() !== 'dues') ? (b.totalamt || b.TotalAmt || b.balance || b.Balance || 0) : 0;
+    const delAmt = b.dely || b.del_amt || b.Del_Amt || b.Dely || 0;
+    duesByCust.set(cid, prev + dueAmt + totalAmt + delAmt);
   }
 
   const receiptsByCust = new Map<number, number>();
   for (const r of receipts) {
-    const prev = receiptsByCust.get(r.customer_id) || 0;
-    const recpAmt = r.mal_recp_amt || r.MalRecpAmt || r.bill_amt || 0;
+    const cid = r.customer_id || r.Customer_id;
+    const prev = receiptsByCust.get(cid) || 0;
+    const recpAmt = r.mal_recp_amt || r.MalRecpAmt || r.bill_amt || r.BillAmt || 0;
     const lessAmt = r.less_amt || r.LessAmt || 0;
-    receiptsByCust.set(r.customer_id, prev + recpAmt + lessAmt);
+    receiptsByCust.set(cid, prev + recpAmt + lessAmt);
   }
 
   const generatedBills: CustomerMonthlyBill[] = [];
   const allBreakupLines: BillingLineItem[] = [];
 
   let grandTotalBilling = 0;
+  let nextBillId = 1001;
 
   for (let cIdx = 0; cIdx < targetCustomers.length; cIdx++) {
     const cust = targetCustomers[cIdx];
-    const custId = cust.customer_id;
+    const custId = cust.customer_id || cust.Customer_id;
     const custSubs = subsByCust.get(custId) || [];
 
     const custBreakup: BillingLineItem[] = [];
+    const dbBillItems: any[] = [];
     let customerPaperTotal = 0;
     let customerDeliveryTotal = 0;
+    let customerDiscountTotal = 0;
+
+    const custRegionId = cust.region_id || cust.Region_id || 1;
 
     // =========================================================================
     // 1. PROCESS EACH SUBSCRIPTION LINE ITEM
     // =========================================================================
-    for (const cd of custSubs) {
-      const pub = pubMap.get(cd.publica_id);
-      const pubName = pub ? pub.public_name : `Publication #${cd.publica_id}`;
-      const typeP = pub?.type_p || pub?.TypeP || 'Newspaper';
+    for (let sIdx = 0; sIdx < custSubs.length; sIdx++) {
+      const cd = custSubs[sIdx];
+      const pubId = cd.publication_id || cd.publica_id || cd.Publica_id;
+      const pub = pubMap.get(pubId);
+      const pubName = pub?.name || pub?.public_name || pub?.Public_name || cd.publication_name || `Publication #${pubId}`;
+      const typeP = pub?.type_p || pub?.TypeP || pub?.frequency || 'Daily';
       const magzineDay = pub?.magzine_day || pub?.MagzineDay || 0;
-      const isMagzine = typeP.toLowerCase() === 'magzine' || typeP.toLowerCase() === 'magazine';
+      const isDaily = typeP.toLowerCase() === 'daily' || typeP.toLowerCase() === 'newspaper';
+      const isWeekly = magzineDay >= 1 || typeP.toLowerCase() === 'weekly';
+      const isFortnightly = FORTNIGHTLY_PUBS.has(pubId) || typeP.toLowerCase().includes('fortnight') || typeP.toLowerCase().includes('bi-month') || typeP.toLowerCase().includes('bi-weekly');
 
-      const sDateIso = parseLegacyDateToIso(cd.s_date || cd.S_Date) || '2000-01-01';
+      const sDateIso = parseLegacyDateToIso(cd.s_date || cd.S_Date || cd.created_at) || '2000-01-01';
       const cDateIso = parseLegacyDateToIso(cd.c_date || cd.C_Date);
 
-      const qty = cd.qty || cd.Qty || 1;
+      const qty = Number(cd.qty || cd.Qty || 1);
 
       // Group day counts by resolved rate
       const rateDaysMap = new Map<number, number>();
 
-      // CASE A: Daily Newspapers & Regular Publications (typeP != 'Magzine')
-      if (!isMagzine) {
+      // CASE A: Daily Newspapers
+      if (isDaily) {
         for (let day = 1; day <= daysInMonth; day++) {
-          const targetDateIso = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          const dObj = new Date(year, monthIdx, day);
+          const targetDateIso = `${calendarYear}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const dObj = new Date(calendarYear, monthIdx, day);
           const legacyDayOfWeek = dObj.getDay() + 1; // 1=Sun..7=Sat
 
           // Active date range check
@@ -260,50 +327,51 @@ export function calculateBilling({
           if (cDateIso && targetDateIso >= cDateIso) continue;
 
           // Holiday & Discontinue checks
-          if (isHoliday(cd.publica_id, targetDateIso)) continue;
-          if (isDiscontinued(custId, cd.publica_id, targetDateIso)) continue;
+          if (isHoliday(pubId, targetDateIso)) continue;
+          if (isDiscontinued(custId, pubId, targetDateIso)) continue;
 
           // Schedule day check
-          if (!isScheduleMatch(cd.from_day || cd.From_Day, legacyDayOfWeek)) continue;
+          const deliveryDays = cd.delivery_days || cd.from_day || cd.From_Day;
+          if (!isScheduleMatch(deliveryDays, legacyDayOfWeek)) continue;
 
           // Resolve rate on this date
-          const rate = getEffectiveRate(cd.publica_id, legacyDayOfWeek, targetDateIso);
+          const rate = getEffectiveRate(pubId, legacyDayOfWeek, targetDateIso);
           if (rate > 0) {
             rateDaysMap.set(rate, (rateDaysMap.get(rate) || 0) + 1);
           }
         }
       }
-      // CASE B: Weekly Magazines (typeP == 'Magzine' && MagzineDay >= 1)
-      else if (magzineDay >= 1) {
+      // CASE B: Weekly Magazines (MagzineDay matching DayOfWeek)
+      else if (isWeekly && magzineDay >= 1) {
         for (let day = 1; day <= daysInMonth; day++) {
-          const targetDateIso = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          const dObj = new Date(year, monthIdx, day);
+          const targetDateIso = `${calendarYear}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const dObj = new Date(calendarYear, monthIdx, day);
           const legacyDayOfWeek = dObj.getDay() + 1;
 
           if (legacyDayOfWeek !== magzineDay) continue;
           if (targetDateIso < sDateIso) continue;
           if (cDateIso && targetDateIso >= cDateIso) continue;
-          if (isHoliday(cd.publica_id, targetDateIso)) continue;
-          if (isDiscontinued(custId, cd.publica_id, targetDateIso)) continue;
+          if (isHoliday(pubId, targetDateIso)) continue;
+          if (isDiscontinued(custId, pubId, targetDateIso)) continue;
 
-          const rate = getEffectiveRate(cd.publica_id, legacyDayOfWeek, targetDateIso);
+          const rate = getEffectiveRate(pubId, legacyDayOfWeek, targetDateIso);
           if (rate > 0) {
             rateDaysMap.set(rate, (rateDaysMap.get(rate) || 0) + 1);
           }
         }
       }
-      // CASE C: Fortnightly Magazines (Publica_id in 13,11,17,23,24,18,216)
-      else if (FORTNIGHTLY_PUBS.has(cd.publica_id)) {
+      // CASE C: Fortnightly & Bi-Monthly (1st and 16th dates)
+      else if (isFortnightly) {
         const periodDates = [
-          `${year}-${String(monthNum).padStart(2, '0')}-01`,
-          `${year}-${String(monthNum).padStart(2, '0')}-16`
+          `${calendarYear}-${String(monthNum).padStart(2, '0')}-01`,
+          `${calendarYear}-${String(monthNum).padStart(2, '0')}-16`
         ];
         for (const pDateIso of periodDates) {
           if (pDateIso < sDateIso) continue;
           if (cDateIso && pDateIso >= cDateIso) continue;
-          if (isDiscontinued(custId, cd.publica_id, pDateIso)) continue;
+          if (isDiscontinued(custId, pubId, pDateIso)) continue;
 
-          const rate = getEffectiveRate(cd.publica_id, 1, pDateIso);
+          const rate = getEffectiveRate(pubId, 1, pDateIso);
           if (rate > 0) {
             rateDaysMap.set(rate, (rateDaysMap.get(rate) || 0) + 1);
           }
@@ -311,13 +379,12 @@ export function calculateBilling({
       }
       // CASE D: Monthly + Quarterly Magazines (1st of month)
       else {
-        const pDateIso = `${year}-${String(monthNum).padStart(2, '0')}-01`;
-        // Quarterly rule for publication #75 (only Jan, Apr, Jul, Oct)
-        const isQuarterlyAllowed = cd.publica_id !== 75 || [1, 4, 7, 10].includes(monthNum);
+        const pDateIso = `${calendarYear}-${String(monthNum).padStart(2, '0')}-01`;
+        const isQuarterlyAllowed = pubId !== 75 || [1, 4, 7, 10].includes(monthNum);
 
         if (isQuarterlyAllowed && sDateIso <= monthEndIso && (!cDateIso || cDateIso > monthStartIso)) {
-          if (!isDiscontinued(custId, cd.publica_id, pDateIso)) {
-            const rate = getEffectiveRate(cd.publica_id, 1, pDateIso);
+          if (!isDiscontinued(custId, pubId, pDateIso)) {
+            const rate = getEffectiveRate(pubId, 1, pDateIso);
             if (rate > 0) {
               rateDaysMap.set(rate, (rateDaysMap.get(rate) || 0) + 1);
             }
@@ -326,30 +393,46 @@ export function calculateBilling({
       }
 
       // Add line items for each rate
+      let snoCounter = 1;
       Array.from(rateDaysMap.entries()).forEach(([rate, daysOrCopies]) => {
         const lineAmt = Math.round(rate * qty * daysOrCopies * 100) / 100;
         customerPaperTotal += lineAmt;
         custBreakup.push({
           customer_id: custId,
-          name_eng: cust.name_eng || `Customer #${custId}`,
-          customer_hindi: cust.name_hindi || '',
+          name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
+          customer_hindi: cust.name_hindi || cust.Name_hindi || '',
           sort_order: 1,
           item: pubName,
           rate: rate,
-          qty: qty,
+          qty: qty * daysOrCopies,
           days_or_copies: daysOrCopies,
           amount: lineAmt
         });
+
+        // DB Schema for billYYYYYYYY
+        dbBillItems.push({
+          Bill_id: nextBillId,
+          Customer_id: custId,
+          Publica_id: pubId,
+          Region_id: custRegionId,
+          Qty: daysOrCopies * qty,
+          Rate: rate,
+          D_Charges: null,
+          TotalAmt: lineAmt,
+          Month: standardMonthName,
+          year: String(startYear),
+          sno: snoCounter++
+        });
       });
 
-      // Delivery Charges (Sort_order 2)
-      const dely = cd.dely || cd.Dely || 0;
-      if (dely !== 0 && (!cDateIso || cDateIso > monthStartIso)) {
+      // Delivery Charges per Subscription
+      const dely = Number(cd.delivery_charge !== undefined ? cd.delivery_charge : (cd.dely || cd.Dely || 0));
+      if (dely > 0 && (!cDateIso || cDateIso > monthStartIso)) {
         customerDeliveryTotal += dely;
         custBreakup.push({
           customer_id: custId,
-          name_eng: cust.name_eng || `Customer #${custId}`,
-          customer_hindi: cust.name_hindi || '',
+          name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
+          customer_hindi: cust.name_hindi || cust.Name_hindi || '',
           sort_order: 2,
           item: `${pubName} - Delivery`,
           rate: dely,
@@ -360,10 +443,27 @@ export function calculateBilling({
       }
     }
 
+    // Customer Discount
+    const disPercent = Number(cust.discount || cust.dis || cust.Dis || 0);
+    if (disPercent > 0 && customerPaperTotal > 0) {
+      customerDiscountTotal = Math.round((customerPaperTotal * (disPercent / 100)) * 100) / 100;
+      custBreakup.push({
+        customer_id: custId,
+        name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
+        customer_hindi: cust.name_hindi || cust.Name_hindi || '',
+        sort_order: 3,
+        item: `Discount (${disPercent}%)`,
+        rate: null,
+        qty: null,
+        days_or_copies: null,
+        amount: -customerDiscountTotal
+      });
+    }
+
     // =========================================================================
     // 2. PREVIOUS DUE (Sort_order 4)
     // =========================================================================
-    const initialDue = cust.dueamount || 0;
+    const initialDue = Number(cust.dueamount || cust.Dueamount || 0);
     const billedHistory = duesByCust.get(custId) || 0;
     const paidHistory = receiptsByCust.get(custId) || 0;
     const previousDue = Math.round((initialDue + billedHistory - paidHistory) * 100) / 100;
@@ -371,10 +471,10 @@ export function calculateBilling({
     if (previousDue !== 0) {
       custBreakup.push({
         customer_id: custId,
-        name_eng: cust.name_eng || `Customer #${custId}`,
-        customer_hindi: cust.name_hindi || '',
+        name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
+        customer_hindi: cust.name_hindi || cust.Name_hindi || '',
         sort_order: 4,
-        item: 'Previous Due (Opening + Apr-Jul Bills)',
+        item: 'Previous Due (Opening + Prior Ledger)',
         rate: null,
         qty: null,
         days_or_copies: null,
@@ -385,7 +485,7 @@ export function calculateBilling({
     // =========================================================================
     // 3. GRAND TOTAL (Sort_order 9)
     // =========================================================================
-    const totalPayable = Math.round((previousDue + customerPaperTotal + customerDeliveryTotal) * 100) / 100;
+    const totalPayable = Math.round((previousDue + customerPaperTotal + customerDeliveryTotal - customerDiscountTotal) * 100) / 100;
 
     // Only generate bill if customer has active papers or outstanding dues
     if (totalPayable === 0 && customerPaperTotal === 0 && custBreakup.length === 0) {
@@ -394,8 +494,8 @@ export function calculateBilling({
 
     custBreakup.push({
       customer_id: custId,
-      name_eng: cust.name_eng || `Customer #${custId}`,
-      customer_hindi: cust.name_hindi || '',
+      name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
+      customer_hindi: cust.name_hindi || cust.Name_hindi || '',
       sort_order: 9,
       item: 'GRAND TOTAL',
       rate: null,
@@ -404,34 +504,50 @@ export function calculateBilling({
       amount: totalPayable
     });
 
-    const reg = regMap.get(cust.region_id);
+    const reg = regMap.get(custRegionId);
+
+    const dbBillnoItem = {
+      Bill_id: nextBillId,
+      Customer_id: custId,
+      Region_id: custRegionId,
+      Due_Amt: previousDue !== 0 ? previousDue : null,
+      Del_Amt: customerDeliveryTotal > 0 ? customerDeliveryTotal : null,
+      Dis_Amt: customerDiscountTotal > 0 ? customerDiscountTotal : null,
+      Month: standardMonthName,
+      year: String(startYear),
+      Balance: totalPayable
+    };
 
     const billObj: CustomerMonthlyBill = {
-      bill_no: 1000 + generatedBills.length + 1,
+      bill_no: nextBillId,
       customer_id: custId,
-      name_eng: cust.name_eng || `Customer #${custId}`,
-      customer_hindi: cust.name_hindi || '',
-      region_id: cust.region_id,
-      region_name: reg ? reg.name : `Region #${cust.region_id}`,
-      month: monthName,
-      year: year,
+      name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
+      customer_hindi: cust.name_hindi || cust.Name_hindi || '',
+      region_id: custRegionId,
+      region_name: reg ? (reg.name || reg.region_name || reg.Region_name) : `Region #${custRegionId}`,
+      month: standardMonthName,
+      year: startYear,
       previous_due: previousDue,
       paper_amount: customerPaperTotal,
       delivery_amount: customerDeliveryTotal,
-      discount_amount: cust.discount || 0,
+      discount_amount: customerDiscountTotal,
       retail_sale_amount: 0,
       total_payable: totalPayable,
-      breakup: custBreakup
+      breakup: custBreakup,
+      db_bill_items: dbBillItems,
+      db_billno_item: dbBillnoItem
     };
 
     generatedBills.push(billObj);
     allBreakupLines.push(...custBreakup);
     grandTotalBilling += totalPayable;
+    nextBillId++;
   }
 
   return {
-    month: monthName,
-    year: year,
+    month: standardMonthName,
+    year: startYear,
+    calendar_year: calendarYear,
     region_id: regionId,
     total_bills: generatedBills.length,
     grand_total: Math.round(grandTotalBilling * 100) / 100,

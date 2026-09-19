@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Printer, RefreshCw, X, Search, FileText, Eye, CheckCircle2, ChevronLeft, ChevronRight, Play } from 'lucide-react';
+import { Printer, RefreshCw, X, Search, FileText, Eye, CheckCircle2, ChevronLeft, ChevronRight, Play, Database, Check } from 'lucide-react';
 import { Customer, Publication, Rate, Holiday, Discontinue } from '@/lib/types';
 import { BillingLineItem } from '@/lib/billingEngine';
 
@@ -15,14 +15,21 @@ interface BillingFormProps {
 }
 
 const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
+  'April', 'May', 'June', 'July', 'August', 'September',
+  'October', 'November', 'December', 'January', 'February', 'March'
+];
+
+const FINANCIAL_YEARS = [
+  { label: '2026-2027', value: '20262027', year: 2026 },
+  { label: '2025-2026', value: '20252026', year: 2025 },
+  { label: '2024-2025', value: '20242025', year: 2024 }
 ];
 
 export default function BillingForm({ onClose }: BillingFormProps) {
   const [month, setMonth] = useState('August');
-  const [year, setYear] = useState(2026);
+  const [selectedYear, setSelectedYear] = useState('20262027');
   const [selectedRegion, setSelectedRegion] = useState('all');
+  const [commitToDatabase, setCommitToDatabase] = useState(true);
   const [regions, setRegions] = useState<any[]>([]);
   
   // Processing States
@@ -30,7 +37,7 @@ export default function BillingForm({ onClose }: BillingFormProps) {
   const [progress, setProgress] = useState(0);
   const [processStatus, setProcessStatus] = useState('');
   const [processDone, setProcessDone] = useState(false);
-  const [summaryData, setSummaryData] = useState<{ totalBills: number; grandTotal: number } | null>(null);
+  const [summaryData, setSummaryData] = useState<{ totalBills: number; grandTotal: number; savedToSupabase?: boolean } | null>(null);
 
   // Grid / Viewer States
   const [showGrid, setShowGrid] = useState(false);
@@ -55,29 +62,43 @@ export default function BillingForm({ onClose }: BillingFormProps) {
       .catch(() => {});
   }, []);
 
-  // Execute Bill Processing (Matching screenshot_14.jpg)
+  // Execute Bill Processing (Matching VB6 BillProcessing screenshot_14.jpg)
   const handleProcess = async () => {
     setIsProcessing(true);
     setProcessDone(false);
     setProgress(15);
-    setProcessStatus('Initializing date-effective billing engine from customer subscriptions...');
+    setProcessStatus(`Calculating date-effective rates, holidays & subscriptions for ${month}...`);
 
     try {
-      setTimeout(() => setProgress(45), 200);
-      setTimeout(() => setProgress(75), 400);
+      setTimeout(() => setProgress(40), 200);
+      setTimeout(() => setProgress(75), 500);
 
-      const query = `/api/billing?month=${month}&year=${year}&region_id=${selectedRegion}&page=1&limit=50`;
-      const res = await fetch(query);
+      // 1. Process via API POST
+      const res = await fetch('/api/billing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          month,
+          year: selectedYear,
+          region_id: selectedRegion,
+          commitToDb: commitToDatabase
+        })
+      });
       const data = await res.json();
 
+      // 2. Load first page of bills for preview
+      const gridRes = await fetch(`/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}&page=1&limit=50`);
+      const gridData = await gridRes.json();
+
       setProgress(100);
-      setBills(data.bills || []);
-      setTotalCustomers(data.total_customers || 0);
+      setBills(gridData.bills || []);
+      setTotalCustomers(gridData.total_customers || data.total_customers || 0);
       setSummaryData({
-        totalBills: data.total_customers || 0,
-        grandTotal: data.grand_total || 0
+        totalBills: data.total_bills_generated || gridData.total_customers || 0,
+        grandTotal: data.grand_total || gridData.grand_total || 0,
+        savedToSupabase: data.saved_to_supabase
       });
-      setProcessStatus(`Bill Processing Complete! ${data.total_customers || 0} customer bills calculated.`);
+      setProcessStatus(`Bill Processing Complete! ${data.total_bills_generated || gridData.total_customers} bills calculated successfully.`);
       setProcessDone(true);
     } catch (err: any) {
       setProcessStatus(`Error processing bills: ${err.message}`);
@@ -89,7 +110,7 @@ export default function BillingForm({ onClose }: BillingFormProps) {
   // Fetch paginated / searched bills when grid is open
   const fetchBillsPage = async (p: number, s: string) => {
     try {
-      const query = `/api/billing?month=${month}&year=${year}&region_id=${selectedRegion}&search=${encodeURIComponent(s)}&page=${p}&limit=50`;
+      const query = `/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}&search=${encodeURIComponent(s)}&page=${p}&limit=50`;
       const res = await fetch(query);
       const data = await res.json();
       setBills(data.bills || []);
@@ -104,7 +125,7 @@ export default function BillingForm({ onClose }: BillingFormProps) {
     setBreakupCustomer(bill);
     setIsLoadingBreakup(true);
     try {
-      const res = await fetch(`/api/billing?customer_id=${bill.customer_id}&month=${month}&year=${year}`);
+      const res = await fetch(`/api/billing?customer_id=${bill.customer_id}&month=${month}&year=${selectedYear}`);
       const data = await res.json();
       setBreakupLines(data.breakup || []);
     } catch (err) {
@@ -117,7 +138,7 @@ export default function BillingForm({ onClose }: BillingFormProps) {
   const totalPages = Math.ceil(totalCustomers / 50) || 1;
 
   return (
-    <div className={`relative ${showGrid ? 'w-[880px] h-[600px]' : 'w-[560px] h-auto'} bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden transition-all duration-200`}>
+    <div className={`relative ${showGrid ? 'w-[920px] h-[640px]' : 'w-[600px] h-auto'} bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden transition-all duration-200`}>
       
       {/* Title Bar matching screenshot_14.jpg */}
       <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs">
@@ -128,7 +149,7 @@ export default function BillingForm({ onClose }: BillingFormProps) {
             className="w-4 h-4" 
             onError={(e) => (e.currentTarget.style.display = 'none')} 
           />
-          <span>Bill Processing</span>
+          <span>Bill Processing & Monthly Generation (बिल जेनरेशन)</span>
         </div>
         <div className="flex items-center gap-1">
           <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">_</button>
@@ -138,42 +159,84 @@ export default function BillingForm({ onClose }: BillingFormProps) {
       </div>
 
       {/* Main Authentic Bill Processing Bar (screenshot_14.jpg) */}
-      <div className="p-4 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white m-3 space-y-4">
+      <div className="p-4 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white m-3 space-y-3">
         
-        <div className="flex items-center justify-between gap-3 text-xs">
+        {/* Row 1: Region, Month, Year & Process Button */}
+        <div className="grid grid-cols-12 gap-2 items-center text-xs">
           
           {/* Region Dropdown */}
-          <div className="flex items-center gap-2 flex-1">
-            <label className="font-bold text-[#000080] text-sm shrink-0">Region</label>
+          <div className="col-span-5 flex items-center gap-1.5">
+            <label className="font-bold text-[#000080] text-xs shrink-0">Region:</label>
             <select 
               value={selectedRegion}
               onChange={(e) => { setSelectedRegion(e.target.value); setProcessDone(false); }}
-              className="flex-1 px-2 py-1 border border-[#808080] bg-white font-bold text-slate-900 outline-none"
+              className="w-full px-1.5 py-1 border border-[#808080] bg-white font-bold text-slate-900 outline-none text-xs"
             >
               <option value="all">All Regions (सभी क्षेत्र)</option>
               {regions.map(r => (
-                <option key={r.region_id} value={r.region_id}>{r.name || `Region ${r.region_id}`}</option>
+                <option key={r.region_id || r.id} value={r.region_id || r.id}>
+                  {r.name || r.region_name || `Region ${r.region_id}`}
+                </option>
               ))}
             </select>
           </div>
 
-          {/* Active Month Label */}
-          <div className="font-bold text-[#000080] text-sm shrink-0 px-2">
-            Month : - <span className="text-[#8B0000]">{month}</span>
+          {/* Month Dropdown */}
+          <div className="col-span-3 flex items-center gap-1.5">
+            <label className="font-bold text-[#000080] text-xs shrink-0">Month:</label>
+            <select 
+              value={month}
+              onChange={(e) => { setMonth(e.target.value); setProcessDone(false); }}
+              className="w-full px-1.5 py-1 border border-[#808080] bg-white font-bold text-[#8B0000] outline-none text-xs"
+            >
+              {MONTHS.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Year Dropdown */}
+          <div className="col-span-2 flex items-center gap-1">
+            <select 
+              value={selectedYear}
+              onChange={(e) => { setSelectedYear(e.target.value); setProcessDone(false); }}
+              className="w-full px-1 py-1 border border-[#808080] bg-white font-bold text-slate-900 outline-none text-xs"
+            >
+              {FINANCIAL_YEARS.map(y => (
+                <option key={y.value} value={y.value}>{y.label}</option>
+              ))}
+            </select>
           </div>
 
           {/* Process Button matching screenshot_14.jpg */}
-          <button 
-            onClick={handleProcess}
-            disabled={isProcessing}
-            className="px-4 py-1.5 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-6 cursor-pointer flex items-center gap-1.5 text-xs font-bold text-black shrink-0 disabled:opacity-50"
-          >
-            <span className="transform skew-x-6 flex items-center gap-1">
-              <img src="/legacy_images/paper.ico" alt="ico" className="w-3.5 h-3.5" onError={(e) => (e.currentTarget.style.display = 'none')} />
-              <u>P</u>rocess
-            </span>
-          </button>
+          <div className="col-span-2 flex justify-end">
+            <button 
+              onClick={handleProcess}
+              disabled={isProcessing}
+              className="w-full py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-6 cursor-pointer flex items-center justify-center gap-1 text-xs font-bold text-black disabled:opacity-50"
+            >
+              <span className="transform skew-x-6 flex items-center gap-1">
+                <img src="/legacy_images/paper.ico" alt="ico" className="w-3.5 h-3.5" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                <u>P</u>rocess
+              </span>
+            </button>
+          </div>
 
+        </div>
+
+        {/* Database Sync Option */}
+        <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px] text-slate-600">
+          <label className="flex items-center gap-1.5 cursor-pointer font-bold select-none text-slate-800">
+            <input 
+              type="checkbox" 
+              checked={commitToDatabase} 
+              onChange={(e) => setCommitToDatabase(e.target.checked)}
+              className="cursor-pointer"
+            />
+            <Database className="w-3.5 h-3.5 text-blue-700" />
+            <span>Save & Commit generated bills to live Supabase Database (bill / billno tables)</span>
+          </label>
+          <span className="text-slate-500 font-mono text-[10px]">VB6 2008 Precision Engine</span>
         </div>
 
         {/* Progress Bar & Status */}
@@ -198,7 +261,7 @@ export default function BillingForm({ onClose }: BillingFormProps) {
                 <span>{processStatus}</span>
               </div>
               <span className="text-xs font-black font-mono text-blue-900">
-                Total Bills: <strong>{totalCustomers}</strong>
+                Grand Total: <strong className="text-sm">₹{summaryData?.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
               </span>
             </div>
 
@@ -216,7 +279,7 @@ export default function BillingForm({ onClose }: BillingFormProps) {
                 className="px-3 py-1 bg-[#0A246A] hover:bg-[#000080] text-white font-bold text-xs cursor-pointer flex items-center gap-1"
               >
                 <Printer className="w-3.5 h-3.5" />
-                <span>Print All Invoices / Slips</span>
+                <span>Print Invoices / Slips</span>
               </button>
             </div>
           </div>
@@ -231,20 +294,20 @@ export default function BillingForm({ onClose }: BillingFormProps) {
           {/* Search Toolbar */}
           <div className="flex items-center justify-between pb-1 text-xs">
             <span className="font-bold text-slate-700 text-[11px]">
-              Showing {bills.length} bills on page {page} of {totalPages}
+              Showing {bills.length} bills on page {page} of {totalPages} (Total Customers: {totalCustomers})
             </span>
 
             <div className="flex items-center gap-1 bg-white px-2 py-0.5 border border-slate-400">
               <Search className="w-3.5 h-3.5 text-slate-500" />
               <input 
                 type="text"
-                placeholder="Search Customer / ID / Phone..."
+                placeholder="Search Customer / Hindi / Phone..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   fetchBillsPage(1, e.target.value);
                 }}
-                className="outline-none text-xs w-48 font-bold"
+                className="outline-none text-xs w-56 font-bold"
               />
             </div>
           </div>
@@ -255,10 +318,12 @@ export default function BillingForm({ onClose }: BillingFormProps) {
               <thead className="sticky top-0 bg-[#ECE9D8] border-b border-[#808080]">
                 <tr>
                   <th className="p-1.5 border text-center">Bill No</th>
-                  <th className="p-1.5 border text-left">Customer Name</th>
+                  <th className="p-1.5 border text-left">Customer Name (Hindi/Eng)</th>
+                  <th className="p-1.5 border text-left">Region</th>
                   <th className="p-1.5 border text-right">Previous Due</th>
                   <th className="p-1.5 border text-right">Current Papers</th>
                   <th className="p-1.5 border text-right">Delivery</th>
+                  <th className="p-1.5 border text-right">Discount</th>
                   <th className="p-1.5 border text-right">Total Payable</th>
                   <th className="p-1.5 border text-center">Actions</th>
                 </tr>
@@ -267,10 +332,17 @@ export default function BillingForm({ onClose }: BillingFormProps) {
                 {bills.map((b, idx) => (
                   <tr key={idx} className="border-b hover:bg-blue-50 text-[11px]">
                     <td className="p-1 border-r font-mono text-center font-bold">#{b.bill_no}</td>
-                    <td className="p-1 border-r font-bold text-blue-900">{b.name_eng}</td>
+                    <td className="p-1 border-r font-bold text-blue-900">
+                      <div>{b.name_eng}</div>
+                      {b.customer_hindi && <div className="text-[10px] text-slate-500 font-normal">{b.customer_hindi}</div>}
+                    </td>
+                    <td className="p-1 border-r text-slate-700 text-[10px]">{b.region_name}</td>
                     <td className="p-1 border-r text-right font-mono text-slate-700">₹{b.previous_due?.toFixed(2)}</td>
                     <td className="p-1 border-r text-right font-mono font-bold text-slate-800">₹{b.paper_amount?.toFixed(2)}</td>
                     <td className="p-1 border-r text-right font-mono text-slate-600">₹{b.delivery_amount?.toFixed(2)}</td>
+                    <td className="p-1 border-r text-right font-mono text-rose-700">
+                      {b.discount_amount ? `-₹${b.discount_amount?.toFixed(2)}` : '₹0.00'}
+                    </td>
                     <td className="p-1 border-r text-right font-mono font-bold text-blue-900 bg-blue-50/50">
                       ₹{b.total_payable?.toFixed(2)}
                     </td>
@@ -356,13 +428,15 @@ export default function BillingForm({ onClose }: BillingFormProps) {
                   </thead>
                   <tbody>
                     {breakupLines.map((item, idx) => (
-                      <tr key={idx} className={`border-b text-[11px] ${item.sort_order === 9 ? 'bg-amber-100 font-bold text-blue-900 border-t-2 border-black' : item.sort_order === 4 ? 'bg-slate-50 italic text-slate-700' : 'hover:bg-blue-50'}`}>
+                      <tr key={idx} className={`border-b text-[11px] ${item.sort_order === 9 ? 'bg-amber-100 font-bold text-blue-900 border-t-2 border-black' : item.sort_order === 4 ? 'bg-slate-50 italic text-slate-700' : item.sort_order === 3 ? 'text-rose-700' : 'hover:bg-blue-50'}`}>
                         <td className="p-1 border-r text-center font-mono">{item.sort_order}</td>
                         <td className="p-1 border-r font-bold">{item.item}</td>
                         <td className="p-1 border-r text-right font-mono">{item.rate !== null ? `₹${item.rate.toFixed(2)}` : '-'}</td>
                         <td className="p-1 border-r text-center font-mono">{item.qty !== null ? item.qty : '-'}</td>
                         <td className="p-1 border-r text-center font-mono font-bold text-indigo-900">{item.days_or_copies !== null ? item.days_or_copies : '-'}</td>
-                        <td className="p-1 text-right font-mono font-bold">₹{item.amount.toFixed(2)}</td>
+                        <td className="p-1 text-right font-mono font-bold">
+                          {item.amount < 0 ? `-₹${Math.abs(item.amount).toFixed(2)}` : `₹${item.amount.toFixed(2)}`}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -403,6 +477,7 @@ export default function BillingForm({ onClose }: BillingFormProps) {
               </div>
               <div className="text-[11px]">
                 <strong>Name:</strong> {selectedBillForPrint.name_eng}
+                {selectedBillForPrint.customer_hindi && <span className="text-[10px] text-slate-600 block">{selectedBillForPrint.customer_hindi}</span>}
               </div>
 
               <div className="border-t border-b py-1.5 space-y-0.5 text-[11px]">
@@ -418,6 +493,12 @@ export default function BillingForm({ onClose }: BillingFormProps) {
                   <span>Delivery Charges:</span>
                   <span>₹{selectedBillForPrint.delivery_amount?.toFixed(2)}</span>
                 </div>
+                {selectedBillForPrint.discount_amount > 0 && (
+                  <div className="flex justify-between text-rose-700">
+                    <span>Discount:</span>
+                    <span>-₹{selectedBillForPrint.discount_amount?.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-black text-sm border-t pt-1">
                   <span>Total Payable (कुल देय):</span>
                   <span>₹{selectedBillForPrint.total_payable?.toFixed(2)}</span>
