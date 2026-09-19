@@ -213,8 +213,41 @@ export default function CustomerForm({
     setSubscriptions([...subscriptions, newSub]);
   };
 
-  const handleDeleteSubscriptionRow = (sno: number) => {
+  const handleDeleteSubscriptionRow = async (sno: number) => {
+    const targetSub = subscriptions.find(s => s.sno === sno);
+    if (targetSub && selectedCustId) {
+      try {
+        await fetch(`/api/subscriptions?customer_id=${selectedCustId}&sno=${sno}&publica_id=${targetSub.publica_id || ''}`, {
+          method: 'DELETE'
+        });
+      } catch (err) {
+        console.warn('Subscription delete warning:', err);
+      }
+    }
     setSubscriptions(subscriptions.filter(s => s.sno !== sno));
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!selectedCustId) {
+      setStatus('Please select or find a customer first to delete.');
+      setTimeout(() => setStatus(''), 3000);
+      return;
+    }
+    if (window.confirm(`Are you sure you want to delete Customer #${selectedCustId} (${nameEng})?`)) {
+      try {
+        const res = await fetch(`/api/customers?customer_id=${selectedCustId}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        setStatus(`Customer #${selectedCustId} deleted successfully.`);
+        handleCancel();
+      } catch (err: any) {
+        setStatus(`Error deleting customer: ${err.message}`);
+      }
+      setTimeout(() => setStatus(''), 3000);
+    }
   };
 
   const handleDiscontinueSubscriptionRow = async (sno: number) => {
@@ -717,15 +750,7 @@ export default function CustomerForm({
             ↪ <u>U</u>pdate
           </button>
           <button 
-            onClick={() => {
-              setSelectedCustId(0);
-              setNameEng('');
-              setNameHindi('');
-              setAdd1('');
-              setHindiAdd('');
-              setPhone('');
-              setSubscriptions([]);
-            }}
+            onClick={handleDeleteCustomer}
             className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
           >
             🗑 <u>D</u>elete

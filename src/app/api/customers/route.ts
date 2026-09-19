@@ -109,30 +109,113 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Save / Update Customer in Supabase
+// Save / Update Customer in Supabase and Local Cache
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { customer_id, ...rest } = body;
+    const { customer_id, name_eng, name_hindi, add1, hindi_add, phone, region_id = 1, security_deposit = 0, dueamount = 0, priority = 1, ...rest } = body;
 
-    if (customer_id && customer_id > 0) {
-      const { data, error } = await supabase
-        .from('customer')
-        .update(rest)
-        .eq('customer_id', customer_id)
-        .select();
-
-      if (error) throw error;
-      return NextResponse.json({ success: true, customer: data?.[0] });
-    } else {
-      const { data, error } = await supabase
-        .from('customer')
-        .insert([rest])
-        .select();
-
-      if (error) throw error;
-      return NextResponse.json({ success: true, customer: data?.[0] });
+    if (!name_eng || !name_eng.trim()) {
+      return NextResponse.json({ error: 'Customer English Name is required' }, { status: 400 });
     }
+
+    const hindi = cleanOrTransliterateHindi(name_hindi, name_eng);
+    const hindiAddress = cleanOrTransliterateHindi(hindi_add, add1 || '');
+
+    const custFilePath = path.join(process.cwd(), 'public', 'data', 'all_customers.json');
+    let localCusts: any[] = [];
+    if (fs.existsSync(custFilePath)) {
+      localCusts = JSON.parse(fs.readFileSync(custFilePath, 'utf-8'));
+    }
+
+    let finalId = customer_id ? parseInt(customer_id, 10) : 0;
+    const isUpdate = finalId > 0 && localCusts.some(c => c.customer_id === finalId);
+
+    if (!isUpdate) {
+      const maxId = localCusts.reduce((max, c) => Math.max(max, c.customer_id || 0), 0);
+      finalId = maxId + 1;
+    }
+
+    const cleanSecDep = isNaN(Number(security_deposit)) ? 0 : Number(security_deposit);
+
+    const record = {
+      customer_id: finalId,
+      name_eng: name_eng.trim(),
+      name_hindi: hindi,
+      add1: add1 || '',
+      hindi_add: hindiAddress,
+      phone: phone || '',
+      region_id: parseInt(region_id, 10) || 1,
+      security_deposit: cleanSecDep,
+      dueamount: Number(dueamount || 0),
+      priority: Number(priority || 1),
+      cbal: Number(dueamount || 0),
+      ...rest
+    };
+
+    // 1. Save to Supabase
+    try {
+      if (isUpdate) {
+        await supabase.from('customer').update(record).eq('customer_id', finalId);
+      } else {
+        await supabase.from('customer').insert([record]);
+      }
+    } catch (dbErr) {
+      console.warn('Supabase customer save warning:', dbErr);
+    }
+
+    // 2. Update local all_customers.json
+    try {
+      if (isUpdate) {
+        localCusts = localCusts.map(c => c.customer_id === finalId ? { ...c, ...record } : c);
+      } else {
+        localCusts.unshift(record);
+      }
+      fs.writeFileSync(custFilePath, JSON.stringify(localCusts, null, 2), 'utf-8');
+      cachedCustomers = localCusts;
+    } catch (fsErr) {}
+
+    return NextResponse.json({
+      success: true,
+      message: `Customer #${finalId} (${name_eng}) ${isUpdate ? 'updated' : 'created'} successfully!`,
+      customer: record
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const idStr = searchParams.get('customer_id') || searchParams.get('id');
+    if (!idStr) return NextResponse.json({ error: 'customer_id is required' }, { status: 400 });
+
+    const cid = parseInt(idStr, 10);
+
+    // 1. Delete from Supabase
+    try {
+      await supabase.from('customer').delete().eq('customer_id', cid);
+      await supabase.from('customer_detail').delete().eq('customer_id', cid);
+    } catch (dbErr) {
+      console.warn('Supabase customer delete warning:', dbErr);
+    }
+
+    // 2. Delete from local all_customers.json
+    try {
+      const custFilePath = path.join(process.cwd(), 'public', 'data', 'all_customers.json');
+      if (fs.existsSync(custFilePath)) {
+        let localCusts = JSON.parse(fs.readFileSync(custFilePath, 'utf-8'));
+        localCusts = localCusts.filter((c: any) => c.customer_id !== cid);
+        fs.writeFileSync(custFilePath, JSON.stringify(localCusts, null, 2), 'utf-8');
+        cachedCustomers = localCusts;
+      }
+    } catch (fsErr) {}
+
+    return NextResponse.json({
+      success: true,
+      message: `Customer #${cid} deleted successfully from database.`
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

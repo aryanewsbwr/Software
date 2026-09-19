@@ -19,9 +19,52 @@ export default function RegionForm({ onClose, regions = [] }: RegionFormProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [msg, setMsg] = useState('');
 
-  const handleSave = () => {
-    setMsg('Region details saved successfully!');
+  const handleSave = async () => {
+    if (!selectedRegion.region_name.trim()) {
+      setMsg('Error: Region Name cannot be empty');
+      setTimeout(() => setMsg(''), 3000);
+      return;
+    }
+    try {
+      const res = await fetch('/api/regions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(selectedRegion)
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      if (data.region?.region_id && !selectedRegion.region_id) {
+        setSelectedRegion(data.region);
+      }
+      setMsg('Region details saved successfully in Supabase!');
+    } catch (err: any) {
+      setMsg(`Error saving region: ${err.message}`);
+    }
     setTimeout(() => setMsg(''), 3000);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedRegion.region_id) {
+      setMsg('Select an existing region to delete');
+      setTimeout(() => setMsg(''), 3000);
+      return;
+    }
+    if (window.confirm(`Are you sure you want to delete Region "${selectedRegion.region_name}"?`)) {
+      try {
+        const res = await fetch(`/api/regions?id=${selectedRegion.region_id}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        setMsg(`Region "${selectedRegion.region_name}" deleted.`);
+        setSelectedRegion({ region_id: 0, region_name: '', hindi_name: '' });
+      } catch (err: any) {
+        setMsg(`Error deleting region: ${err.message}`);
+      }
+      setTimeout(() => setMsg(''), 3000);
+    }
   };
 
   const filtered = regions.filter(r => 
@@ -99,7 +142,7 @@ export default function RegionForm({ onClose, regions = [] }: RegionFormProps) {
           <button onClick={handleSave} className="vb-action-btn">
             <span>🔄 Update</span>
           </button>
-          <button onClick={() => setMsg('Region deleted.')} className="vb-action-btn">
+          <button onClick={handleDelete} className="vb-action-btn">
             <span>🗑️ Del</span>
           </button>
           <button onClick={() => setIsFindOpen(true)} className="vb-action-btn bg-yellow-50">

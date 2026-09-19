@@ -33,6 +33,7 @@ import {
 import { Customer, Publication, Hawker, Publisher, Region, Rate, RateChange, Holiday, Discontinue, PaymentReceipt, BillHeader, CustomerDetail } from '@/lib/types';
 import { getRateForDate, calculateCustomerMonthlyBill, getLegacyDayOfWeek } from '@/lib/calculations';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { getEffectiveWeekdayRates } from '@/lib/rateEngine';
 
 import PublisherForm from './forms/PublisherForm';
 import PublicationForm from './forms/PublicationForm';
@@ -203,11 +204,9 @@ export default function VB6DesktopLayout() {
   // Update rates when publication changes
   useEffect(() => {
     if (!selectedPub) return;
-    const pubRates = rates.filter(r => r.publica_id === selectedPub.publica_id);
-    const map: Record<number, number> = { 1: 5.0, 2: 5.0, 3: 5.0, 4: 5.0, 5: 5.0, 6: 5.0, 7: 5.0 };
-    pubRates.forEach(r => { map[r.dayofweek] = r.rate; });
-    setEditingRates(map);
-  }, [selectedPub, rates]);
+    const effective = getEffectiveWeekdayRates(selectedPub.publica_id, new Date().toISOString().split('T')[0], rates, ratechanges);
+    setEditingRates(effective);
+  }, [selectedPub, rates, ratechanges]);
 
   // Keyboard Shortcuts (F1 for Rates, Ctrl+C for Customer, Ctrl+D for Discontinue, Ctrl+R for Receipt)
   useEffect(() => {
@@ -695,6 +694,7 @@ export default function VB6DesktopLayout() {
             publications={publications}
             publishers={publishers}
             rates={rates}
+            ratechanges={ratechanges}
           />
         )}
 

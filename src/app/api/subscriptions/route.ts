@@ -159,3 +159,49 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const customerIdStr = searchParams.get('customer_id');
+    const snoStr = searchParams.get('sno');
+    const publicaIdStr = searchParams.get('publica_id');
+
+    if (!customerIdStr) {
+      return NextResponse.json({ error: 'customer_id is required' }, { status: 400 });
+    }
+
+    const cid = parseInt(customerIdStr, 10);
+    const sno = snoStr ? parseInt(snoStr, 10) : undefined;
+    const pubId = publicaIdStr ? parseInt(publicaIdStr, 10) : undefined;
+
+    try {
+      let query = supabase.from('customer_detail').delete().eq('customer_id', cid);
+      if (pubId) query = query.eq('publication_id', pubId);
+      await query;
+    } catch (dbErr) {
+      console.warn('Supabase sub delete warning:', dbErr);
+    }
+
+    try {
+      loadLocalData();
+      if (cachedSubs) {
+        cachedSubs = cachedSubs.filter((s: any) => {
+          const sCust = s.customer_id || s.Customer_id;
+          const sPub = s.publica_id || s.publication_id || s.Publica_id;
+          const sSno = s.sno || s.SNo;
+          if (sCust !== cid) return true;
+          if (pubId && sPub === pubId) return false;
+          if (sno && sSno === sno) return false;
+          return false;
+        });
+        const f = path.join(process.cwd(), 'public', 'data', 'all_subscriptions.json');
+        fs.writeFileSync(f, JSON.stringify(cachedSubs, null, 2), 'utf-8');
+      }
+    } catch (fErr) {}
+
+    return NextResponse.json({ success: true, message: 'Subscription removed' });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

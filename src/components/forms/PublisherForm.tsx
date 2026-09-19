@@ -10,7 +10,7 @@ interface PublisherFormProps {
   onSave?: (pub: Publisher) => void;
 }
 
-export default function PublisherForm({ onClose, publishers = [] }: PublisherFormProps) {
+export default function PublisherForm({ onClose, publishers = [], onSave }: PublisherFormProps) {
   const [selectedPub, setSelectedPub] = useState<Publisher>({
     publish_id: 0,
     name: '',
@@ -31,9 +31,67 @@ export default function PublisherForm({ onClose, publishers = [] }: PublisherFor
   const [searchTerm, setSearchTerm] = useState('');
   const [msg, setMsg] = useState('');
 
-  const handleSave = () => {
-    setMsg('Publisher details saved successfully!');
+  const handleSave = async () => {
+    if (!selectedPub.name.trim()) {
+      setMsg('Error: Publisher Name cannot be empty');
+      setTimeout(() => setMsg(''), 3000);
+      return;
+    }
+    try {
+      const res = await fetch('/api/publishers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(selectedPub)
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      if (data.publisher?.publish_id && !selectedPub.publish_id) {
+        setSelectedPub(data.publisher);
+      }
+      if (onSave) onSave(data.publisher || selectedPub);
+      setMsg('Publisher details saved successfully in Supabase!');
+    } catch (err: any) {
+      setMsg(`Error saving publisher: ${err.message}`);
+    }
     setTimeout(() => setMsg(''), 3000);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedPub.publish_id) {
+      setMsg('Select an existing publisher to delete');
+      setTimeout(() => setMsg(''), 3000);
+      return;
+    }
+    if (window.confirm(`Are you sure you want to delete Publisher "${selectedPub.name}"?`)) {
+      try {
+        const res = await fetch(`/api/publishers?id=${selectedPub.publish_id}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        setMsg(`Publisher "${selectedPub.name}" deleted.`);
+        setSelectedPub({
+          publish_id: 0,
+          name: '',
+          address: '',
+          city: '',
+          state: '',
+          pincode: '',
+          phone: '',
+          mobile: '',
+          fax: '',
+          email: '',
+          website: '',
+          category: 'Newspaper',
+          type: 'Publisher'
+        });
+      } catch (err: any) {
+        setMsg(`Error deleting publisher: ${err.message}`);
+      }
+      setTimeout(() => setMsg(''), 3000);
+    }
   };
 
   const filtered = publishers.filter(p => 
@@ -189,7 +247,7 @@ export default function PublisherForm({ onClose, publishers = [] }: PublisherFor
           <button onClick={handleSave} className="vb-action-btn">
             <span>🔄 Update</span>
           </button>
-          <button onClick={() => setMsg('Publisher deleted.')} className="vb-action-btn">
+          <button onClick={handleDelete} className="vb-action-btn">
             <span>🗑️ Del</span>
           </button>
           <button onClick={() => setIsFindOpen(true)} className="vb-action-btn bg-yellow-50">

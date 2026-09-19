@@ -1,15 +1,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Publication, Rate, Publisher } from '@/lib/types';
+import { Publication, Rate, RateChange, Publisher } from '@/lib/types';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { getEffectiveWeekdayRates } from '@/lib/rateEngine';
 
 interface PublicationFormProps {
   onClose: () => void;
   publications: Publication[];
   publishers?: Publisher[];
   rates?: Rate[];
+  ratechanges?: RateChange[];
   onSave?: (pub: Publication) => void;
+  onDelete?: (pubId: number) => void;
 }
 
 const WEEKDAYS = [
@@ -27,7 +30,9 @@ export default function PublicationForm({
   publications = [], 
   publishers = [],
   rates = [],
-  onSave
+  ratechanges = [],
+  onSave,
+  onDelete
 }: PublicationFormProps) {
   const [selectedPub, setSelectedPub] = useState<Publication>({
     publica_id: 0,
@@ -42,7 +47,7 @@ export default function PublicationForm({
   });
 
   const [weekdayRates, setWeekdayRates] = useState<Record<number, number>>({
-    1: 3.4, 2: 2.0, 3: 2.0, 4: 2.0, 5: 2.0, 6: 2.0, 7: 2.0
+    1: 5.0, 2: 5.0, 3: 5.0, 4: 5.0, 5: 5.0, 6: 5.0, 7: 5.0
   });
 
   const [publishingDay, setPublishingDay] = useState('Sunday');
@@ -71,13 +76,9 @@ export default function PublicationForm({
     });
     setDelChargesChecked(!!p.chr_del);
 
-    // Load weekday rates
-    const pubRates = rates.filter(r => r.publica_id === p.publica_id);
-    const map: Record<number, number> = { 1: 3.4, 2: 2.0, 3: 2.0, 4: 2.0, 5: 2.0, 6: 2.0, 7: 2.0 };
-    if (pubRates.length > 0) {
-      pubRates.forEach(r => { map[r.dayofweek] = r.rate; });
-    }
-    setWeekdayRates(map);
+    // Load effective 7-day weekday rates with rate changes
+    const effectiveRates = getEffectiveWeekdayRates(p.publica_id, new Date().toISOString().split('T')[0], rates, ratechanges);
+    setWeekdayRates(effectiveRates);
   };
 
   // Auto-transliterate Hindi when English name is typed
@@ -113,7 +114,7 @@ export default function PublicationForm({
   }, [weekdayRates]);
 
   const copySundayRate = () => {
-    const sun = weekdayRates[1] || 3.4;
+    const sun = weekdayRates[1] || 5.0;
     const updated: Record<number, number> = {};
     WEEKDAYS.forEach(d => { updated[d.id] = sun; });
     setWeekdayRates(updated);
@@ -121,20 +122,65 @@ export default function PublicationForm({
     setTimeout(() => setMsg(''), 3000);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedPub.public_name.trim()) {
       setMsg('Error: Publication Name cannot be empty');
       setTimeout(() => setMsg(''), 3000);
       return;
     }
-    if (onSave) {
-      onSave({
-        ...selectedPub,
-        chr_del: delChargesChecked ? 1 : 0
+    const pubToSave = {
+      ...selectedPub,
+      chr_del: delChargesChecked ? 1 : 0,
+      rates: weekdayRates
+    };
+
+    try {
+      const res = await fetch('/api/publications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pubToSave)
       });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      if (data.publication?.publica_id && !selectedPub.publica_id) {
+        setSelectedPub(prev => ({ ...prev, publica_id: data.publication.publica_id }));
+      }
+      if (onSave) {
+        onSave(data.publication || pubToSave);
+      }
+      setMsg(`Publication "${selectedPub.public_name}" and 7-day weekday rates saved successfully!`);
+    } catch (err: any) {
+      setMsg(`Error saving publication: ${err.message}`);
     }
-    setMsg(`Publication "${selectedPub.public_name}" and 7-day weekday rates saved successfully!`);
     setTimeout(() => setMsg(''), 3000);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedPub.publica_id) {
+      setMsg('Error: Select an existing publication first to delete');
+      setTimeout(() => setMsg(''), 3000);
+      return;
+    }
+    if (window.confirm(`Are you sure you want to delete publication "${selectedPub.public_name}"?`)) {
+      try {
+        const res = await fetch(`/api/publications?id=${selectedPub.publica_id}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        if (onDelete) onDelete(selectedPub.publica_id);
+        setMsg(`Publication "${selectedPub.public_name}" deleted.`);
+        if (publications.length > 1) {
+          const remaining = publications.filter(p => p.publica_id !== selectedPub.publica_id);
+          loadPublication(remaining[0]);
+        }
+      } catch (err: any) {
+        setMsg(`Error deleting: ${err.message}`);
+      }
+      setTimeout(() => setMsg(''), 3000);
+    }
   };
 
   const filtered = publications.filter(p => 
@@ -376,12 +422,7 @@ export default function PublicationForm({
           </button>
 
           <button 
-            onClick={() => {
-              if (window.confirm(`Are you sure you want to delete ${selectedPub.public_name}?`)) {
-                setMsg(`Publication "${selectedPub.public_name}" deleted.`);
-                setTimeout(() => setMsg(''), 3000);
-              }
-            }}
+            onClick={handleDelete}
             className="px-4 py-1 bg-gradient-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] shadow-xs transform -skew-x-12 cursor-pointer transition-colors"
           >
             <span className="transform skew-x-12 flex items-center gap-1 text-xs font-bold text-black">

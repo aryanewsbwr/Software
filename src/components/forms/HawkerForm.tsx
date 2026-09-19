@@ -83,36 +83,65 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       setStatus('Error: Hawker Name cannot be empty');
       setTimeout(() => setStatus(''), 3000);
       return;
     }
-    if (onSaveHawker) {
-      onSaveHawker({
-        hawker_id: selectedHawkerId || undefined,
-        name: name.trim(),
-        address: address.trim(),
-        city: city.trim(),
-        phone: phone.trim(),
-        mobile: mobile.trim(),
-        region_id: allottedRegions[0] || 1
-      }, allottedRegions);
+    const payload = {
+      hawker_id: selectedHawkerId || undefined,
+      name: name.trim(),
+      address: address.trim(),
+      city: city.trim(),
+      phone: phone.trim(),
+      mobile: mobile.trim(),
+      region_id: allottedRegions[0] || 1,
+      allottedRegions
+    };
+
+    try {
+      const res = await fetch('/api/hawkers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      if (data.hawker?.hawker_id && !selectedHawkerId) {
+        setSelectedHawkerId(data.hawker.hawker_id);
+      }
+      if (onSaveHawker) {
+        onSaveHawker(data.hawker || payload, allottedRegions);
+      }
+      setStatus(`Hawker "${name.trim()}" saved successfully in Supabase!`);
+    } catch (err: any) {
+      setStatus(`Error saving hawker: ${err.message}`);
     }
-    setStatus(`Hawker "${name.trim()}" saved successfully with ${allottedRegions.length} allotted region(s).`);
     setTimeout(() => setStatus(''), 3000);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedHawkerId) {
       setStatus('Please find and select a hawker first to delete.');
       setTimeout(() => setStatus(''), 3000);
       return;
     }
     if (window.confirm(`Are you sure you want to delete Hawker "${name}"?`)) {
-      setStatus(`Hawker "${name}" deleted.`);
-      handleCancel();
+      try {
+        const res = await fetch(`/api/hawkers?id=${selectedHawkerId}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        setStatus(`Hawker "${name}" deleted.`);
+        handleCancel();
+      } catch (err: any) {
+        setStatus(`Error deleting hawker: ${err.message}`);
+      }
+      setTimeout(() => setStatus(''), 3000);
     }
   };
 

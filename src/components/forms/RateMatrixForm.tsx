@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Newspaper, Save, RefreshCw, X, Calendar, DollarSign } from 'lucide-react';
 import { Publication, Rate, RateChange } from '@/lib/types';
+import { getEffectiveWeekdayRates } from '@/lib/rateEngine';
 
 interface Props {
   isOpen: boolean;
@@ -32,19 +33,30 @@ export default function RateMatrixForm({ isOpen, onClose, publications, rates, r
 
   useEffect(() => {
     if (!selectedPubId) return;
-    const pubRates = rates.filter(r => r.publica_id === selectedPubId);
-    const newRates: Record<number, number> = { 1: 5.0, 2: 5.0, 3: 5.0, 4: 5.0, 5: 5.0, 6: 5.0, 7: 5.0 };
-    pubRates.forEach(r => {
-      newRates[r.dayofweek] = r.rate;
-    });
-    setDayRates(newRates);
-  }, [selectedPubId, rates]);
+    const effective = getEffectiveWeekdayRates(selectedPubId, new Date().toISOString().split('T')[0], rates, ratechanges);
+    setDayRates(effective);
+  }, [selectedPubId, rates, ratechanges]);
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
-    if (onSaveRate) onSaveRate(selectedPubId, dayRates);
-    setStatus(`Rates for ${selectedPub?.public_name} updated successfully.`);
+  const handleSave = async () => {
+    try {
+      const res = await fetch('/api/rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          publica_id: selectedPubId,
+          rates: dayRates
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      if (onSaveRate) onSaveRate(selectedPubId, dayRates);
+      setStatus(`Rates for ${selectedPub?.public_name} updated and persisted successfully.`);
+    } catch (err: any) {
+      setStatus(`Error updating rates: ${err.message}`);
+    }
     setTimeout(() => setStatus(''), 3000);
   };
 
