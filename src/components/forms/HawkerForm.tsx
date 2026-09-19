@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Truck, Save, Trash2, X, Search, RefreshCw } from 'lucide-react';
 import { Hawker, Region } from '@/lib/types';
 
 interface Props {
@@ -24,7 +23,7 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
   const [searchQuery, setSearchQuery] = useState('');
   const [status, setStatus] = useState('');
 
-  // Load selected hawker
+  // Load selected hawker data
   useEffect(() => {
     if (!selectedHawkerId) return;
     const h = hawkers.find(hk => hk.hawker_id === selectedHawkerId);
@@ -37,6 +36,42 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
       setAllottedRegions(h.region_id ? [h.region_id] : []);
     }
   }, [selectedHawkerId, hawkers]);
+
+  // Keyboard shortcut handler (Alt+S, Alt+U, Alt+D, Alt+F, Alt+C, Alt+E, Esc)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.altKey) {
+        const key = e.key.toLowerCase();
+        if (key === 's') {
+          e.preventDefault();
+          handleSave();
+        } else if (key === 'u') {
+          e.preventDefault();
+          handleSave();
+        } else if (key === 'd') {
+          e.preventDefault();
+          handleDelete();
+        } else if (key === 'f') {
+          e.preventDefault();
+          setIsFindOpen(true);
+        } else if (key === 'c') {
+          e.preventDefault();
+          handleCancel();
+        } else if (key === 'e') {
+          e.preventDefault();
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, name, address, city, phone, mobile, selectedHawkerId, allottedRegions]);
 
   if (!isOpen) return null;
 
@@ -51,24 +86,37 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
   const handleSave = () => {
     if (!name.trim()) {
       setStatus('Error: Hawker Name cannot be empty');
+      setTimeout(() => setStatus(''), 3000);
       return;
     }
     if (onSaveHawker) {
       onSaveHawker({
         hawker_id: selectedHawkerId || undefined,
-        name,
-        address,
-        city,
-        phone,
-        mobile,
+        name: name.trim(),
+        address: address.trim(),
+        city: city.trim(),
+        phone: phone.trim(),
+        mobile: mobile.trim(),
         region_id: allottedRegions[0] || 1
       }, allottedRegions);
     }
-    setStatus(`Hawker "${name}" saved successfully with ${allottedRegions.length} allotted region(s).`);
+    setStatus(`Hawker "${name.trim()}" saved successfully with ${allottedRegions.length} allotted region(s).`);
     setTimeout(() => setStatus(''), 3000);
   };
 
-  const handleNew = () => {
+  const handleDelete = () => {
+    if (!selectedHawkerId) {
+      setStatus('Please find and select a hawker first to delete.');
+      setTimeout(() => setStatus(''), 3000);
+      return;
+    }
+    if (window.confirm(`Are you sure you want to delete Hawker "${name}"?`)) {
+      setStatus(`Hawker "${name}" deleted.`);
+      handleCancel();
+    }
+  };
+
+  const handleCancel = () => {
     setSelectedHawkerId(null);
     setName('');
     setAddress('');
@@ -76,90 +124,94 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
     setPhone('');
     setMobile('');
     setAllottedRegions([]);
+    setStatus('');
   };
 
   const filteredHawkers = hawkers.filter(h => 
-    h.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    h.hawker_id.toString().includes(searchQuery)
+    (h.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+    h.hawker_id.toString().includes(searchQuery) ||
+    (h.phone || '').includes(searchQuery) ||
+    (h.mobile || '').includes(searchQuery)
   );
 
   return (
-    <div className="w-full max-w-2xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col relative select-none">
+    <div className="w-[660px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col relative select-none">
       {/* Titlebar */}
-      <div className="bg-linear-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-0.5 flex items-center justify-between font-bold text-xs">
+      <div className="bg-linear-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs">
         <div className="flex items-center gap-1.5">
-          <Truck className="w-3.5 h-3.5 text-yellow-300" />
-          <span>Hawker Master</span>
+          <span className="text-sm">🗞️</span>
+          <span className="tracking-wide">Hawker Master</span>
         </div>
         <div className="flex items-center gap-1">
-          <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">_</button>
-          <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">□</button>
-          <button onClick={onClose} className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-red-600 hover:text-white cursor-pointer">✕</button>
+          <button className="w-5 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">_</button>
+          <button className="w-5 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">□</button>
+          <button onClick={onClose} className="w-5 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-red-600 hover:text-white cursor-pointer">✕</button>
         </div>
       </div>
 
-      {/* Main Form Body matching screenshot_04.jpg */}
-      <div className="p-4 space-y-4 text-xs">
-        <h2 className="text-center font-black text-maroon-800 text-lg tracking-wider text-[#800000]">
+      {/* Main Form Body */}
+      <div className="p-4 space-y-3 bg-[#ECE9D8] text-xs">
+        <h2 className="text-center font-black text-[#800000] text-lg tracking-wider">
           HAWKER DETAIL
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
           {/* Left Inputs */}
-          <div className="md:col-span-2 space-y-2.5">
-            <div className="flex items-center gap-3">
-              <label className="w-20 font-bold text-[#800000]">Name</label>
+          <div className="md:col-span-2 space-y-2 bg-white p-3 border border-[#808080] shadow-inner">
+            <div className="flex items-center gap-2">
+              <label className="w-16 font-bold text-[#800000] shrink-0">Name</label>
               <input 
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white font-bold text-blue-900 shadow-inner"
+                className="flex-1 px-2 py-0.5 border border-[#7F9DB9] bg-white font-bold text-blue-900 shadow-inner outline-none"
+                autoFocus
               />
             </div>
 
-            <div className="flex items-center gap-3">
-              <label className="w-20 font-bold text-[#800000]">Address</label>
+            <div className="flex items-center gap-2">
+              <label className="w-16 font-bold text-[#800000] shrink-0">Address</label>
               <input 
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white shadow-inner"
+                className="flex-1 px-2 py-0.5 border border-[#7F9DB9] bg-white text-black shadow-inner outline-none"
               />
             </div>
 
-            <div className="flex items-center gap-3">
-              <label className="w-20 font-bold text-[#800000]">City</label>
+            <div className="flex items-center gap-2">
+              <label className="w-16 font-bold text-[#800000] shrink-0">City</label>
               <input 
                 type="text"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white shadow-inner"
+                className="flex-1 px-2 py-0.5 border border-[#7F9DB9] bg-white text-black shadow-inner outline-none"
               />
             </div>
 
-            <div className="flex items-center gap-3">
-              <label className="w-20 font-bold text-[#800000]">Phone</label>
+            <div className="flex items-center gap-2">
+              <label className="w-16 font-bold text-[#800000] shrink-0">Phone</label>
               <input 
                 type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white shadow-inner font-mono"
+                className="flex-1 px-2 py-0.5 border border-[#7F9DB9] bg-white shadow-inner font-mono outline-none"
               />
             </div>
 
-            <div className="flex items-center gap-3">
-              <label className="w-20 font-bold text-[#800000]">Mobile</label>
+            <div className="flex items-center gap-2">
+              <label className="w-16 font-bold text-[#800000] shrink-0">Mobile</label>
               <input 
                 type="text"
                 value={mobile}
                 onChange={(e) => setMobile(e.target.value)}
-                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white shadow-inner font-mono"
+                className="flex-1 px-2 py-0.5 border border-[#7F9DB9] bg-white shadow-inner font-mono outline-none"
               />
             </div>
           </div>
 
-          {/* Right Region Allotment Checklist matching screenshot_04.jpg */}
-          <div className="border border-[#808080] bg-white shadow-inner flex flex-col h-44">
+          {/* Right Region Allotment Checklist */}
+          <div className="border border-[#808080] bg-white shadow-inner flex flex-col h-[175px]">
             <div className="bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 font-bold text-[11px] text-slate-800 flex justify-between items-center">
               <span>Region Allotment</span>
               <span className="text-[10px] text-blue-800">({allottedRegions.length} checked)</span>
@@ -176,7 +228,7 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
                       type="checkbox"
                       checked={isChecked}
                       onChange={() => toggleRegion(reg.region_id)}
-                      className="rounded-xs"
+                      className="cursor-pointer"
                     />
                     <span className="truncate">{reg.region_name}</span>
                   </label>
@@ -187,48 +239,60 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
         </div>
 
         {status && (
-          <div className="p-1.5 bg-emerald-100 text-emerald-800 border border-emerald-400 font-bold text-center text-xs">
+          <div className={`p-1.5 font-bold text-center text-xs ${status.startsWith('Error') ? 'bg-red-100 text-red-800 border border-red-400' : 'bg-emerald-100 text-emerald-800 border border-emerald-400'}`}>
             {status}
           </div>
         )}
 
-        {/* Bottom Action Slanted Buttons matching screenshot_04.jpg */}
+        {/* Slanted Parallelogram Action Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-[#808080]">
           <button 
             onClick={handleSave}
-            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+            className="px-4 py-1 bg-linear-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] text-black font-bold text-xs transform -skew-x-12 shadow-xs cursor-pointer"
           >
-            💾 <u>S</u>ave
+            <span className="transform skew-x-12 flex items-center gap-1">
+              💾 <u>S</u>ave
+            </span>
           </button>
           <button 
             onClick={handleSave}
-            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+            className="px-4 py-1 bg-linear-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] text-black font-bold text-xs transform -skew-x-12 shadow-xs cursor-pointer"
           >
-            ↪ <u>U</u>pdate
+            <span className="transform skew-x-12 flex items-center gap-1">
+              ↩ <u>U</u>pdate
+            </span>
           </button>
           <button 
-            onClick={handleNew}
-            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+            onClick={handleDelete}
+            className="px-4 py-1 bg-linear-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] text-black font-bold text-xs transform -skew-x-12 shadow-xs cursor-pointer"
           >
-            🗑 <u>D</u>el
+            <span className="transform skew-x-12 flex items-center gap-1">
+              🗑 <u>D</u>el
+            </span>
           </button>
           <button 
             onClick={() => setIsFindOpen(true)}
-            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+            className="px-4 py-1 bg-linear-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] text-black font-bold text-xs transform -skew-x-12 shadow-xs cursor-pointer"
           >
-            🔍 <u>F</u>ind
+            <span className="transform skew-x-12 flex items-center gap-1">
+              🔍 <u>F</u>ind
+            </span>
           </button>
           <button 
-            onClick={handleNew}
-            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+            onClick={handleCancel}
+            className="px-4 py-1 bg-linear-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] text-black font-bold text-xs transform -skew-x-12 shadow-xs cursor-pointer"
           >
-            ✖ <u>C</u>ancel
+            <span className="transform skew-x-12 flex items-center gap-1">
+              ✖ <u>C</u>ancel
+            </span>
           </button>
           <button 
             onClick={onClose}
-            className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+            className="px-4 py-1 bg-linear-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] text-black font-bold text-xs transform -skew-x-12 shadow-xs cursor-pointer"
           >
-            🛑 <u>E</u>xit
+            <span className="transform skew-x-12 flex items-center gap-1">
+              🛑 <u>E</u>xit
+            </span>
           </button>
         </div>
       </div>
@@ -236,17 +300,17 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
       {/* Find Hawker Modal Dialog */}
       {isFindOpen && (
         <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#ECE9D8] border-2 border-white shadow-2xl p-3 w-full max-w-md space-y-2 text-xs">
+          <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl p-3 w-full max-w-md space-y-2 text-xs">
             <div className="bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
-              <span>Find Hawker</span>
-              <button onClick={() => setIsFindOpen(false)} className="text-white hover:text-red-300 font-bold">✕</button>
+              <span>Find Hawker ({filteredHawkers.length} Found)</span>
+              <button onClick={() => setIsFindOpen(false)} className="text-white hover:text-red-300 font-bold cursor-pointer">✕</button>
             </div>
             <input 
               type="text"
-              placeholder="Search by Hawker Name..."
+              placeholder="Search by Hawker Name, Phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-2 py-1 border border-slate-400 bg-white"
+              className="w-full px-2 py-1 border border-slate-400 bg-white text-black font-bold outline-none"
               autoFocus
             />
             <div className="max-h-48 overflow-auto border border-slate-300 bg-white">
@@ -257,12 +321,23 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
                     setSelectedHawkerId(h.hawker_id);
                     setIsFindOpen(false);
                   }}
-                  className="w-full text-left px-2 py-1 border-b hover:bg-blue-100 flex justify-between items-center"
+                  className="w-full text-left px-2 py-1 border-b hover:bg-blue-100 flex justify-between items-center cursor-pointer"
                 >
-                  <span className="font-bold">{h.name}</span>
+                  <span className="font-bold text-slate-800">{h.name}</span>
                   <span className="text-slate-500 font-mono text-[10px]">#{h.hawker_id}</span>
                 </button>
               ))}
+              {filteredHawkers.length === 0 && (
+                <div className="p-3 text-center text-slate-500">No hawkers found matching &quot;{searchQuery}&quot;</div>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <button 
+                onClick={() => setIsFindOpen(false)}
+                className="px-3 py-1 bg-white border border-[#808080] font-bold text-xs cursor-pointer hover:bg-slate-100"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

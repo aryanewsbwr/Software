@@ -6,7 +6,7 @@
     "publish_id": 1,
     "abrv": "TOI",
     "circulation": "Morning",
-    "pub_hindi": ""
+    "pub_hindi": "द टाइम्स ऑफ इंडिया"
   },
   {
     "publica_id": 2,
@@ -15,7 +15,7 @@
     "publish_id": 6,
     "abrv": "HT",
     "circulation": "Morning",
-    "pub_hindi": ""
+    "pub_hindi": "हिंदुस्तान टाइम्स"
   },
   {
     "publica_id": 5,
@@ -24,7 +24,7 @@
     "publish_id": 2,
     "abrv": "RP",
     "circulation": "Morning",
-    "pub_hindi": "rajasqaana pi~ka"
+    "pub_hindi": "राजस्थान पत्रिका"
   },
   {
     "publica_id": 4,
@@ -33,7 +33,7 @@
     "publish_id": 3,
     "abrv": "DB",
     "circulation": "Morning",
-    "pub_hindi": "doinak Baaskr"
+    "pub_hindi": "दैनिक भास्कर"
   },
   {
     "publica_id": 6,
@@ -42,7 +42,7 @@
     "publish_id": 4,
     "abrv": "ITH",
     "circulation": "",
-    "pub_hindi": "[iNDyaa TuDo"
+    "pub_hindi": "इंडिया टुडे"
   },
   {
     "publica_id": 7,
@@ -51,7 +51,7 @@
     "publish_id": 7,
     "abrv": "EN",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "एम्प्लॉयमेंट न्यूज़"
   },
   {
     "publica_id": 8,
@@ -60,7 +60,7 @@
     "publish_id": 7,
     "abrv": "RS",
     "circulation": "",
-    "pub_hindi": "raojagaar samaacaar"
+    "pub_hindi": "रोजगार समाचार"
   },
   {
     "publica_id": 9,
@@ -69,7 +69,7 @@
     "publish_id": 4,
     "abrv": "ITE",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "इंडिया टुडे (इंग्लिश)"
   },
   {
     "publica_id": 10,
@@ -78,7 +78,7 @@
     "publish_id": 4,
     "abrv": "MS",
     "circulation": "",
-    "pub_hindi": "maorI saholaI"
+    "pub_hindi": "मेरी सहेली"
   },
   {
     "publica_id": 11,
@@ -87,7 +87,7 @@
     "publish_id": 4,
     "abrv": "GS",
     "circulation": "",
-    "pub_hindi": "gaRhSaaoBaa"
+    "pub_hindi": "गृहशोभा"
   },
   {
     "publica_id": 12,
@@ -96,7 +96,7 @@
     "publish_id": 1,
     "abrv": "ET",
     "circulation": "Morning",
-    "pub_hindi": ""
+    "pub_hindi": "द इकोनॉमिक टाइम्स"
   },
   {
     "publica_id": 13,
@@ -105,7 +105,7 @@
     "publish_id": 4,
     "abrv": "van",
     "circulation": "",
-    "pub_hindi": "vainata"
+    "pub_hindi": "वनिता"
   },
   {
     "publica_id": 14,
@@ -114,7 +114,7 @@
     "publish_id": 7,
     "abrv": "Wis",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "विजडम"
   },
   {
     "publica_id": 15,
@@ -123,7 +123,7 @@
     "publish_id": 4,
     "abrv": "Magic",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "मैजिक पॉट"
   },
   {
     "publica_id": 16,
@@ -132,7 +132,7 @@
     "publish_id": 7,
     "abrv": "Aha Z",
     "circulation": "",
-    "pub_hindi": "Aha ijaMdgaI"
+    "pub_hindi": "अहा ज़िंदगी"
   },
   {
     "publica_id": 17,
@@ -141,7 +141,7 @@
     "publish_id": 4,
     "abrv": "sar",
     "circulation": "",
-    "pub_hindi": "sairta"
+    "pub_hindi": "सरिता"
   },
   {
     "publica_id": 18,
@@ -150,7 +150,7 @@
     "publish_id": 4,
     "abrv": "Saras",
     "circulation": "",
-    "pub_hindi": "sarsa sailala"
+    "pub_hindi": "सरस सलिल"
   },
   {
     "publica_id": 19,
@@ -159,7 +159,7 @@
     "publish_id": 8,
     "abrv": "PK",
     "circulation": "Morning",
-    "pub_hindi": "pMjaaba kosarI"
+    "pub_hindi": "पंजाब केसरी"
   },
   {
     "publica_id": 20,
@@ -168,7 +168,7 @@
     "publish_id": 5,
     "abrv": "Nafa",
     "circulation": "Morning",
-    "pub_hindi": "nafa nauksaana"
+    "pub_hindi": "नफा नुकसान"
   },
   {
     "publica_id": 21,
@@ -177,7 +177,7 @@
     "publish_id": 5,
     "abrv": "NJ",
     "circulation": "Morning",
-    "pub_hindi": "dOinak navajyaaoit"
+    "pub_hindi": "दैनिक नवज्योति"
   },
   {
     "publica_id": 22,
@@ -186,7 +186,7 @@
     "publish_id": 7,
     "abrv": "PD",
     "circulation": "",
-    "pub_hindi": "p`ityaaoigata dp-Na"
+    "pub_hindi": "प्रतियोगिता दर्पण"
   },
   {
     "publica_id": 23,
@@ -195,7 +195,7 @@
     "publish_id": 4,
     "abrv": "c",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "चंपक"
   },
   {
     "publica_id": 24,
@@ -204,7 +204,7 @@
     "publish_id": 4,
     "abrv": "chH",
     "circulation": "",
-    "pub_hindi": "caMpk"
+    "pub_hindi": "चंपक"
   },
   {
     "publica_id": 89,
@@ -213,7 +213,7 @@
     "publish_id": 4,
     "abrv": "InsO",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "इनसाइड आउटसाइड"
   },
   {
     "publica_id": 26,
@@ -222,7 +222,7 @@
     "publish_id": 4,
     "abrv": "Lotp",
     "circulation": "",
-    "pub_hindi": "laaoTpaoT"
+    "pub_hindi": "लोटपोट"
   },
   {
     "publica_id": 27,
@@ -231,7 +231,7 @@
     "publish_id": 7,
     "abrv": "OLE",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "आउटलुक (इंग्लिश)"
   },
   {
     "publica_id": 28,
@@ -240,7 +240,7 @@
     "publish_id": 7,
     "abrv": "OLH",
     "circulation": "",
-    "pub_hindi": "Aa}Tlauk"
+    "pub_hindi": "आउटलुक"
   },
   {
     "publica_id": 29,
@@ -249,7 +249,7 @@
     "publish_id": 9,
     "abrv": "Vyap",
     "circulation": "",
-    "pub_hindi": "vyaapar"
+    "pub_hindi": "व्यापार"
   },
   {
     "publica_id": 30,
@@ -258,7 +258,7 @@
     "publish_id": 7,
     "abrv": "BW",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "बिजनेस वर्ल्ड"
   },
   {
     "publica_id": 31,
@@ -267,7 +267,7 @@
     "publish_id": 2,
     "abrv": "Balh",
     "circulation": "",
-    "pub_hindi": "baa;hMsa"
+    "pub_hindi": "बालहंस"
   },
   {
     "publica_id": 32,
@@ -276,7 +276,7 @@
     "publish_id": 5,
     "abrv": "Rojs",
     "circulation": "",
-    "pub_hindi": "raojagaar saMdoSa"
+    "pub_hindi": "रोजगार संदेश"
   },
   {
     "publica_id": 33,
@@ -285,7 +285,7 @@
     "publish_id": 3,
     "abrv": "BB",
     "circulation": "",
-    "pub_hindi": "baala Baaskr"
+    "pub_hindi": "बाल भास्कर"
   },
   {
     "publica_id": 34,
@@ -294,7 +294,7 @@
     "publish_id": 2,
     "abrv": "CM",
     "circulation": "",
-    "pub_hindi": "CaoTU maaoTU"
+    "pub_hindi": "छोटू मोटू"
   },
   {
     "publica_id": 35,
@@ -312,7 +312,7 @@
     "publish_id": 11,
     "abrv": "Femn",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "फेमिना"
   },
   {
     "publica_id": 37,
@@ -321,7 +321,7 @@
     "publish_id": 7,
     "abrv": "CM",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "कैपिटल मार्केट"
   },
   {
     "publica_id": 38,
@@ -330,7 +330,7 @@
     "publish_id": 4,
     "abrv": "WERA",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "वुमन्स एरा"
   },
   {
     "publica_id": 39,
@@ -339,7 +339,7 @@
     "publish_id": 4,
     "abrv": "BT",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "बिजनेस टुडे"
   },
   {
     "publica_id": 40,
@@ -348,7 +348,7 @@
     "publish_id": 4,
     "abrv": "GL",
     "circulation": "",
-    "pub_hindi": "gaRhlaEmaI"
+    "pub_hindi": "गृहलक्ष्मी"
   },
   {
     "publica_id": 41,
@@ -357,7 +357,7 @@
     "publish_id": 7,
     "abrv": "Vigy",
     "circulation": "",
-    "pub_hindi": "iva&ana p`gait"
+    "pub_hindi": "विज्ञान प्रगति"
   },
   {
     "publica_id": 42,
@@ -366,7 +366,7 @@
     "publish_id": 7,
     "abrv": "Sumn",
     "circulation": "",
-    "pub_hindi": "saumana saaOrBa"
+    "pub_hindi": "सुमन सौरभ"
   },
   {
     "publica_id": 43,
@@ -375,7 +375,7 @@
     "publish_id": 4,
     "abrv": "Nand",
     "circulation": "",
-    "pub_hindi": "naMdna"
+    "pub_hindi": "नंदन"
   },
   {
     "publica_id": 44,
@@ -384,7 +384,7 @@
     "publish_id": 7,
     "abrv": "Yojn",
     "circulation": "",
-    "pub_hindi": "yaaojanaa"
+    "pub_hindi": "योजना"
   },
   {
     "publica_id": 45,
@@ -393,7 +393,7 @@
     "publish_id": 7,
     "abrv": "Mukt",
     "circulation": "",
-    "pub_hindi": "mau@ta"
+    "pub_hindi": "मुक्ता"
   },
   {
     "publica_id": 46,
@@ -402,7 +402,7 @@
     "publish_id": 7,
     "abrv": "kuru",
     "circulation": "",
-    "pub_hindi": "ku$Eaot`"
+    "pub_hindi": "कुरुक्षेत्र"
   },
   {
     "publica_id": 47,
@@ -411,7 +411,7 @@
     "publish_id": 7,
     "abrv": "Awsk",
     "circulation": "",
-    "pub_hindi": "AivaYakar"
+    "pub_hindi": "आविष्कार"
   },
   {
     "publica_id": 48,
@@ -420,7 +420,7 @@
     "publish_id": 4,
     "abrv": "FT",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "फुल टेंशन"
   },
   {
     "publica_id": 49,
@@ -429,7 +429,7 @@
     "publish_id": 4,
     "abrv": "CGKC",
     "circulation": "",
-    "pub_hindi": "krnT jaIko k`aonaaolaa^jaI"
+    "pub_hindi": "करंट जीके क्रोनोलॉजी"
   },
   {
     "publica_id": 50,
@@ -438,7 +438,7 @@
     "publish_id": 4,
     "abrv": "MK",
     "circulation": "",
-    "pub_hindi": "manaaohr khainayaaM"
+    "pub_hindi": "मनोहर कहानियाँ"
   },
   {
     "publica_id": 51,
@@ -447,7 +447,7 @@
     "publish_id": 4,
     "abrv": "Kadm",
     "circulation": "",
-    "pub_hindi": "kadimbanaI"
+    "pub_hindi": "कादंबिनी"
   },
   {
     "publica_id": 52,
@@ -456,7 +456,7 @@
     "publish_id": 4,
     "abrv": "CS",
     "circulation": "",
-    "pub_hindi": "ik`koT sama`aT"
+    "pub_hindi": "क्रिकेट सम्राट"
   },
   {
     "publica_id": 53,
@@ -465,7 +465,7 @@
     "publish_id": 4,
     "abrv": "CMh",
     "circulation": "",
-    "pub_hindi": "candamaamaa"
+    "pub_hindi": "चंदामामा"
   },
   {
     "publica_id": 54,
@@ -474,7 +474,7 @@
     "publish_id": 4,
     "abrv": "OT",
     "circulation": "",
-    "pub_hindi": "AaoSaao Tašmsa"
+    "pub_hindi": "ओशो टाइम्स"
   },
   {
     "publica_id": 55,
@@ -483,7 +483,7 @@
     "publish_id": 4,
     "abrv": "Nanh",
     "circulation": "",
-    "pub_hindi": "nanho sama`aT"
+    "pub_hindi": "नन्हे सम्राट"
   },
   {
     "publica_id": 56,
@@ -492,7 +492,7 @@
     "publish_id": 4,
     "abrv": "ComS",
     "circulation": "",
-    "pub_hindi": "kmpyaUTr saMcaar saUcanaa"
+    "pub_hindi": "कंप्यूटर संचार सूचना"
   },
   {
     "publica_id": 57,
@@ -501,7 +501,7 @@
     "publish_id": 4,
     "abrv": "SdH",
     "circulation": "",
-    "pub_hindi": "sTarDsT"
+    "pub_hindi": "स्टारडस्ट"
   },
   {
     "publica_id": 58,
@@ -510,7 +510,7 @@
     "publish_id": 7,
     "abrv": "Hans",
     "circulation": "",
-    "pub_hindi": "hMsa"
+    "pub_hindi": "हंस"
   },
   {
     "publica_id": 59,
@@ -519,7 +519,7 @@
     "publish_id": 4,
     "abrv": "Saki",
     "circulation": "",
-    "pub_hindi": "saKI jaagarNa"
+    "pub_hindi": "सखी जागरण"
   },
   {
     "publica_id": 60,
@@ -528,7 +528,7 @@
     "publish_id": 4,
     "abrv": "Veda",
     "circulation": "",
-    "pub_hindi": "vaod AmaRt"
+    "pub_hindi": "वेद अमृत"
   },
   {
     "publica_id": 61,
@@ -564,7 +564,7 @@
     "publish_id": 7,
     "abrv": "YojE",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "योजना"
   },
   {
     "publica_id": 65,
@@ -618,7 +618,7 @@
     "publish_id": 4,
     "abrv": "SDE",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "स्टारडस्ट"
   },
   {
     "publica_id": 71,
@@ -1266,7 +1266,7 @@
     "publish_id": 4,
     "abrv": "DalEn",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "दलाल स्ट्रीट"
   },
   {
     "publica_id": 145,
@@ -1788,7 +1788,7 @@
     "publish_id": 7,
     "abrv": "ChanE",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "चंदामामा"
   },
   {
     "publica_id": 203,
@@ -1959,7 +1959,7 @@
     "publish_id": 4,
     "abrv": "PDE",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "प्रतियोगिता दर्पण"
   },
   {
     "publica_id": 222,
@@ -2103,7 +2103,7 @@
     "publish_id": 4,
     "abrv": "ChCD",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "चंपक"
   },
   {
     "publica_id": 238,
@@ -2769,7 +2769,7 @@
     "publish_id": 10,
     "abrv": "TOIC",
     "circulation": "",
-    "pub_hindi": ""
+    "pub_hindi": "टाइम्स ऑफ इंडिया"
   },
   {
     "publica_id": 312,
@@ -4695,7 +4695,7 @@
     "publish_id": 5,
     "abrv": "",
     "circulation": "Morning",
-    "pub_hindi": "navajyaaoit"
+    "pub_hindi": "नवज्योति"
   },
   {
     "publica_id": 526,

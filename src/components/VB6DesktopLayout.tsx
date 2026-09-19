@@ -45,7 +45,7 @@ import HawkerForm from './forms/HawkerForm';
 import RegionForm from './forms/RegionForm';
 import HolidayForm from './forms/HolidayForm';
 import RateMatrixForm from './forms/RateMatrixForm';
-import CollectionAgentsForm from './forms/CollectionAgentsForm';
+import CollectionAgentForm from './forms/CollectionAgentForm';
 import UserPermissionsForm from './forms/UserPermissionsForm';
 import CounterSaleForm from './forms/CounterSaleForm';
 import PeriodForm from './forms/PeriodForm';
@@ -54,6 +54,10 @@ import BackupRestoreModal from './forms/BackupRestoreModal';
 import DiscontinueForm from './forms/DiscontinueForm';
 import CompanyForm from './forms/CompanyForm';
 import PurchaseForm from './forms/PurchaseForm';
+import PubDiscontinueForm from './forms/PubDiscontinueForm';
+import ReceiptAllotmentForm from './forms/ReceiptAllotmentForm';
+import HawkerPriorityForm from './forms/HawkerPriorityForm';
+import ApplyCustomerAgentForm from './forms/ApplyCustomerAgentForm';
 
 // Legacy Day of Week Names (1=Sun .. 7=Sat)
 const LEGACY_DAYS = [
@@ -205,7 +209,7 @@ export default function VB6DesktopLayout() {
     setEditingRates(map);
   }, [selectedPub, rates]);
 
-  // F1 Key to Copy Sunday Rate to All 7 Days
+  // Keyboard Shortcuts (F1 for Rates, Ctrl+C for Customer, Ctrl+D for Discontinue, Ctrl+R for Receipt)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F1') {
@@ -215,6 +219,15 @@ export default function VB6DesktopLayout() {
         LEGACY_DAYS.forEach(d => { updated[d.id] = sunRate; });
         setEditingRates(updated);
         setStatusMessage(`F1 Triggered: Copied Sunday rate (₹${sunRate}) across all 7 weekdays!`);
+      } else if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) {
+        e.preventDefault();
+        setActiveWindow('customers');
+      } else if (e.ctrlKey && (e.key === 'd' || e.key === 'D')) {
+        e.preventDefault();
+        setActiveWindow('discontinue');
+      } else if (e.ctrlKey && (e.key === 'r' || e.key === 'R')) {
+        e.preventDefault();
+        setActiveWindow('receipts');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -309,50 +322,43 @@ export default function VB6DesktopLayout() {
             <u>M</u>aster
           </button>
           {activeMenu === 'master' && (
-            <div className="absolute top-full left-0 min-w-[260px] bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
+            <div className="absolute top-full left-0 min-w-[240px] bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
+              <button onClick={() => { setActiveWindow('company'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Company
+              </button>
               <button onClick={() => { setActiveWindow('publishers'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Publisher (प्रकाशक)
+                Publisher/Dealer/Sub Agent
               </button>
               <button onClick={() => { setActiveWindow('publications'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Publication (प्रकाशन एवं दरें)
+                Publication
               </button>
-              <button onClick={() => { setIsRateMatrixOpen(true); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Rate Matrix (दर मैट्रिक्स)
-              </button>
-              <button onClick={() => { setActiveWindow('ratechanges'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Rate Change (दर संशोधन)
-              </button>
-              <div className="h-[1px] bg-[#808080] my-1"></div>
               <button onClick={() => { setActiveWindow('regions'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Region (क्षेत्र / इलाका)
+                Region
               </button>
               <button onClick={() => { setActiveWindow('hawkers'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Hawker (हॉकर / वितरक)
+                Hawker
               </button>
-              <button onClick={() => { setActiveWindow('customers'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Customer (ग्राहक विवरण)
+              <button onClick={() => { setActiveWindow('customers'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
+                <span>Customer</span>
+                <span className="text-slate-600 font-mono text-[11px] ml-6">Ctrl+C</span>
               </button>
-              <button onClick={() => { setActiveWindow('holidays'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Holiday (Define Holiday)
-              </button>
-              <div className="h-[1px] bg-[#808080] my-1"></div>
-              <button onClick={() => { setIsCollectionAgentsOpen(true); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+              <button onClick={() => { setActiveWindow('collectionagent'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 Collection Agent
               </button>
-              <button onClick={() => { setIsCollectionAgentsOpen(true); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Receipt Allotment
+              <button onClick={() => { setActiveWindow('ratechanges'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Rate Change
               </button>
-              <button onClick={() => { setActiveWindow('company'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Company Profile
+              <button onClick={() => { setActiveWindow('holidays'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Holiday
               </button>
-              <button onClick={() => { setIsUserPermOpen(true); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                User Security
+              <button onClick={() => { setActiveWindow('message'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Message
               </button>
             </div>
           )}
         </div>
 
-        {/* 2. Transaction Menu */}
+        {/* 2. Transaction Menu (media_1789800222706.png) */}
         <div className="relative">
           <button 
             onClick={() => setActiveMenu(activeMenu === 'trans' ? null : 'trans')}
@@ -363,20 +369,39 @@ export default function VB6DesktopLayout() {
           {activeMenu === 'trans' && (
             <div className="absolute top-full left-0 min-w-[280px] bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
               <button onClick={() => { setActiveWindow('purchase'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Purchase (अखबार खरीद / आवक)
+                Purchase
               </button>
               <button onClick={() => { setIsCounterSaleOpen(true); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Retail Sale (काउंटर बिक्री)
+                Counter Sale
               </button>
-              <button onClick={() => { setActiveWindow('discontinue'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Discontinue (अखबार बंद / छुट्टी)
+              <button onClick={() => { setIsCounterSaleOpen(true); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Retail Sale To Permanent Customer
               </button>
-              <div className="h-[1px] bg-[#808080] my-1"></div>
+              <button onClick={() => { setActiveWindow('discontinue'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
+                <span>Discontinue</span>
+                <span className="text-slate-600 font-mono text-[11px] ml-6">Ctrl+D</span>
+              </button>
+              <button onClick={() => { setActiveWindow('hawkerpriority'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Hawker&apos;s Customer Priority
+              </button>
+              <button onClick={() => { setActiveWindow('applyagent'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Apply Customer Agent
+              </button>
+              <button onClick={() => { setActiveWindow('pubdiscontinue'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Publication Discontinue
+              </button>
+              <button onClick={() => { setActiveWindow('pubdiscontinue'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Publication Supplement
+              </button>
+              <button onClick={() => { setActiveWindow('receiptallot'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Receipt Allotment
+              </button>
+              <button onClick={() => { setActiveWindow('receipts'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
+                <span>Payment Receipt</span>
+                <span className="text-slate-600 font-mono text-[11px] ml-6">Ctrl+R</span>
+              </button>
               <button onClick={() => { setActiveWindow('receipts'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Payment Receipt (भुगतान रसीद)
-              </button>
-              <button onClick={() => { setIsCollectionAgentsOpen(true); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Receipt Allotment (रसीद बुक आवंटन)
+                New Payment Receipt
               </button>
             </div>
           )}
@@ -391,18 +416,21 @@ export default function VB6DesktopLayout() {
             <u>P</u>rocess
           </button>
           {activeMenu === 'process' && (
-            <div className="absolute top-full left-0 min-w-[280px] bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
-              <button onClick={() => { setActiveWindow('dailyprocess'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Daily Process (दैनिक हॉकर वितरण पर्ची)
-              </button>
+            <div className="absolute top-full left-0 min-w-[240px] bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
               <button onClick={() => { setActiveWindow('billing'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Bill Processing (मासिक बिल गणना)
+                Bill Generation
+              </button>
+              <button onClick={() => { setIsPeriodOpen(true); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Select Period
+              </button>
+              <button onClick={() => { setActiveMenu(null); setBackupModalMode('balance_forward'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Balance Forward
               </button>
             </div>
           )}
         </div>
 
-        {/* 4. Reports Menu */}
+        {/* 4. Reports Menu (media_1789803199219.png - Exact 16 Options) */}
         <div className="relative">
           <button 
             onClick={() => setActiveMenu(activeMenu === 'reports' ? null : 'reports')}
@@ -411,31 +439,171 @@ export default function VB6DesktopLayout() {
             <u>R</u>eports
           </button>
           {activeMenu === 'reports' && (
-            <div className="absolute top-full left-0 min-w-[300px] bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
-              <button onClick={() => { setActiveWindow('billing'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Customer Bill Printing (मासिक बिल प्रिंट)
+            <div className="absolute top-full left-0 min-w-[280px] bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
+              {/* 1. Customer > */}
+              <div className="relative group/sub">
+                <button className="w-full px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
+                  <span>Customer</span>
+                  <span className="text-[10px] text-slate-600 group-hover/sub:text-white">›</span>
+                </button>
+                <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[280px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Customer Detail / Month Register</button>
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Customer Publication Starting</button>
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Circulation Type Publication Report</button>
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Customer Wise Choose Publication</button>
+                </div>
+              </div>
+
+              {/* 2. Discontinue > */}
+              <div className="relative group/sub">
+                <button className="w-full px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
+                  <span>Discontinue</span>
+                  <span className="text-[10px] text-slate-600 group-hover/sub:text-white">›</span>
+                </button>
+                <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[280px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
+                  <button onClick={() => { setActiveWindow('discontinue'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Discontinue Date Wise</button>
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Discontinue Hawker Wise With Address</button>
+                </div>
+              </div>
+
+              {/* 3. Purchase > */}
+              <div className="relative group/sub">
+                <button className="w-full px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
+                  <span>Purchase</span>
+                  <span className="text-[10px] text-slate-600 group-hover/sub:text-white">›</span>
+                </button>
+                <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[260px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Purchase Date Wise Report</button>
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Purchase Publisher Wise</button>
+                </div>
+              </div>
+
+              {/* 4. Counter Sale > */}
+              <div className="relative group/sub">
+                <button className="w-full px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
+                  <span>Counter Sale</span>
+                  <span className="text-[10px] text-slate-600 group-hover/sub:text-white">›</span>
+                </button>
+                <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[260px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Counter Sale Date Wise</button>
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Counter Sale Publication Wise</button>
+                </div>
+              </div>
+
+              {/* 5. Retail Customer Sale To Permanent > */}
+              <div className="relative group/sub">
+                <button className="w-full px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
+                  <span>Retail Customer Sale To Permanent</span>
+                  <span className="text-[10px] text-slate-600 group-hover/sub:text-white">›</span>
+                </button>
+                <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[280px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Retail Sale Region Date Wise Report</button>
+                </div>
+              </div>
+
+              {/* 6. Reciept > */}
+              <div className="relative group/sub">
+                <button className="w-full px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
+                  <span>Reciept</span>
+                  <span className="text-[10px] text-slate-600 group-hover/sub:text-white">›</span>
+                </button>
+                <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[260px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Receipt Number Wise Report</button>
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Actual Amount Receipt Report</button>
+                </div>
+              </div>
+
+              {/* 7. Hawker Wise Report > */}
+              <div className="relative group/sub">
+                <button className="w-full px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
+                  <span>Hawker Wise Report</span>
+                  <span className="text-[10px] text-slate-600 group-hover/sub:text-white">›</span>
+                </button>
+                <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[280px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Daily Quantity of Newspaper</button>
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Quantity of Magazine</button>
+                </div>
+              </div>
+
+              {/* 8. Outstanding Report > */}
+              <div className="relative group/sub">
+                <button className="w-full px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
+                  <span>Outstanding Report</span>
+                  <span className="text-[10px] text-slate-600 group-hover/sub:text-white">›</span>
+                </button>
+                <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[280px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Customer Outstanding Dues Ledger</button>
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Previous Dues Wise Report</button>
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Due Region Wise Summary</button>
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Collection Agent Dues Report</button>
+                </div>
+              </div>
+
+              {/* 9. Sale > */}
+              <div className="relative group/sub">
+                <button className="w-full px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
+                  <span>Sale</span>
+                  <span className="text-[10px] text-slate-600 group-hover/sub:text-white">›</span>
+                </button>
+                <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[260px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Consolidated Sale Report</button>
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Daily / Periodic Sale Report</button>
+                </div>
+              </div>
+
+              {/* 10. Publication Daily Report > */}
+              <div className="relative group/sub">
+                <button className="w-full px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
+                  <span>Publication Daily Report</span>
+                  <span className="text-[10px] text-slate-600 group-hover/sub:text-white">›</span>
+                </button>
+                <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[280px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Region Wise Publication Report</button>
+                  <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Region-Wise Start End Report</button>
+                </div>
+              </div>
+
+              {/* 11. Bill Printing > */}
+              <div className="relative group/sub">
+                <button className="w-full px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center">
+                  <span>Bill Printing</span>
+                  <span className="text-[10px] text-slate-600 group-hover/sub:text-white">›</span>
+                </button>
+                <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[240px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
+                  <button onClick={() => { setActiveWindow('billing'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Region Wise Bill Printing</button>
+                  <button onClick={() => { setActiveWindow('billing'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Single Bill Printing</button>
+                </div>
+              </div>
+
+              {/* 12. Hawker's Customer Priority */}
+              <button onClick={() => { setActiveWindow('hawkerpriority'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Hawker&apos;s Customer Priority
               </button>
-              <button onClick={() => { setActiveWindow('receipts'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Receipt Printing (भुगतान रसीद प्रिंट)
-              </button>
-              <button onClick={() => { setActiveWindow('dailyprocess'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Daily Distribution Sheet (वितरण सूची)
-              </button>
-              <button onClick={() => { setActiveWindow('dailyprocess'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Daily Supply Order (प्रेस सप्लाई ऑर्डर)
-              </button>
-              <div className="h-[1px] bg-[#808080] my-1"></div>
+
+              {/* 13. Sticker Printing */}
               <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Customer Outstanding Dues Ledger (बकाया लेजर)
+                Sticker Printing
               </button>
-              <button onClick={() => { setIsCounterSaleOpen(true); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Retail Sale Report (काउंटर बिक्री रिपोर्ट)
+
+              {/* 14. Hawker Report Datewise */}
+              <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Hawker Report Datewise
+              </button>
+
+              {/* 15. Collection Hawker Datewise */}
+              <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Collection Hawker Datewise
+              </button>
+
+              {/* 16. Collection Datewise */}
+              <button onClick={() => { setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                Collection Datewise
               </button>
             </div>
           )}
         </div>
 
-        {/* 5. Tools Menu */}
+        {/* 5. Tools Menu (4 Options) */}
         <div className="relative">
           <button 
             onClick={() => setActiveMenu(activeMenu === 'tools' ? null : 'tools')}
@@ -444,22 +612,18 @@ export default function VB6DesktopLayout() {
             <u>T</u>ools
           </button>
           {activeMenu === 'tools' && (
-            <div className="absolute top-full left-0 min-w-[280px] bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
-              <button onClick={() => { setActiveMenu(null); setIsPeriodOpen(true); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Period (Financial Year Selection)
-              </button>
-              <div className="h-[1px] bg-[#808080] my-1"></div>
+            <div className="absolute top-full left-0 min-w-[260px] bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
               <button onClick={() => { setActiveMenu(null); setBackupModalMode('balance_forward'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Year-End Balance Forward
+                1. Year-End Balance Forward
               </button>
               <button onClick={() => { setActiveMenu(null); setBackupModalMode('backup_master'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Master Database Backup
+                2. Master Database Backup
               </button>
               <button onClick={() => { setActiveMenu(null); setBackupModalMode('backup_yearly'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Yearly Database Backup
+                3. Yearly Database Backup
               </button>
               <button onClick={() => { setActiveMenu(null); setBackupModalMode('restore'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                Database Restore
+                4. Database Restore
               </button>
             </div>
           )}
@@ -551,6 +715,13 @@ export default function VB6DesktopLayout() {
           />
         )}
 
+        {/* 5b. Collection Agent Form (media_1789799625957.png) */}
+        {activeWindow === 'collectionagent' && (
+          <CollectionAgentForm 
+            onClose={() => setActiveWindow(null)} 
+          />
+        )}
+
         {/* 6. Holiday Master Form (screenshot_07.jpg) */}
         {activeWindow === 'holidays' && (
           <HolidayForm 
@@ -612,6 +783,35 @@ export default function VB6DesktopLayout() {
           />
         )}
 
+        {/* 9e. Publication Discontinue (screenshot_11.jpg) */}
+        {activeWindow === 'pubdiscontinue' && (
+          <PubDiscontinueForm 
+            onClose={() => setActiveWindow(null)} 
+            publications={publications}
+          />
+        )}
+
+        {/* 9f. Receipt Allotment (screenshot_12.jpg) */}
+        {activeWindow === 'receiptallot' && (
+          <ReceiptAllotmentForm 
+            onClose={() => setActiveWindow(null)} 
+          />
+        )}
+
+        {/* 9g. Hawker's Customer Priority */}
+        {activeWindow === 'hawkerpriority' && (
+          <HawkerPriorityForm 
+            onClose={() => setActiveWindow(null)} 
+          />
+        )}
+
+        {/* 9h. Apply Customer Agent */}
+        {activeWindow === 'applyagent' && (
+          <ApplyCustomerAgentForm 
+            onClose={() => setActiveWindow(null)} 
+          />
+        )}
+
         {/* 10. Outstanding Dues Report */}
         {activeWindow === 'reports' && (
           <ReportsForm 
@@ -640,9 +840,9 @@ export default function VB6DesktopLayout() {
           />
         )}
 
-        {/* 13. Modal: Collection Agents & Receipt Book Tracker */}
+        {/* 13. Modal: Collection Agents */}
         {isCollectionAgentsOpen && (
-          <CollectionAgentsForm 
+          <CollectionAgentForm 
             isOpen={isCollectionAgentsOpen}
             onClose={() => setIsCollectionAgentsOpen(false)}
           />

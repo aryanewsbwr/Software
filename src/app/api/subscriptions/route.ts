@@ -30,73 +30,47 @@ function loadLocalData() {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const customerIdStr = searchParams.get('customer_id');
+    const customerIdStr = searchParams.get('customer_id') || searchParams.get('customerId');
 
     if (!customerIdStr) {
       return NextResponse.json({ subscriptions: [], total: 0, active_count: 0, discontinued_count: 0 });
     }
 
     const cid = parseInt(customerIdStr, 10);
-
-    // 1. Try Querying Supabase customer_detail
-    const { data: supaSubs, error } = await supabase
-      .from('customer_detail')
-      .select('*')
-      .eq('customer_id', cid)
-      .order('sno', { ascending: true });
-
-    if (!error && supaSubs && supaSubs.length > 0) {
-      const enriched = supaSubs.map(s => {
-        const hasCloseDate = s.c_date && s.c_date.trim().length > 0;
-        return {
-          sno: s.sno,
-          customer_id: s.customer_id,
-          publica_id: s.publication_id || s.publica_id,
-          publication_name: s.publication_name,
-          hawker_id: s.hawker_id,
-          hawker_name: s.hawker_name,
-          qty: s.qty || 1,
-          circulation: s.circulation || 'Morning',
-          from_day: Array.isArray(s.delivery_days) ? (s.delivery_days.length === 7 ? '1-7' : s.delivery_days.join(',')) : (s.from_day || '1-7'),
-          s_date: s.s_date || s.created_at || '',
-          c_date: s.c_date || null,
-          dis: s.discount_percent || s.dis || 0,
-          dely: s.delivery_charge || s.dely || 0,
-          is_active: !hasCloseDate
-        };
-      });
-
-      return NextResponse.json({
-        source: 'supabase',
-        subscriptions: enriched,
-        total: enriched.length,
-        active_count: enriched.filter(s => s.is_active).length,
-        discontinued_count: enriched.filter(s => !s.is_active).length
-      });
-    }
-
-    // 2. Fallback to Local Backup
     loadLocalData();
+
+    // 1. Get Authentic Complete Subscriptions from Dataset
     const subs = (cachedSubs || []).filter(s => s.customer_id === cid);
 
     const enriched = subs.map(s => {
-      const pub = (cachedPubs || []).find(p => p.publica_id === s.publica_id);
-      const hw = (cachedHawkers || []).find(h => h.hawker_id === s.hawker_id);
-      const hasCloseDate = s.c_date && s.c_date.trim().length > 0;
+      const pId = s.publica_id || s.publication_id;
+      const hId = s.hawker_id;
+      const pub = (cachedPubs || []).find(p => p.publica_id === pId);
+      const hw = (cachedHawkers || []).find(h => h.hawker_id === hId);
+      const hasCloseDate = s.c_date && s.c_date.trim().length > 0 && s.c_date !== 'null';
       const is_active = !hasCloseDate;
 
       return {
         ...s,
-        publication_name: pub ? pub.public_name : `Publication #${s.publica_id}`,
-        hawker_name: hw ? hw.name : `Hawker #${s.hawker_id}`,
-        is_active,
+        sno: s.sno,
+        customer_id: s.customer_id,
+        publica_id: pId,
+        publication_name: pub ? pub.public_name : (s.publication_name || `Publication #${pId}`),
+        hawker_id: hId,
+        hawker_name: hw ? hw.name : (s.hawker_name || `Hawker #${hId}`),
+        qty: s.qty || 1,
+        circulation: s.circulation || 'Morning',
+        from_day: s.from_day || '1-7',
         s_date: s.s_date || '',
-        c_date: s.c_date || null
+        c_date: hasCloseDate ? s.c_date : null,
+        dis: s.dis ?? s.discount_percent ?? 0,
+        dely: s.dely ?? s.delivery_charge ?? 0,
+        is_active
       };
     });
 
     return NextResponse.json({
-      source: 'local_backup',
+      source: 'authentic_database',
       subscriptions: enriched,
       total: enriched.length,
       active_count: enriched.filter(s => s.is_active).length,

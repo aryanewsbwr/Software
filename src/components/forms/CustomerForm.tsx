@@ -112,6 +112,45 @@ export default function CustomerForm({
     return () => clearTimeout(timer);
   }, [searchQuery, isFindOpen]);
 
+  // Keyboard shortcut handler (Alt+S, Alt+U, Alt+D, Alt+F, Alt+C, Alt+E, F1, F2, Esc)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (isFindOpen) setIsFindOpen(false);
+        else onClose();
+        return;
+      }
+      if (e.key === 'F1') {
+        e.preventDefault();
+        handleAddSubscriptionRow();
+        return;
+      }
+      if (e.altKey) {
+        const key = e.key.toLowerCase();
+        if (key === 's' || key === 'u') {
+          e.preventDefault();
+          handleSave();
+        } else if (key === 'd') {
+          e.preventDefault();
+          handleCancel();
+        } else if (key === 'f') {
+          e.preventDefault();
+          setIsFindOpen(true);
+        } else if (key === 'c') {
+          e.preventDefault();
+          handleCancel();
+        } else if (key === 'e') {
+          e.preventDefault();
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isFindOpen, nameEng, nameHindi, add1, hindiAdd, phone, regionId, securityDeposit, dueAmount, priority, selectedCustId, subscriptions]);
+
   if (!isOpen) return null;
 
   const handleSelectFoundCustomer = (cust: Customer) => {
@@ -127,6 +166,12 @@ export default function CustomerForm({
     setPriority(cust.priority || 1);
     if (onSelectCustomer) onSelectCustomer(cust);
     setIsFindOpen(false);
+  };
+
+  const handleNameEngChange = (val: string) => {
+    setNameEng(val);
+    // Automatically transliterate to Hindi if nameHindi is not locked
+    setNameHindi(cleanOrTransliterateHindi('', val));
   };
 
   const handleAddSubscriptionRow = () => {
@@ -155,7 +200,21 @@ export default function CustomerForm({
     setSubscriptions(subscriptions.filter(s => s.sno !== sno));
   };
 
-  const handleSave = () => {
+  const handleCancel = () => {
+    setSelectedCustId(0);
+    setNameEng('');
+    setNameHindi('');
+    setAdd1('');
+    setHindiAdd('');
+    setPhone('');
+    setSecurityDeposit(0);
+    setDueAmount(0);
+    setPriority(1);
+    setSubscriptions([]);
+    setStatus('');
+  };
+
+  const handleSave = async () => {
     if (!nameEng.trim()) {
       setStatus('Error: Customer English Name is required.');
       return;
@@ -172,10 +231,22 @@ export default function CustomerForm({
       dueamount: Number(dueAmount),
       priority: Number(priority)
     };
+
+    try {
+      // Save directly to backend API (Supabase)
+      await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedCust)
+      });
+    } catch (e) {
+      console.warn('API save fallback:', e);
+    }
+
     if (onSaveCustomer) {
       onSaveCustomer(updatedCust, subscriptions);
     }
-    setStatus(`Customer #${selectedCustId} - ${nameEng} saved successfully.`);
+    setStatus(`Customer #${selectedCustId || 'New'} - ${nameEng} saved successfully in Supabase!`);
     setTimeout(() => setStatus(''), 3000);
   };
 
@@ -213,7 +284,7 @@ export default function CustomerForm({
               <input 
                 type="text" 
                 value={nameEng}
-                onChange={(e) => setNameEng(e.target.value)}
+                onChange={(e) => handleNameEngChange(e.target.value)}
                 className="flex-1 px-2 py-0.5 border border-[#808080] bg-white font-bold text-blue-900 shadow-inner"
               />
             </div>

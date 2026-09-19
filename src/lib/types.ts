@@ -47,6 +47,15 @@ export interface Hawker {
   commission_rate?: number;
 }
 
+export interface CollectionAgent {
+  collect_id: number;
+  name: string;
+  address?: string;
+  city?: string;
+  phone?: string;
+  mobile?: string;
+}
+
 export interface Customer {
   customer_id: number;
   name_eng: string;
