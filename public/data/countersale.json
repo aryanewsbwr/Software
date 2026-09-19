@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1,
+    "publica_id": 1,
+    "Publica_id": 1,
+    "qty": 10,
+    "Qty": 10,
+    "rate": 1,
+    "amt": 10,
+    "Amt": 10,
+    "sale_date": "2008-08-23",
+    "Sale_Date": "23/08/2008",
+    "customer_name": "Walk-in Counter Customer",
+    "created_at": "2008-08-23T10:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "publica_id": 1,
+    "Publica_id": 1,
+    "qty": 10,
+    "Qty": 10,
+    "rate": 2.5,
+    "amt": 25,
+    "Amt": 25,
+    "sale_date": "2011-03-15",
+    "Sale_Date": "15/03/2011",
+    "customer_name": "Walk-in Counter Customer",
+    "created_at": "2011-03-15T10:00:00.000Z"
+  }
+]

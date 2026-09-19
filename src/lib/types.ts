@@ -206,3 +206,23 @@ export interface BillHeader {
   total_copies?: number;
   paper_amount?: number;
 }
+
+export interface CounterSale {
+  id?: number | string;
+  publica_id: number;
+  Publica_id?: number;
+  pub_name?: string;
+  public_name?: string;
+  pub_hindi?: string;
+  qty: number;
+  Qty?: number;
+  rate: number;
+  Rate?: number;
+  amt: number;
+  Amt?: number;
+  sale_date: string; // YYYY-MM-DD
+  Sale_Date?: string;
+  customer_name?: string;
+  remarks?: string;
+  created_at?: string;
+}
