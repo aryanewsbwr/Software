@@ -58,6 +58,7 @@ export default function CustomerForm({
 
   // Subscriptions Table
   const [subscriptions, setSubscriptions] = useState<CustomerDetail[]>([]);
+  const [subFilter, setSubFilter] = useState<'active' | 'all'>('active');
   const [isLoadingSubs, setIsLoadingSubs] = useState(false);
 
   // Find Dialog State
@@ -214,6 +215,57 @@ export default function CustomerForm({
 
   const handleDeleteSubscriptionRow = (sno: number) => {
     setSubscriptions(subscriptions.filter(s => s.sno !== sno));
+  };
+
+  const handleDiscontinueSubscriptionRow = async (sno: number) => {
+    const today = new Date();
+    const d = String(today.getDate()).padStart(2, '0');
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const y = today.getFullYear();
+    const formattedToday = `${d}/${m}/${y}`;
+
+    setSubscriptions(subscriptions.map(s => {
+      if (s.sno === sno) {
+        return {
+          ...s,
+          c_date: formattedToday,
+          is_active: false
+        };
+      }
+      return s;
+    }));
+
+    // Post to API
+    const targetSub = subscriptions.find(s => s.sno === sno);
+    if (targetSub) {
+      try {
+        await fetch('/api/subscriptions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'discontinue',
+            customer_id: selectedCustId,
+            publica_id: targetSub.publica_id || (targetSub as any).publication_id,
+            c_date: `${y}-${m}-${d}`
+          })
+        });
+      } catch (err) {
+        console.warn('Discontinue API warning:', err);
+      }
+    }
+  };
+
+  const handleReactivateSubscriptionRow = (sno: number) => {
+    setSubscriptions(subscriptions.map(s => {
+      if (s.sno === sno) {
+        return {
+          ...s,
+          c_date: null,
+          is_active: true
+        };
+      }
+      return s;
+    }));
   };
 
   const handleCancel = () => {
@@ -460,7 +512,46 @@ export default function CustomerForm({
 
         {/* Subscriptions Grid matching screenshot_05.jpg */}
         <div className="space-y-1">
-          <div className="border border-[#808080] bg-white shadow-inner overflow-auto max-h-48">
+          
+          {/* Subscriptions Header with Active vs All Filter Tabs */}
+          <div className="flex items-center justify-between pb-0.5">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setSubFilter('active')}
+                className={`px-2.5 py-0.5 text-xs font-bold border cursor-pointer ${
+                  subFilter === 'active' 
+                    ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs' 
+                    : 'bg-[#ECE9D8] text-slate-800 border-slate-400 hover:bg-white'
+                }`}
+              >
+                ● Active Deliveries (चालू अखबार: {subscriptions.filter(s => s.is_active !== false && (!s.c_date || s.c_date === '' || s.c_date === '-')).length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubFilter('all')}
+                className={`px-2.5 py-0.5 text-xs font-bold border cursor-pointer ${
+                  subFilter === 'all' 
+                    ? 'bg-indigo-700 text-white border-indigo-800 shadow-xs' 
+                    : 'bg-[#ECE9D8] text-slate-800 border-slate-400 hover:bg-white'
+                }`}
+              >
+                All Subscription History (सभी इतिहास: {subscriptions.length})
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 text-[11px] font-bold">
+              <span className="text-emerald-800">
+                Active: {subscriptions.filter(s => s.is_active !== false && (!s.c_date || s.c_date === '' || s.c_date === '-')).length}
+              </span>
+              <span className="text-slate-300">|</span>
+              <span className="text-red-800">
+                Discontinued: {subscriptions.filter(s => s.is_active === false || (s.c_date && s.c_date !== '' && s.c_date !== '-')).length}
+              </span>
+            </div>
+          </div>
+
+          <div className="border border-[#808080] bg-white shadow-inner overflow-auto max-h-52">
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-[#ECE9D8] text-slate-900 font-bold border-b sticky top-0 text-[11px]">
                 <tr>
@@ -484,33 +575,106 @@ export default function CustomerForm({
                     <td colSpan={12} className="p-4 text-center text-slate-500 font-bold">Loading subscriptions...</td>
                   </tr>
                 ) : subscriptions.length > 0 ? (
-                  subscriptions.map((sub, idx) => (
-                    <tr key={sub.sno || idx} className="border-b hover:bg-amber-50 text-[11px]">
-                      <td className="p-1 border-r font-mono text-center">{idx + 1}</td>
-                      <td className="p-1 border-r font-bold text-blue-900">{sub.publication_name || `Pub #${sub.publica_id}`}</td>
-                      <td className="p-1 border-r font-mono text-center">HW</td>
-                      <td className="p-1 border-r text-slate-700">{sub.hawker_name || `Hwk #${sub.hawker_id}`}</td>
-                      <td className="p-1 border-r font-bold text-center font-mono">{sub.qty}</td>
-                      <td className="p-1 border-r text-center">{sub.circulation || 'Daily'}</td>
-                      <td className="p-1 border-r font-mono text-center">{sub.from_day || '1-7'}</td>
-                      <td className="p-1 border-r font-mono text-center">{formatLegacyDate(sub.s_date)}</td>
-                      <td className="p-1 border-r font-mono text-center text-slate-400">{formatLegacyDate(sub.c_date)}</td>
-                      <td className="p-1 border-r font-mono text-center">{sub.dis || 0}%</td>
-                      <td className="p-1 border-r font-mono text-center">₹{sub.dely || 0}</td>
-                      <td className="p-1 text-center">
-                        <button 
-                          onClick={() => handleDeleteSubscriptionRow(sub.sno)}
-                          className="text-red-600 hover:text-red-800 font-bold"
-                          title="Delete Subscription Line"
+                  (() => {
+                    const displayed = subFilter === 'active' 
+                      ? subscriptions.filter(s => s.is_active !== false && (!s.c_date || s.c_date === '' || s.c_date === '-'))
+                      : subscriptions;
+
+                    if (displayed.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={12} className="p-4 text-center text-slate-500 italic">
+                            No active subscriptions. Switch to "All Subscription History" to view stopped papers.
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return displayed.map((sub, idx) => {
+                      const isDiscontinued = sub.is_active === false || (sub.c_date && sub.c_date !== '' && sub.c_date !== '-');
+
+                      return (
+                        <tr 
+                          key={sub.sno || idx} 
+                          className={`border-b text-[11px] ${
+                            isDiscontinued 
+                              ? 'bg-red-50/70 hover:bg-red-100/60 text-slate-600' 
+                              : 'hover:bg-emerald-50/50 text-slate-900'
+                          }`}
                         >
-                          ✕
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                          <td className="p-1 border-r font-mono text-center">{idx + 1}</td>
+                          <td className="p-1 border-r font-bold">
+                            <div className="flex items-center gap-1.5">
+                              <span className={isDiscontinued ? 'line-through text-slate-500' : 'text-blue-900'}>
+                                {sub.publication_name || `Pub #${sub.publica_id}`}
+                              </span>
+                              {isDiscontinued && (
+                                <span className="px-1 py-0.2 bg-red-100 text-red-800 border border-red-300 rounded text-[9px] font-bold">
+                                  बंद / Stopped
+                                </span>
+                              )}
+                              {sub.hold_info && !isDiscontinued && (
+                                <span className="px-1 py-0.2 bg-amber-100 text-amber-900 border border-amber-300 rounded text-[9px] font-bold">
+                                  छुट्टी ({sub.hold_info.to})
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-1 border-r font-mono text-center">HW</td>
+                          <td className="p-1 border-r text-slate-700">{sub.hawker_name || `Hwk #${sub.hawker_id}`}</td>
+                          <td className="p-1 border-r font-bold text-center font-mono">{sub.qty}</td>
+                          <td className="p-1 border-r text-center">{sub.circulation || 'Morning'}</td>
+                          <td className="p-1 border-r font-mono text-center">{sub.from_day || '1-7'}</td>
+                          <td className="p-1 border-r font-mono text-center">{formatLegacyDate(sub.s_date)}</td>
+                          <td className="p-1 border-r font-mono text-center">
+                            {isDiscontinued ? (
+                              <span className="font-bold text-red-700 bg-red-100/80 px-1 rounded">
+                                {formatLegacyDate(sub.c_date)}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
+                          </td>
+                          <td className="p-1 border-r font-mono text-center">{sub.dis || 0}%</td>
+                          <td className="p-1 border-r font-mono text-center">₹{sub.dely || 0}</td>
+                          <td className="p-1 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              {isDiscontinued ? (
+                                <button 
+                                  type="button"
+                                  onClick={() => handleReactivateSubscriptionRow(sub.sno)}
+                                  className="px-1.5 py-0.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-400 rounded text-[10px] font-bold cursor-pointer"
+                                  title="Reactivate Subscription (पुनः चालू करें)"
+                                >
+                                  पुनः चालू
+                                </button>
+                              ) : (
+                                <button 
+                                  type="button"
+                                  onClick={() => handleDiscontinueSubscriptionRow(sub.sno)}
+                                  className="px-1.5 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-400 rounded text-[10px] font-bold cursor-pointer"
+                                  title="Stop Delivery / Discontinue Paper (अखबार बंद करें)"
+                                >
+                                  बंद करें
+                                </button>
+                              )}
+                              <button 
+                                type="button"
+                                onClick={() => handleDeleteSubscriptionRow(sub.sno)}
+                                className="text-red-600 hover:text-red-800 font-bold px-1"
+                                title="Delete row"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()
                 ) : (
                   <tr>
-                    <td colSpan={12} className="p-3 text-center text-slate-500 italic">No active newspaper subscriptions for this customer. Click [+ Insert Item] to add.</td>
+                    <td colSpan={12} className="p-3 text-center text-slate-500 italic">No newspaper subscriptions for this customer. Click [+ Insert Item] to add.</td>
                   </tr>
                 )}
               </tbody>
@@ -523,8 +687,9 @@ export default function CustomerForm({
               Note :- Press F1 to Insert Items - Press F2 to Delete Selected Items - Press F10 to Delete Empty Grid
             </span>
             <button 
+              type="button"
               onClick={handleAddSubscriptionRow}
-              className="px-2 py-0.5 bg-blue-100 hover:bg-blue-200 border border-blue-400 text-blue-900 font-bold rounded-xs flex items-center gap-1"
+              className="px-2 py-0.5 bg-blue-100 hover:bg-blue-200 border border-blue-400 text-blue-900 font-bold rounded-xs flex items-center gap-1 cursor-pointer"
             >
               <Plus className="w-3 h-3" /> + Insert Item
             </button>

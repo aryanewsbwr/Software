@@ -86,6 +86,7 @@ export interface CustomerDetail {
   sno: number;
   customer_id: number;
   publica_id: number;
+  publication_id?: number;
   publication_name?: string;
   hawker_id?: number;
   hawker_name?: string;
@@ -98,6 +99,12 @@ export interface CustomerDetail {
   dis?: number;
   dely: number;
   is_active?: boolean;
+  hold_info?: {
+    is_on_hold: boolean;
+    from: string;
+    to: string;
+    type: string;
+  } | null;
 }
 
 export interface Rate {
