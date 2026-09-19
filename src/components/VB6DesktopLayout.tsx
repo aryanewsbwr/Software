@@ -138,10 +138,17 @@ export default function VB6DesktopLayout() {
   // Load Initial Metadata
   useEffect(() => {
     fetch('/data/publishers.json').then(r => r.json()).then(setPublishers).catch(() => {});
-    fetch('/data/publications.json').then(r => r.json()).then(data => {
-      setPublications(data);
-      if (data.length > 0) setSelectedPub(data[0]);
-    }).catch(() => {});
+    fetch('/api/publications?with_rates=true').then(r => r.json()).then(data => {
+      if (data.publications) {
+        setPublications(data.publications);
+        if (data.publications.length > 0) setSelectedPub(data.publications[0]);
+      }
+    }).catch(() => {
+      fetch('/data/publications.json').then(r => r.json()).then(data => {
+        setPublications(data);
+        if (data.length > 0) setSelectedPub(data[0]);
+      }).catch(() => {});
+    });
     fetch('/data/regions.json').then(r => r.json()).then(setRegions).catch(() => {});
     fetch('/data/hawkers.json').then(r => r.json()).then(setHawkers).catch(() => {});
     fetch('/data/rates.json').then(r => r.json()).then(setRates).catch(() => {});
@@ -695,6 +702,20 @@ export default function VB6DesktopLayout() {
             publishers={publishers}
             rates={rates}
             ratechanges={ratechanges}
+            onSave={(savedPub) => {
+              fetch('/api/publications?with_rates=true')
+                .then(r => r.json())
+                .then(data => { if (data.publications) setPublications(data.publications); })
+                .catch(() => {});
+              setStatusMessage(`Publication #${savedPub.publica_id} "${savedPub.public_name}" saved.`);
+            }}
+            onDelete={(pubId) => {
+              fetch('/api/publications?with_rates=true')
+                .then(r => r.json())
+                .then(data => { if (data.publications) setPublications(data.publications); })
+                .catch(() => {});
+              setStatusMessage(`Publication #${pubId} deleted.`);
+            }}
           />
         )}
 

@@ -22,13 +22,43 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const search = (searchParams.get('search') || '').trim().toLowerCase();
+    const statusFilter = (searchParams.get('status') || 'all').trim().toLowerCase();
     const withRates = searchParams.get('with_rates') !== 'false';
 
     const pubs = loadJson('publications.json');
     const rates = loadJson('rates.json');
     const ratechanges = loadJson('ratechanges.json');
+    const pubdis = loadJson('publicationdis.json');
 
-    let filtered = pubs;
+    const todayIso = new Date().toISOString().split('T')[0];
+
+    const enriched = pubs.map((p: any) => {
+      const decodedHindi = cleanOrTransliterateHindi(p.pub_hindi, p.public_name);
+      const effectiveRates = withRates ? getEffectiveWeekdayRates(p.publica_id, todayIso, rates, ratechanges) : null;
+      
+      const disc = pubdis.find((d: any) => (d.publica_id || d.Publica_id) === p.publica_id);
+      const toDate = disc ? (disc.to_date || disc.ToDate) : null;
+      const fromDate = disc ? (disc.from_date || disc.FromDate) : null;
+      const isClosed = !!(disc && (toDate >= todayIso || toDate >= '2025-01-01'));
+
+      return {
+        ...p,
+        pub_hindi: decodedHindi,
+        current_rates: effectiveRates,
+        today_rate: effectiveRates ? effectiveRates[new Date().getDay() + 1] : 5.0,
+        is_closed: isClosed,
+        closed_from: isClosed ? fromDate : null,
+        closed_to: isClosed ? toDate : null
+      };
+    });
+
+    let filtered = enriched;
+    if (statusFilter === 'active') {
+      filtered = filtered.filter((p: any) => !p.is_closed);
+    } else if (statusFilter === 'closed') {
+      filtered = filtered.filter((p: any) => p.is_closed);
+    }
+
     if (search) {
       filtered = filtered.filter((p: any) =>
         p.public_name?.toLowerCase().includes(search) ||
@@ -38,23 +68,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const todayIso = new Date().toISOString().split('T')[0];
-
-    const result = filtered.map((p: any) => {
-      const decodedHindi = cleanOrTransliterateHindi(p.pub_hindi, p.public_name);
-      const effectiveRates = withRates ? getEffectiveWeekdayRates(p.publica_id, todayIso, rates, ratechanges) : null;
-
-      return {
-        ...p,
-        pub_hindi: decodedHindi,
-        current_rates: effectiveRates,
-        today_rate: effectiveRates ? effectiveRates[new Date().getDay() + 1] : 5.0
-      };
-    });
-
     return NextResponse.json({
-      total: result.length,
-      publications: result
+      total: filtered.length,
+      active_count: enriched.filter((p: any) => !p.is_closed).length,
+      closed_count: enriched.filter((p: any) => p.is_closed).length,
+      publications: filtered
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -65,6 +83,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
+      is_new = false,
       publica_id,
       public_name,
       pub_hindi,
@@ -76,7 +95,10 @@ export async function POST(request: NextRequest) {
       magzine_day = null,
       magzine_month = null,
       chr_del = 0,
-      rates: customRates
+      rates: customRates,
+      is_closed = false,
+      closed_from,
+      closed_to
     } = body;
 
     if (!public_name || !public_name.trim()) {
@@ -87,10 +109,10 @@ export async function POST(request: NextRequest) {
     const pubList = loadJson('publications.json');
 
     let finalPubId = publica_id ? parseInt(publica_id, 10) : 0;
-    const isUpdate = finalPubId > 0 && pubList.some((p: any) => p.publica_id === finalPubId);
+    const isUpdate = !is_new && finalPubId > 0 && pubList.some((p: any) => p.publica_id === finalPubId);
 
     if (!isUpdate) {
-      // Assign new ID
+      // Assign new unique ID
       const maxId = pubList.reduce((max: number, p: any) => Math.max(max, p.publica_id || 0), 0);
       finalPubId = maxId + 1;
     }
@@ -120,7 +142,9 @@ export async function POST(request: NextRequest) {
       console.warn('Supabase publication save warning:', dbErr);
     }
 
-    // 2. Save 7-day rates if provided
+    const todayIso = new Date().toISOString().split('T')[0];
+
+    // 2. Save 7-day rates
     if (customRates && typeof customRates === 'object') {
       const rateRows = Object.entries(customRates).map(([day, rate]) => ({
         Publica_id: finalPubId,
@@ -146,9 +170,52 @@ export async function POST(request: NextRequest) {
           saveJson('rates.json', curRates);
         }
       } catch (fErr) {}
+
+      // If new publication or price update, also log in ratechange table for current date
+      try {
+        const rateChangeRows = Object.entries(customRates).map(([day, rate]) => ({
+          publica_id: finalPubId,
+          dated: todayIso,
+          dayofweek: parseInt(day, 10),
+          new_rate: Number(rate)
+        }));
+        await supabase.from('ratechange').insert(rateChangeRows);
+
+        let curRateChanges = loadJson('ratechanges.json');
+        rateChangeRows.forEach(rc => curRateChanges.push(rc));
+        saveJson('ratechanges.json', curRateChanges);
+      } catch (rcErr) {
+        console.warn('Ratechange record warning:', rcErr);
+      }
     }
 
-    // 3. Update local publications.json
+    // 3. Handle Closed / Discontinue status in publicationdis
+    try {
+      let pdis = loadJson('publicationdis.json');
+      if (is_closed) {
+        const fromD = closed_from || todayIso;
+        const toD = closed_to || '2050-03-31';
+
+        await supabase.from('publicationdis').delete().eq('Publica_id', finalPubId);
+        await supabase.from('publicationdis').insert([{
+          Publica_id: finalPubId,
+          FromDate: fromD,
+          ToDate: toD
+        }]);
+
+        pdis = pdis.filter((d: any) => (d.publica_id || d.Publica_id) !== finalPubId);
+        pdis.push({ publica_id: finalPubId, from_date: fromD, to_date: toD });
+        saveJson('publicationdis.json', pdis);
+      } else {
+        await supabase.from('publicationdis').delete().eq('Publica_id', finalPubId);
+        pdis = pdis.filter((d: any) => (d.publica_id || d.Publica_id) !== finalPubId);
+        saveJson('publicationdis.json', pdis);
+      }
+    } catch (pdErr) {
+      console.warn('Publicationdis update warning:', pdErr);
+    }
+
+    // 4. Update local publications.json
     try {
       let updatedPubList = pubList;
       if (isUpdate) {
@@ -159,10 +226,18 @@ export async function POST(request: NextRequest) {
       saveJson('publications.json', updatedPubList);
     } catch (fErr) {}
 
+    const fullRecord = {
+      ...pubRecord,
+      is_closed: !!is_closed,
+      closed_from: is_closed ? (closed_from || todayIso) : null,
+      closed_to: is_closed ? (closed_to || '2050-03-31') : null,
+      current_rates: customRates
+    };
+
     return NextResponse.json({
       success: true,
       message: `Publication #${finalPubId} (${public_name}) ${isUpdate ? 'updated' : 'created'} successfully!`,
-      publication: pubRecord
+      publication: fullRecord
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -185,6 +260,7 @@ export async function DELETE(request: NextRequest) {
       await supabase.from('publication').delete().eq('publica_id', pubId);
       await supabase.from('rate').delete().eq('publica_id', pubId);
       await supabase.from('ratechange').delete().eq('publica_id', pubId);
+      await supabase.from('publicationdis').delete().eq('Publica_id', pubId);
     } catch (dbErr) {
       console.warn('Supabase delete warning:', dbErr);
     }
@@ -198,6 +274,10 @@ export async function DELETE(request: NextRequest) {
       const ratesList = loadJson('rates.json');
       const updatedRates = ratesList.filter((r: any) => r.publica_id !== pubId);
       saveJson('rates.json', updatedRates);
+
+      let pdis = loadJson('publicationdis.json');
+      pdis = pdis.filter((d: any) => (d.publica_id || d.Publica_id) !== pubId);
+      saveJson('publicationdis.json', pdis);
     } catch (fErr) {}
 
     return NextResponse.json({

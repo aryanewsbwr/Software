@@ -26,6 +26,11 @@ export interface Publication {
   magzine_month?: number;
   chr_del?: number;
   pub_hindi?: string;
+  is_closed?: boolean;
+  closed_from?: string | null;
+  closed_to?: string | null;
+  current_rates?: Record<number, number> | null;
+  today_rate?: number;
 }
 
 export interface Region {
