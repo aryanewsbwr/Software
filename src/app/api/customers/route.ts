@@ -3,6 +3,8 @@ import { supabase } from '@/lib/supabaseClient';
 import path from 'path';
 import fs from 'fs';
 
+import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+
 export const dynamic = 'force-dynamic';
 
 let cachedCustomers: any[] | null = null;
@@ -50,13 +52,19 @@ export async function GET(request: NextRequest) {
     const { data, count, error } = await query;
 
     if (!error && data) {
+      const decodedCustomers = (data || []).map(c => ({
+        ...c,
+        name_hindi: cleanOrTransliterateHindi(c.name_hindi, c.name_eng),
+        hindi_add: cleanOrTransliterateHindi(c.hindi_add, c.add1 || '')
+      }));
+
       return NextResponse.json({
         source: 'supabase',
         total: count || 0,
         page,
         limit,
         totalPages: Math.ceil((count || 0) / limit),
-        customers: data
+        customers: decodedCustomers
       });
     }
 
@@ -82,6 +90,11 @@ export async function GET(request: NextRequest) {
 
     const total = filtered.length;
     const localData = filtered.slice(from, from + limit);
+    const decodedLocal = localData.map(c => ({
+      ...c,
+      name_hindi: cleanOrTransliterateHindi(c.name_hindi, c.name_eng),
+      hindi_add: cleanOrTransliterateHindi(c.hindi_add, c.add1 || '')
+    }));
 
     return NextResponse.json({
       source: 'local_backup',
@@ -89,7 +102,7 @@ export async function GET(request: NextRequest) {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
-      customers: localData
+      customers: decodedLocal
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

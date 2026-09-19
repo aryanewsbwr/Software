@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, Save, Trash2, X, Search, Plus, Calendar, Edit3, CheckSquare, Square } from 'lucide-react';
+import { Users, Plus } from 'lucide-react';
 import { Customer, CustomerDetail, Publication, Hawker, Region } from '@/lib/types';
-import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { cleanOrTransliterateHindi, englishToHindiPhonetic } from '@/lib/transliteration';
 
 interface Props {
   isOpen?: boolean;
@@ -170,8 +170,24 @@ export default function CustomerForm({
 
   const handleNameEngChange = (val: string) => {
     setNameEng(val);
-    // Automatically transliterate to Hindi if nameHindi is not locked
-    setNameHindi(cleanOrTransliterateHindi('', val));
+    const converted = cleanOrTransliterateHindi('', val);
+    setNameHindi(converted);
+  };
+
+  const handleAdd1Change = (val: string) => {
+    setAdd1(val);
+    const converted = cleanOrTransliterateHindi('', val);
+    setHindiAdd(converted);
+  };
+
+  const handleHindiFieldKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, field: 'name' | 'add') => {
+    if (e.key === ' ' || e.key === 'Enter') {
+      if (field === 'name') {
+        setNameHindi(cleanOrTransliterateHindi('', nameHindi));
+      } else {
+        setHindiAdd(cleanOrTransliterateHindi('', hindiAdd));
+      }
+    }
   };
 
   const handleAddSubscriptionRow = () => {
@@ -285,18 +301,31 @@ export default function CustomerForm({
                 type="text" 
                 value={nameEng}
                 onChange={(e) => handleNameEngChange(e.target.value)}
+                placeholder="Type customer name in English..."
                 className="flex-1 px-2 py-0.5 border border-[#808080] bg-white font-bold text-blue-900 shadow-inner"
               />
             </div>
 
             <div className="flex items-center gap-2">
               <label className="w-24 font-bold text-slate-800">Name (Hindi)</label>
-              <input 
-                type="text" 
-                value={nameHindi}
-                onChange={(e) => setNameHindi(e.target.value)}
-                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white font-bold text-indigo-900 shadow-inner"
-              />
+              <div className="flex-1 flex gap-1">
+                <input 
+                  type="text" 
+                  value={nameHindi}
+                  onChange={(e) => setNameHindi(e.target.value)}
+                  onKeyDown={(e) => handleHindiFieldKeyDown(e, 'name')}
+                  placeholder="हिंदी नाम (ऑटो-ट्रांसलेट)..."
+                  className="flex-1 px-2 py-0.5 border border-[#808080] bg-white font-bold text-indigo-900 shadow-inner"
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setNameHindi(cleanOrTransliterateHindi('', nameEng))}
+                  className="px-2 py-0.5 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-[10px] font-bold text-blue-900"
+                  title="Translate to Hindi"
+                >
+                  अ/A
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -304,19 +333,32 @@ export default function CustomerForm({
               <input 
                 type="text" 
                 value={add1}
-                onChange={(e) => setAdd1(e.target.value)}
+                onChange={(e) => handleAdd1Change(e.target.value)}
+                placeholder="Type address in English..."
                 className="flex-1 px-2 py-0.5 border border-[#808080] bg-white shadow-inner"
               />
             </div>
 
             <div className="flex items-center gap-2">
               <label className="w-24 font-bold text-slate-800">Add. (Hindi)</label>
-              <input 
-                type="text" 
-                value={hindiAdd}
-                onChange={(e) => setHindiAdd(e.target.value)}
-                className="flex-1 px-2 py-0.5 border border-[#808080] bg-white shadow-inner"
-              />
+              <div className="flex-1 flex gap-1">
+                <input 
+                  type="text" 
+                  value={hindiAdd}
+                  onChange={(e) => setHindiAdd(e.target.value)}
+                  onKeyDown={(e) => handleHindiFieldKeyDown(e, 'add')}
+                  placeholder="हिंदी पता..."
+                  className="flex-1 px-2 py-0.5 border border-[#808080] bg-white shadow-inner"
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setHindiAdd(cleanOrTransliterateHindi('', add1))}
+                  className="px-2 py-0.5 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-[10px] font-bold text-blue-900"
+                  title="Translate to Hindi"
+                >
+                  अ/A
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
