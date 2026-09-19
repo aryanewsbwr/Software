@@ -219,6 +219,7 @@ export default function VB6DesktopLayout() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F1') {
+        if (activeWindow !== null) return;
         e.preventDefault();
         const sunRate = editingRates[1] || 5.0;
         const updated: Record<number, number> = {};

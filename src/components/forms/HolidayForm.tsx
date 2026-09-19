@@ -67,34 +67,47 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
     }));
   };
 
-  // Toggle all newspapers
+  // Check if publication is a newspaper vs magazine
+  const isNewspaper = (p: Publication) => {
+    const t = (p.type_p || (p as any).TypeP || (p as any).typep || '').trim().toLowerCase();
+    return t === 'newspaper' || t === 'daily' || t === 'morning' || t === 'evening';
+  };
+
+  const isMagazine = (p: Publication) => {
+    const t = (p.type_p || (p as any).TypeP || (p as any).typep || '').trim().toLowerCase();
+    return t === 'magzine' || t === 'magazine' || t === 'weekly' || t === 'monthly' || t === 'fortnightly';
+  };
+
+  // Toggle all newspapers (F1)
   const handleApplyAllNewspaper = (checked: boolean) => {
     setApplyAllNewspaper(checked);
     setSelectedPubMap(prev => {
       const updated = { ...prev };
       pubList.forEach(p => {
-        const isMag = (p as any).typep === 'Magzine' || (p as any).TypeP === 'Magzine';
-        if (!isMag) {
+        if (isNewspaper(p)) {
           updated[p.publica_id] = checked;
         }
       });
       return updated;
     });
+    setMsg(checked ? 'F1: Selected all 31 Newspapers (समाचार पत्र)' : 'F1: Deselected all Newspapers');
+    setTimeout(() => setMsg(''), 2500);
   };
 
-  // Toggle all magazines
+  // Toggle all magazines (F2)
   const handleApplyAllMagzine = (checked: boolean) => {
     setApplyAllMagzine(checked);
     setSelectedPubMap(prev => {
       const updated = { ...prev };
       pubList.forEach(p => {
-        const isMag = (p as any).typep === 'Magzine' || (p as any).TypeP === 'Magzine';
-        if (isMag) {
+        if (isMagazine(p)) {
           updated[p.publica_id] = checked;
         }
       });
       return updated;
     });
+    setMsg(checked ? 'F2: Selected all Magazines (पत्रिकाएं)' : 'F2: Deselected all Magazines');
+    setTimeout(() => setMsg(''), 2500);
   };
 
   // Keyboard shortcuts (F1 for Newspaper, F2 for Magzine)
@@ -102,9 +115,11 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F1') {
         e.preventDefault();
+        e.stopPropagation();
         handleApplyAllNewspaper(!applyAllNewspaper);
       } else if (e.key === 'F2') {
         e.preventDefault();
+        e.stopPropagation();
         handleApplyAllMagzine(!applyAllMagzine);
       }
     };
