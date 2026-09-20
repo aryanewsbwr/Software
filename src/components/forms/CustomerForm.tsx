@@ -113,7 +113,28 @@ export default function CustomerForm({
     return () => clearTimeout(timer);
   }, [searchQuery, isFindOpen]);
 
-  // Keyboard shortcut handler (Alt+S, Alt+U, Alt+D, Alt+F, Alt+C, Alt+E, F1, F2, Esc)
+  const handleCancel = () => {
+    setSelectedCustId(0);
+    setNameEng('');
+    setNameHindi('');
+    setAdd1('');
+    setHindiAdd('');
+    setPhone('');
+    setRegionId(regions[0]?.region_id || 1);
+    setSecurityDeposit(0);
+    setDueAmount(0);
+    setPriority(1);
+    setSubscriptions([]);
+    setStatus('');
+    setIsCustomerType(true);
+    setIsSubAgentType(false);
+    setIsSelf(true);
+    setIsGovtSupply(false);
+    setSearchQuery('');
+    setIsFindOpen(false);
+  };
+
+  // Keyboard shortcut handler (Alt+S, Alt+U, Alt+D, Alt+F, Alt+C, Alt+E, F1, Esc)
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -135,7 +156,7 @@ export default function CustomerForm({
           handleSave();
         } else if (key === 'd') {
           e.preventDefault();
-          handleCancel();
+          handleDeleteCustomer();
         } else if (key === 'f') {
           e.preventDefault();
           setIsFindOpen(true);
@@ -299,20 +320,6 @@ export default function CustomerForm({
       }
       return s;
     }));
-  };
-
-  const handleCancel = () => {
-    setSelectedCustId(0);
-    setNameEng('');
-    setNameHindi('');
-    setAdd1('');
-    setHindiAdd('');
-    setPhone('');
-    setSecurityDeposit(0);
-    setDueAmount(0);
-    setPriority(1);
-    setSubscriptions([]);
-    setStatus('');
   };
 
   const handleSave = async () => {
@@ -762,10 +769,8 @@ export default function CustomerForm({
             🔍 <u>F</u>ind Customer
           </button>
           <button 
-            onClick={() => {
-              setNameEng('');
-              setNameHindi('');
-            }}
+            onClick={handleCancel}
+            title="Alt+C: Cancel and clear all customer fields to blank"
             className="px-4 py-1 bg-[#D4F0FF] hover:bg-[#BCE5FF] border border-[#006699] text-black font-bold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
           >
             ✖ <u>C</u>ancel

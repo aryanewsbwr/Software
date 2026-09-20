@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Region } from '@/lib/types';
 
 interface RegionFormProps {
@@ -18,6 +18,47 @@ export default function RegionForm({ onClose, regions = [] }: RegionFormProps) {
   const [isFindOpen, setIsFindOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [msg, setMsg] = useState('');
+
+  const handleCancel = () => {
+    setSelectedRegion({
+      region_id: 0,
+      region_name: '',
+      hindi_name: ''
+    });
+    setMsg('');
+    setSearchTerm('');
+    setIsFindOpen(false);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (isFindOpen) setIsFindOpen(false);
+        else onClose();
+      } else if (e.altKey) {
+        const key = e.key.toLowerCase();
+        if (key === 's' || key === 'u') {
+          e.preventDefault();
+          handleSave();
+        } else if (key === 'd') {
+          e.preventDefault();
+          handleDelete();
+        } else if (key === 'f') {
+          e.preventDefault();
+          setIsFindOpen(true);
+        } else if (key === 'c') {
+          e.preventDefault();
+          handleCancel();
+        } else if (key === 'e') {
+          e.preventDefault();
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedRegion, isFindOpen]);
 
   const handleSave = async () => {
     if (!selectedRegion.region_name.trim()) {
@@ -148,7 +189,7 @@ export default function RegionForm({ onClose, regions = [] }: RegionFormProps) {
           <button onClick={() => setIsFindOpen(true)} className="vb-action-btn bg-yellow-50">
             <span>🔍 Find ({regions.length})</span>
           </button>
-          <button onClick={() => setSelectedRegion(regions[0])} className="vb-action-btn">
+          <button onClick={handleCancel} title="Alt+C: Cancel and clear fields to blank" className="vb-action-btn">
             <span>❌ Cancel</span>
           </button>
           <button onClick={onClose} className="vb-action-btn text-red-700">

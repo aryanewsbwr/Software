@@ -19,13 +19,13 @@ export default function PubDiscontinueForm({ onClose, publications = [] }: PubDi
   useEffect(() => {
     if (publications && publications.length > 0) {
       setPubList(publications);
-      setSelectedPub(publications[0]?.public_name || '');
+      setSelectedPub('');
     } else {
       fetch('/data/publications.json')
         .then(r => r.json())
         .then(d => {
           setPubList(d || []);
-          if (d && d.length > 0) setSelectedPub(d[0].public_name);
+          setSelectedPub('');
         })
         .catch(() => {});
     }
@@ -41,7 +41,7 @@ export default function PubDiscontinueForm({ onClose, publications = [] }: PubDi
   };
 
   const handleCancel = () => {
-    setSelectedPub(pubList[0]?.public_name || '');
+    setSelectedPub('');
     setFromDate('');
     setToDate('');
     setMsg('');
@@ -82,6 +82,7 @@ export default function PubDiscontinueForm({ onClose, publications = [] }: PubDi
               onChange={(e) => setSelectedPub(e.target.value)}
               className="flex-1 px-2 py-0.5 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none"
             >
+              <option value="">-- Select Publication --</option>
               {pubList.map(p => (
                 <option key={p.publica_id} value={p.public_name}>{p.public_name}</option>
               ))}

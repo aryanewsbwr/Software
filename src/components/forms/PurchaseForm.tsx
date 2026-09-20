@@ -25,36 +25,19 @@ interface PurchaseFormProps {
 export default function PurchaseForm({ onClose, publishers = [], publications = [] }: PurchaseFormProps) {
   const [purchaseDate, setPurchaseDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedPublisher, setSelectedPublisher] = useState<string>(
-    ((publishers[0] as any)?.publisher_id ?? (publishers[0] as any)?.publish_id ?? 1).toString()
+    publishers.length > 0 ? ((publishers[0] as any)?.publisher_id ?? (publishers[0] as any)?.publish_id ?? '').toString() : ''
   );
   const [invoiceNo, setInvoiceNo] = useState('');
   const [freightCharges, setFreightCharges] = useState(0);
-  const [items, setItems] = useState<PurchaseItem[]>([
-    {
-      id: 1,
-      publica_id: 5,
-      pub_name: 'RAJASTHAN PATRIKA',
-      bundles: 12,
-      received_copies: 2500,
-      return_copies: 15,
-      net_copies: 2485,
-      buying_rate: 3.75,
-      total_amount: 9318.75
-    },
-    {
-      id: 2,
-      publica_id: 4,
-      pub_name: 'DAINIK BHASKAR',
-      bundles: 14,
-      received_copies: 2800,
-      return_copies: 20,
-      net_copies: 2780,
-      buying_rate: 3.75,
-      total_amount: 10425.00
-    }
-  ]);
-
+  const [items, setItems] = useState<PurchaseItem[]>([]);
   const [isSaved, setIsSaved] = useState(false);
+
+  const handleCancel = () => {
+    setItems([]);
+    setInvoiceNo('');
+    setFreightCharges(0);
+    setIsSaved(false);
+  };
 
   const addItem = () => {
     const pub = publications[0] || { publica_id: 1, public_name: 'New Publication', b_rate: 3.5 };
@@ -285,10 +268,18 @@ export default function PurchaseForm({ onClose, publishers = [], publications = 
             <div className="flex items-center gap-1.5">
               <button 
                 onClick={handleSave}
-                className="vb-btn bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 cursor-pointer px-3 py-1"
+                disabled={items.length === 0}
+                className="vb-btn bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white flex items-center gap-1 cursor-pointer px-3 py-1"
               >
                 <Save className="w-3.5 h-3.5" />
                 <span>Save Invoice</span>
+              </button>
+              <button 
+                onClick={handleCancel}
+                disabled={items.length === 0 && !invoiceNo}
+                className="vb-btn bg-white hover:bg-slate-100 disabled:opacity-50 text-black flex items-center gap-1 cursor-pointer px-3 py-1"
+              >
+                <span>✖ Cancel</span>
               </button>
               <button 
                 onClick={onClose} 

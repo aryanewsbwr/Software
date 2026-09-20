@@ -25,17 +25,26 @@ const DAYS = [
 ];
 
 export default function RateMatrixForm({ isOpen, onClose, publications, rates, ratechanges, onSaveRate }: Props) {
-  const [selectedPubId, setSelectedPubId] = useState<number>(publications[0]?.publica_id || 1);
-  const [dayRates, setDayRates] = useState<Record<number, number>>({ 1: 5.0, 2: 5.0, 3: 5.0, 4: 5.0, 5: 5.0, 6: 5.0, 7: 5.0 });
+  const [selectedPubId, setSelectedPubId] = useState<number>(0);
+  const [dayRates, setDayRates] = useState<Record<number, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 });
   const [status, setStatus] = useState('');
 
-  const selectedPub = publications.find(p => p.publica_id === selectedPubId) || publications[0];
+  const selectedPub = publications.find(p => p.publica_id === selectedPubId);
 
   useEffect(() => {
-    if (!selectedPubId) return;
+    if (!selectedPubId) {
+      setDayRates({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 });
+      return;
+    }
     const effective = getEffectiveWeekdayRates(selectedPubId, new Date().toISOString().split('T')[0], rates, ratechanges);
     setDayRates(effective);
   }, [selectedPubId, rates, ratechanges]);
+
+  const handleCancel = () => {
+    setSelectedPubId(0);
+    setDayRates({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 });
+    setStatus('');
+  };
 
   if (!isOpen) return null;
 
@@ -84,6 +93,7 @@ export default function RateMatrixForm({ isOpen, onClose, publications, rates, r
                 onChange={(e) => setSelectedPubId(Number(e.target.value))}
                 className="px-3 py-1 border border-slate-400 bg-amber-50 font-bold text-blue-900 rounded-xs"
               >
+                <option value="0">-- Select Publication (अखबार चुनें) --</option>
                 {publications.map(pub => (
                   <option key={pub.publica_id} value={pub.publica_id}>
                     {pub.public_name} ({pub.type_p || 'Newspaper'})
@@ -173,14 +183,21 @@ export default function RateMatrixForm({ isOpen, onClose, publications, rates, r
           <div className="flex items-center gap-2">
             <button 
               onClick={handleSave}
-              className="px-4 py-1 bg-emerald-700 text-white border border-black shadow-xs hover:bg-emerald-800 font-bold text-xs flex items-center gap-1"
+              disabled={!selectedPubId}
+              className="px-4 py-1 bg-emerald-700 text-white border border-black shadow-xs hover:bg-emerald-800 disabled:opacity-50 font-bold text-xs flex items-center gap-1 cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" />
               Save Rates (दर सुरक्षित करें)
             </button>
             <button 
+              onClick={handleCancel}
+              className="px-3 py-1 bg-[#ECE9D8] border border-black shadow-xs hover:bg-slate-200 font-bold text-xs cursor-pointer"
+            >
+              ✖ Cancel (रद्द करें)
+            </button>
+            <button 
               onClick={onClose}
-              className="px-4 py-1 bg-[#ECE9D8] border border-black shadow-xs hover:bg-slate-200 font-bold text-xs"
+              className="px-4 py-1 bg-[#ECE9D8] border border-black shadow-xs hover:bg-slate-200 font-bold text-xs cursor-pointer"
             >
               Close (बंद करें)
             </button>

@@ -55,7 +55,7 @@ export default function PublicationForm({
   const [closedTo, setClosedTo] = useState('');
 
   const [weekdayRates, setWeekdayRates] = useState<Record<number, number>>({
-    1: 5.0, 2: 5.0, 3: 5.0, 4: 5.0, 5: 5.0, 6: 5.0, 7: 5.0
+    1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0
   });
 
   const [publishingDay, setPublishingDay] = useState('Sunday');
@@ -68,12 +68,34 @@ export default function PublicationForm({
 
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize with first publication if not in new mode
-  useEffect(() => {
-    if (publications && publications.length > 0 && selectedPub.publica_id === 0 && !isNewMode) {
-      loadPublication(publications[0]);
-    }
-  }, [publications]);
+  const handleCancel = () => {
+    setIsNewMode(false);
+    setSelectedPub({
+      publica_id: 0,
+      public_name: '',
+      pub_hindi: '',
+      abrv: '',
+      publish_id: publishers[0]?.publish_id || 1,
+      type_p: 'Daily',
+      circulation: 'Morning',
+      duration: 'Daily',
+      chr_del: 0,
+      is_closed: false,
+      closed_from: null,
+      closed_to: null
+    });
+    setWeekdayRates({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 });
+    setDelChargesChecked(false);
+    setIsClosed(false);
+    setClosedFrom('');
+    setClosedTo('');
+    setMsg('');
+    setSearchTerm('');
+    setIsFindOpen(false);
+    setTimeout(() => {
+      nameInputRef.current?.focus();
+    }, 50);
+  };
 
   const loadPublication = (p: Publication) => {
     setIsNewMode(false);
@@ -112,7 +134,7 @@ export default function PublicationForm({
       closed_from: null,
       closed_to: null
     });
-    setWeekdayRates({ 1: 5.0, 2: 5.0, 3: 5.0, 4: 5.0, 5: 5.0, 6: 5.0, 7: 5.0 });
+    setWeekdayRates({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 });
     setDelChargesChecked(false);
     setIsClosed(false);
     setClosedFrom('');
@@ -158,6 +180,9 @@ export default function PublicationForm({
       } else if (e.altKey && (e.key === 'f' || e.key === 'F')) {
         e.preventDefault();
         setIsFindOpen(true);
+      } else if (e.altKey && (e.key === 'c' || e.key === 'C')) {
+        e.preventDefault();
+        handleCancel();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -598,9 +623,8 @@ export default function PublicationForm({
 
           {/* Cancel Button */}
           <button 
-            onClick={() => {
-              if (publications.length > 0) loadPublication(publications[0]);
-            }}
+            onClick={handleCancel}
+            title="Alt+C: Cancel and clear all fields to blank"
             className="px-3.5 py-1 bg-gradient-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] shadow-xs transform -skew-x-12 cursor-pointer transition-colors"
           >
             <span className="transform skew-x-12 flex items-center gap-1 text-xs font-bold text-black">

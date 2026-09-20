@@ -145,7 +145,15 @@ export default function CounterSaleForm({
     }
   }, [isOpen, activeTab, historyDate]);
 
-  // Keyboard shortcut listener (Alt+S = Save, Alt+P = Print, Esc = Close)
+  const handleCancel = () => {
+    setItems([]);
+    setInputQty(1);
+    setRemarks('');
+    setStatus(null);
+    setPubSearch('');
+  };
+
+  // Keyboard shortcut listener (Alt+S = Save, Alt+P = Print, Alt+C = Cancel, Esc = Close)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
@@ -156,6 +164,9 @@ export default function CounterSaleForm({
         if (items.length > 0 && !isSaving) {
           handleCompleteSale();
         }
+      } else if (e.altKey && (e.key === 'c' || e.key === 'C')) {
+        e.preventDefault();
+        handleCancel();
       } else if (e.altKey && (e.key === 'p' || e.key === 'P')) {
         e.preventDefault();
         if (lastReceipt) {
@@ -768,20 +779,31 @@ export default function CounterSaleForm({
 
           <div className="flex items-center gap-2">
             {activeTab === 'new_sale' && (
-              <button 
-                onClick={handleCompleteSale}
-                disabled={items.length === 0 || isSaving}
-                className="px-5 py-1.5 bg-emerald-700 text-white font-bold border border-black shadow-xs hover:bg-emerald-800 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer active:translate-y-0.5"
-                title="Complete Sale (Alt+S)"
-              >
-                {isSaving ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Save className="w-3.5 h-3.5" />
-                )}
-                <span>Complete Cash Sale (बिक्री सुरक्षित करें)</span>
-                <span className="text-[10px] bg-emerald-900 px-1 rounded-xs">[Alt+S]</span>
-              </button>
+              <>
+                <button 
+                  onClick={handleCompleteSale}
+                  disabled={items.length === 0 || isSaving}
+                  className="px-5 py-1.5 bg-emerald-700 text-white font-bold border border-black shadow-xs hover:bg-emerald-800 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer active:translate-y-0.5"
+                  title="Complete Sale (Alt+S)"
+                >
+                  {isSaving ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5" />
+                  )}
+                  <span>Complete Cash Sale (बिक्री सुरक्षित करें)</span>
+                  <span className="text-[10px] bg-emerald-900 px-1 rounded-xs">[Alt+S]</span>
+                </button>
+
+                <button 
+                  onClick={handleCancel}
+                  disabled={items.length === 0}
+                  className="px-3.5 py-1.5 bg-[#ECE9D8] border border-black shadow-xs hover:bg-slate-200 disabled:opacity-50 font-bold text-xs cursor-pointer active:translate-y-0.5"
+                  title="Cancel / Clear Sale (Alt+C)"
+                >
+                  ✖ Cancel (रद्द करें) <span className="text-[10px] text-slate-500">[Alt+C]</span>
+                </button>
+              </>
             )}
 
             <button 
