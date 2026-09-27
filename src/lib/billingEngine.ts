@@ -251,8 +251,8 @@ export function calculateBilling({
     if (!pId) continue;
     if (!pubDisMap.has(pId)) pubDisMap.set(pId, []);
     pubDisMap.get(pId)!.push({
-      fromIso: parseLegacyDateToIso(pd.FromDate || pd.from_date || pd.fromdate),
-      toIso: parseLegacyDateToIso(pd.ToDate || pd.to_date || pd.todate)
+      fromIso: parseLegacyDateToIso(pd.FromDate || pd.from_date || pd.fromdate || pd.entry_date),
+      toIso: parseLegacyDateToIso(pd.ToDate || pd.to_date || pd.todate || pd.oc_date)
     });
   }
 

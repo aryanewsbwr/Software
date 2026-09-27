@@ -23,6 +23,7 @@ interface CacheData {
   holidays: any[];
   collect: any[];
   retailsales?: any[];
+  publicationdis?: any[];
 }
 
 let cache: CacheData | null = null;
@@ -79,7 +80,8 @@ async function getCacheAsync() {
     ratechanges: ratechanges,
     holidays: load('holidays.json'),
     collect: load('collect.json'),
-    retailsales: load('retailsale.json')
+    retailsales: load('retailsale.json'),
+    publicationdis: load('publicationdis.json')
   };
   return cache;
 }
@@ -918,7 +920,10 @@ export async function GET(request: NextRequest) {
         custSubs = subsData;
         liveBills = billsReceiptsData.bills;
         liveReceipts = billsReceiptsData.receipts;
-        pubDis = (pubDisRes && pubDisRes.data) || [];
+        pubDis = [
+          ...(data.publicationdis || []),
+          ...((pubDisRes && pubDisRes.data) || [])
+        ];
         liveRetail = retailData || [];
         // Merge Supabase holidays with full authoritative dataset (prevents 1000-row PostgREST truncation)
         const holidayMap = new Map<string, any>();

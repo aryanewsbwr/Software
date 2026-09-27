@@ -93,15 +93,19 @@ function getHolidays(): any[] {
 }
 
 async function getPublicationDiscontinues(): Promise<any[]> {
-  if (cachedPubDis) return cachedPubDis;
+  if (cachedPubDis && cachedPubDis.length > 0) return cachedPubDis;
+  const localPubDis = loadJson('publicationdis.json') || [];
   try {
     const { data } = await supabase.from('publicationdis').select('*');
-    if (data && data.length > 0) cachedPubDis = data;
+    if (data && data.length > 0) {
+      cachedPubDis = [...localPubDis, ...data];
+      return cachedPubDis;
+    }
   } catch (err) {
     // fallback
   }
-  if (!cachedPubDis) cachedPubDis = loadJson('publicationdis.json');
-  return cachedPubDis || [];
+  cachedPubDis = localPubDis;
+  return cachedPubDis;
 }
 
 
