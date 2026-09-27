@@ -811,28 +811,21 @@ export function calculateBilling({
     // =========================================================================
     // 2. CHARGES & TOTAL COMPUTATION (Formula 8)
     // =========================================================================
-    // Determine Previous Due / Opening Balance:
-    // In customer table:
-    // - cbal stores the current balance (negative = customer owes money/due, positive = customer has advance payment)
-    // - dueamount stores the opening due
+    // Determine Previous Due / Opening Balance strictly from customer.cbal:
+    // In FoxPro accounting:
+    // - negative cbal means Due (customer owes money, e.g. -563.50 -> +563.50 on bill)
+    // - positive cbal means Advance (customer overpaid, e.g. +180.00 -> -180.00 on bill)
     let customerPreviousBalance = 0;
     const rawCbal = cust.cbal !== undefined && cust.cbal !== null ? Number(cust.cbal) : null;
     const rawDue = cust.dueamount !== undefined && cust.dueamount !== null ? Number(cust.dueamount) : null;
 
     if (rawCbal !== null && rawCbal !== 0) {
-      // In FoxPro / accounting: negative cbal means Due (deficit to pay), positive means Advance (credit)
       customerPreviousBalance = -rawCbal;
     } else if (rawDue !== null && rawDue !== 0) {
       customerPreviousBalance = rawDue;
-    } else if (yearEndDuesMap.has(custId)) {
-      customerPreviousBalance = yearEndDuesMap.get(custId)!;
     }
 
-    const priorBilledInFy = priorBilledInFyMap.get(custId) || 0;
-    const priorPaidInFy = priorReceiptsInFyMap.get(custId) || 0;
-    // If opening was taken from yearEndDuesMap, apply the FY ledger delta (prior billed - prior paid)
-    // If opening came from live cbal, cbal already represents the cumulative current balance
-    const previousDue = Math.round((customerPreviousBalance + (yearEndDuesMap.has(custId) && (rawCbal === null || rawCbal === 0) ? (priorBilledInFy - priorPaidInFy) : 0)) * 100) / 100;
+    const previousDue = Math.round(customerPreviousBalance * 100) / 100;
 
     const openingBalanceThisBill = previousDue;
     const currentMonthCharges = Math.round((customerPaperTotal + customerDeliveryTotal + customerRetailTotal - customerDiscountTotal) * 100) / 100;
