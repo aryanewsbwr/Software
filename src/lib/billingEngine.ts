@@ -95,7 +95,8 @@ export function calculateBilling({
   receipts = [],
   regions = [],
   retailSales = [],
-  startBillId
+  startBillId,
+  priorMonthBalances
 }: {
   monthName: string;
   year: number | string;
@@ -114,6 +115,7 @@ export function calculateBilling({
   regions: any[];
   retailSales?: any[];
   startBillId?: number;
+  priorMonthBalances?: Map<number, number> | Record<number, number>;
 }) {
   let monthIdx = MONTH_NAMES.findIndex(m => m.toLowerCase() === monthName.toLowerCase() || m.toLowerCase().startsWith(monthName.toLowerCase().slice(0, 3)));
   if (monthIdx === -1) monthIdx = 7; // August default
@@ -823,6 +825,18 @@ export function calculateBilling({
       customerPreviousBalance = -rawCbal;
     } else if (rawDue !== null && rawDue !== 0) {
       customerPreviousBalance = rawDue;
+    }
+
+    // Option B (Dynamic Prior Month Calculation):
+    // If priorMonthBalances is supplied and customer has zero/empty baseline balance,
+    // dynamically fall back to the calculated prior-month balance (Delivered Papers - Receipts)
+    if (priorMonthBalances && customerPreviousBalance === 0) {
+      const dynamicPrior = priorMonthBalances instanceof Map 
+        ? priorMonthBalances.get(custId) 
+        : (priorMonthBalances as Record<number, number>)[custId];
+      if (dynamicPrior !== undefined && dynamicPrior !== null && dynamicPrior !== 0) {
+        customerPreviousBalance = Number(dynamicPrior);
+      }
     }
 
     const previousDue = Math.round(customerPreviousBalance * 100) / 100;

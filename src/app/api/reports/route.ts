@@ -941,6 +941,51 @@ export async function GET(request: NextRequest) {
         custSubs = data.subscriptions.filter(s => targetCustIds.includes(s.customer_id));
       }
 
+      // Option B: Compute dynamic prior month balance (Prior Month Delivered Papers - Prior Month Receipts)
+      // for any customers who have cbal == 0 in the database
+      const monthNamesList = [
+        'january', 'february', 'march', 'april', 'may', 'june',
+        'july', 'august', 'september', 'october', 'november', 'december'
+      ];
+      const curMIdx = monthNamesList.findIndex(m => m.startsWith(month.toLowerCase().slice(0, 3)));
+      const priorMonthBalances = new Map<number, number>();
+
+      if (curMIdx !== -1 && curMIdx !== 3) { // If not April (start of financial year)
+        const priorMIdx = (curMIdx - 1 + 12) % 12;
+        const priorMonthName = monthNamesList[priorMIdx];
+
+        const priorMonthCalc = calculateBilling({
+          monthName: priorMonthName,
+          year: year,
+          regionId: 'all',
+          customers: pageCusts,
+          subscriptions: custSubs,
+          rates: data.rates,
+          ratechanges: data.ratechanges,
+          publications: data.publications,
+          holidays: liveHolidays || data.holidays,
+          discontinues: data.discontinues,
+          publicationDiscontinues: pubDis,
+          bills: liveBills,
+          receipts: liveReceipts,
+          regions: data.regions,
+          retailSales: liveRetail
+        });
+
+        priorMonthCalc.bills.forEach(pb => {
+          const priorCharge = pb.current_month_charges || 0;
+          const custPriorRcps = liveReceipts.filter(r => 
+            r.customer_id === pb.customer_id && 
+            (r.month || '').toLowerCase().startsWith(priorMonthName.slice(0, 3))
+          );
+          const rcpTotal = custPriorRcps.reduce((sum, r) => sum + (Number(r.mal_recp_amt || r.r_amt || 0)), 0);
+          const netPrior = Math.round((priorCharge - rcpTotal) * 100) / 100;
+          if (netPrior !== 0) {
+            priorMonthBalances.set(pb.customer_id, netPrior);
+          }
+        });
+      }
+
       const billingResult = calculateBilling({
         monthName: month,
         year: year,
@@ -956,7 +1001,8 @@ export async function GET(request: NextRequest) {
         bills: liveBills,
         receipts: liveReceipts,
         regions: data.regions,
-        retailSales: liveRetail
+        retailSales: liveRetail,
+        priorMonthBalances
       });
 
       const monthDaysMap: Record<string, number> = {
@@ -1047,9 +1093,9 @@ export async function GET(request: NextRequest) {
           delivery_charge: remainingDelivery,
           paper_amount: totalItemsAmount,
           current_bill: b.current_month_charges || totalItemsAmount,
-          previous_due: b.previous_due || b.opening_balance_this_bill || 0,
+          previous_due: b.previous_due !== undefined ? b.previous_due : (b.opening_balance_this_bill || 0),
           advance: c.cbal || 0,
-          net_payable: b.total_payable || (totalItemsAmount + (b.previous_due || 0))
+          net_payable: b.total_payable !== undefined ? b.total_payable : (totalItemsAmount + (b.previous_due || 0))
         };
       });
 
