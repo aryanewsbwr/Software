@@ -815,28 +815,15 @@ export function calculateBilling({
     // =========================================================================
     // Determine Previous Due / Opening Balance strictly from customer.cbal:
     // In FoxPro accounting:
-    // - negative cbal means Due (customer owes money, e.g. -563.50 -> +563.50 on bill)
-    // - positive cbal means Advance (customer overpaid, e.g. +180.00 -> -180.00 on bill)
+    // - negative cbal means Due (customer owes money, e.g. -150.00 -> +150.00 on bill)
+    // - positive cbal means Advance (customer overpaid, e.g. +20.50 -> -20.50 on bill)
+    // - 0 cbal means zero previous balance (fully paid up)
+    // Note: dueamount is an old legacy column and MUST NEVER be used for monthly billing balance.
     let customerPreviousBalance = 0;
     const rawCbal = cust.cbal !== undefined && cust.cbal !== null ? Number(cust.cbal) : null;
-    const rawDue = cust.dueamount !== undefined && cust.dueamount !== null ? Number(cust.dueamount) : null;
 
     if (rawCbal !== null && rawCbal !== 0) {
       customerPreviousBalance = -rawCbal;
-    } else if (rawDue !== null && rawDue !== 0) {
-      customerPreviousBalance = rawDue;
-    }
-
-    // Option B (Dynamic Prior Month Calculation):
-    // If priorMonthBalances is supplied and customer has zero/empty baseline balance,
-    // dynamically fall back to the calculated prior-month balance (Delivered Papers - Receipts)
-    if (priorMonthBalances && customerPreviousBalance === 0) {
-      const dynamicPrior = priorMonthBalances instanceof Map 
-        ? priorMonthBalances.get(custId) 
-        : (priorMonthBalances as Record<number, number>)[custId];
-      if (dynamicPrior !== undefined && dynamicPrior !== null && dynamicPrior !== 0) {
-        customerPreviousBalance = Number(dynamicPrior);
-      }
     }
 
     const previousDue = Math.round(customerPreviousBalance * 100) / 100;

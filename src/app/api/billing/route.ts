@@ -326,50 +326,6 @@ export async function GET(request: NextRequest) {
         getHolidays()
       ]);
 
-      // Option B: Dynamic prior month calculation for customers with cbal == 0
-      const monthNamesList = [
-        'january', 'february', 'march', 'april', 'may', 'june',
-        'july', 'august', 'september', 'october', 'november', 'december'
-      ];
-      const curMIdx = monthNamesList.findIndex(m => m.startsWith(month.toLowerCase().slice(0, 3)));
-      const priorMonthBalances = new Map<number, number>();
-
-      if (curMIdx !== -1 && curMIdx !== 3) {
-        const priorMIdx = (curMIdx - 1 + 12) % 12;
-        const priorMonthName = monthNamesList[priorMIdx];
-
-        const priorMonthCalc = calculateBilling({
-          monthName: priorMonthName,
-          year: year,
-          regionId: 'all',
-          customers: targetCusts,
-          subscriptions: custSubs,
-          rates: rates,
-          ratechanges: ratechanges,
-          publications: pubs,
-          holidays: liveHolidays,
-          discontinues: discontinues,
-          publicationDiscontinues: pubDis,
-          bills: liveCustBills,
-          receipts: liveCustReceipts,
-          regions: regions,
-          retailSales: liveRetail
-        });
-
-        priorMonthCalc.bills.forEach(pb => {
-          const priorCharge = pb.current_month_charges || 0;
-          const custPriorRcps = liveCustReceipts.filter(r => 
-            (r.customer_id || r.Customer_id) === pb.customer_id && 
-            (r.month || '').toLowerCase().startsWith(priorMonthName.slice(0, 3))
-          );
-          const rcpTotal = custPriorRcps.reduce((sum, r) => sum + (Number(r.mal_recp_amt || r.r_amt || 0)), 0);
-          const netPrior = Math.round((priorCharge - rcpTotal) * 100) / 100;
-          if (netPrior !== 0) {
-            priorMonthBalances.set(pb.customer_id, netPrior);
-          }
-        });
-      }
-
       const singleResult = calculateBilling({
         monthName: month,
         year: year,
@@ -386,8 +342,7 @@ export async function GET(request: NextRequest) {
         receipts: liveCustReceipts,
         regions: regions,
         retailSales: liveRetail,
-        startBillId: maxBillId + 1,
-        priorMonthBalances
+        startBillId: maxBillId + 1
       });
 
       const singleBill = singleResult.bills[0] || null;
@@ -437,50 +392,6 @@ export async function GET(request: NextRequest) {
       getHolidays()
     ]);
 
-    // Option B: Dynamic prior month calculation for paginated customers
-    const monthNamesList = [
-      'january', 'february', 'march', 'april', 'may', 'june',
-      'july', 'august', 'september', 'october', 'november', 'december'
-    ];
-    const curMIdx = monthNamesList.findIndex(m => m.startsWith(month.toLowerCase().slice(0, 3)));
-    const priorMonthBalances = new Map<number, number>();
-
-    if (curMIdx !== -1 && curMIdx !== 3) {
-      const priorMIdx = (curMIdx - 1 + 12) % 12;
-      const priorMonthName = monthNamesList[priorMIdx];
-
-      const priorMonthCalc = calculateBilling({
-        monthName: priorMonthName,
-        year: year,
-        regionId: regionId,
-        customers: paginatedCusts,
-        subscriptions: paginatedSubs,
-        rates: rates,
-        ratechanges: ratechanges,
-        publications: pubs,
-        holidays: liveHolidays,
-        discontinues: discontinues,
-        publicationDiscontinues: pubDis,
-        bills: liveCustBills,
-        receipts: liveCustReceipts,
-        regions: regions,
-        retailSales: dbBatchRetail
-      });
-
-      priorMonthCalc.bills.forEach(pb => {
-        const priorCharge = pb.current_month_charges || 0;
-        const custPriorRcps = liveCustReceipts.filter(r => 
-          (r.customer_id || r.Customer_id) === pb.customer_id && 
-          (r.month || '').toLowerCase().startsWith(priorMonthName.slice(0, 3))
-        );
-        const rcpTotal = custPriorRcps.reduce((sum, r) => sum + (Number(r.mal_recp_amt || r.r_amt || 0)), 0);
-        const netPrior = Math.round((priorCharge - rcpTotal) * 100) / 100;
-        if (netPrior !== 0) {
-          priorMonthBalances.set(pb.customer_id, netPrior);
-        }
-      });
-    }
-
     const result = calculateBilling({
       monthName: month,
       year: year,
@@ -497,8 +408,7 @@ export async function GET(request: NextRequest) {
       receipts: liveCustReceipts,
       regions: regions,
       retailSales: dbBatchRetail,
-      startBillId: maxBillId + 1 + (page - 1) * limit,
-      priorMonthBalances
+      startBillId: maxBillId + 1 + (page - 1) * limit
     });
 
     // Strip heavy breakup arrays from list view for maximum speed
