@@ -108,23 +108,40 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
     }
   }
 
-  // 2. Fallback to all_subscriptions.json for any missing customers
-  const missingCustIds = customerIds.filter(id => !foundCustIds.has(id));
-  if (missingCustIds.length > 0) {
-    try {
-      const localSubsPath = path.join(process.cwd(), 'public', 'data', 'all_subscriptions.json');
-      if (fs.existsSync(localSubsPath)) {
-        const localSubs = JSON.parse(fs.readFileSync(localSubsPath, 'utf-8'));
+  // 2. Fallback to all_subscriptions.json for any missing customers or sync c_date
+  try {
+    const localSubsPath = path.join(process.cwd(), 'public', 'data', 'all_subscriptions.json');
+    if (fs.existsSync(localSubsPath)) {
+      const localSubs = JSON.parse(fs.readFileSync(localSubsPath, 'utf-8'));
+      const localMap = new Map<string, any>();
+      for (const ls of localSubs) {
+        const key = `${ls.customer_id}_${ls.publica_id}_${ls.sno || 0}`;
+        localMap.set(key, ls);
+      }
+      // If result has rows where c_date is null but localSubs has c_date, overlay it
+      for (const r of result) {
+        const key = `${r.customer_id}_${r.publica_id}_${r.sno || 0}`;
+        const match = localMap.get(key) || localSubs.find((ls: any) => ls.customer_id === r.customer_id && ls.publica_id === r.publica_id);
+        if (match && match.c_date && !r.c_date) {
+          r.c_date = match.c_date;
+        }
+        if (match && match.from_day !== undefined && (r.from_day === undefined || r.from_day === null || r.from_day === '')) {
+          r.from_day = match.from_day;
+        }
+      }
+      const missingCustIds = customerIds.filter(id => !foundCustIds.has(id));
+      if (missingCustIds.length > 0) {
         const fallback = localSubs.filter((s: any) => missingCustIds.includes(s.customer_id));
         result.push(...fallback);
       }
-    } catch (err) {
-      console.error('Error reading local all_subscriptions.json fallback:', err);
     }
+  } catch (err) {
+    console.error('Error reading local all_subscriptions.json fallback:', err);
   }
 
   return result;
 }
+
 
 async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
   if (customerIds.length === 0) return { bills: [], receipts: [] };
@@ -853,14 +870,25 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // Sort strictly by Route Delivery Priority ASC (matching FoxPro)
+      targetCusts.sort((a, b) => {
+        const pA = a.priority !== undefined && a.priority !== null && Number(a.priority) > 0 ? Number(a.priority) : 999999;
+        const pB = b.priority !== undefined && b.priority !== null && Number(b.priority) > 0 ? Number(b.priority) : 999999;
+        if (pA !== pB) return pA - pB;
+        return a.customer_id - b.customer_id;
+      });
+
       // If single bill printing and no specific customer filtered, pick first
       if (reportType === 'bill_print_single' && targetCusts.length > 1 && !search && regionId === 'all') {
         targetCusts = targetCusts.slice(0, 1);
       }
 
-      const totalMatching = targetCusts.length;
-      const pageCusts = targetCusts.slice((page - 1) * limit, page * limit);
+      // For region-specific printing or single customer, process all customers in the region
+      // so that inactive zero-charge/zero-due records are filtered out matching FoxPro
+      const isBatchRegion = regionId && regionId !== 'all';
+      const pageCusts = isBatchRegion ? targetCusts : targetCusts.slice((page - 1) * limit, page * limit);
       const targetCustIds = pageCusts.map(c => c.customer_id);
+
 
       // Determine fiscal year suffix (e.g. 20262027)
       let fySuffix = '20252026';
@@ -1006,6 +1034,7 @@ export async function GET(request: NextRequest) {
           bill_no: `BILL-${year}-${String(b.customer_id).padStart(5, '0')}`,
           bill_date: `${daysInMonth}/${month}/${year}`,
           customer_id: b.customer_id,
+          priority: c.priority !== undefined && c.priority !== null && Number(c.priority) > 0 ? Number(c.priority) : b.customer_id,
           customer_name: b.name_eng || c.name_eng || `Customer #${b.customer_id}`,
           customer_hindi: cleanOrTransliterateHindi(b.customer_hindi || c.name_hindi || '', b.name_eng || c.name_eng),
           address: [c.add1, c.add2].filter(Boolean).join(', ') || 'Main Market, Beawar',
@@ -1024,19 +1053,29 @@ export async function GET(request: NextRequest) {
         };
       });
 
+      // Filter to only printable bills (customers who have actual active newspaper items to bill)
+      // Matching FoxPro behavior where 4-in-1 bills are only printed for customers with delivered publications
+      const printableBills = bills.filter(b => b.items.length > 0);
+
+
       const regTitle = regionId && regionId !== 'all' 
         ? regMap.get(parseInt(regionId, 10))?.region_name || `Region #${regionId}`
         : 'ALL REGIONS';
+
+      const finalRows = isBatchRegion 
+        ? printableBills.slice((page - 1) * limit, page * limit)
+        : printableBills;
 
       return NextResponse.json({
         report_title: reportType === 'bill_print_single' 
           ? `SINGLE CUSTOMER BILL PRINTING (${month.toUpperCase()} ${year})`
           : `REGION-WISE BILL PRINTING: ${regTitle} (${month.toUpperCase()} ${year})`,
-        rows: bills,
-        total_rows: totalMatching,
+        rows: finalRows,
+        total_rows: printableBills.length,
         page,
-        total_pages: Math.ceil(totalMatching / limit) || 1
+        total_pages: Math.ceil(printableBills.length / limit) || 1
       });
+
     }
 
     // 16. Collection Datewise & Collection Hawker Datewise

@@ -343,8 +343,8 @@
     "qty": 1,
     "circulation": "As Per Norm",
     "s_date": "01/05/2007",
-    "c_date": null,
-    "from_day": "1-7",
+    "c_date": "19/10/2025",
+    "from_day": "",
     "hawk_sub": -1,
     "dis": "",
     "dely": 0

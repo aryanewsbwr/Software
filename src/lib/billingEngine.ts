@@ -313,12 +313,15 @@ export function calculateBilling({
 
   // Discontinue check: checks active suspension / permanent stop
   // Authoritative column is `temp_from` (verified directly against database schema)
-  const isDiscontinued = (custId: number, publicaId: number, targetDateIso: string): boolean => {
+  const isDiscontinued = (custId: number, publicaId: number, targetDateIso: string, sDateIso?: string): boolean => {
     const list = custDisMap.get(custId);
     if (!list) return false;
     return list.some(d => {
       if (d.pubId !== 0 && d.pubId !== publicaId) return false;
       if (d.isPerm) {
+        // If the subscription was created on or after the discontinue date,
+        // it is a newer subscription that is not affected by older discontinue records
+        if (sDateIso && sDateIso >= d.tempFrom) return false;
         return targetDateIso >= d.tempFrom;
       } else {
         if (!d.tempTo) return targetDateIso >= d.tempFrom;
@@ -326,6 +329,7 @@ export function calculateBilling({
       }
     });
   };
+
 
   // Check schedule day filter (cd.From_Day)
   const isScheduleMatch = (fromDay: any, dayOfWeek: number): boolean => {
@@ -561,7 +565,7 @@ export function calculateBilling({
           // Holiday, Global Publication Discontinue & Customer Discontinue checks
           if (isPubDiscontinued(pubId, targetDateIso)) continue;
           if (isHoliday(pubId, targetDateIso)) continue;
-          if (isDiscontinued(custId, pubId, targetDateIso)) continue;
+          if (isDiscontinued(custId, pubId, targetDateIso, sDateIso)) continue;
 
           // Schedule day check
           const deliveryDays = cd.delivery_days || cd.from_day || cd.From_Day;
@@ -586,7 +590,7 @@ export function calculateBilling({
           if (cDateIso && targetDateIso >= cDateIso) continue;
           if (isPubDiscontinued(pubId, targetDateIso)) continue;
           if (isHoliday(pubId, targetDateIso, false)) continue;
-          if (isDiscontinued(custId, pubId, targetDateIso)) continue;
+          if (isDiscontinued(custId, pubId, targetDateIso, sDateIso)) continue;
 
           const rate = getEffectiveRate(pubId, legacyDayOfWeek, targetDateIso);
           if (rate > 0) {
@@ -608,7 +612,7 @@ export function calculateBilling({
           if (cDateIso && pDateIso >= cDateIso) continue;
           if (isPubDiscontinued(pubId, pDateIso)) continue;
           if (isHoliday(pubId, pDateIso, false)) continue;
-          if (isDiscontinued(custId, pubId, pDateIso)) continue;
+          if (isDiscontinued(custId, pubId, pDateIso, sDateIso)) continue;
 
           let rate = getEffectiveRate(pubId, 1, pDateIso) || getEffectiveRate(pubId, 2, pDateIso) || getEffectiveRate(pubId, 0, pDateIso);
           if (!rate || rate === 0) {
@@ -624,11 +628,19 @@ export function calculateBilling({
       }
       // CASE D: Monthly + Quarterly Magazines (1st of month)
       else {
+        // If subscription has no delivery days scheduled and circulation is As Per Norm, skip
+        const deliveryDays = cd.delivery_days || cd.from_day || cd.From_Day;
+        const circ = String(cd.circulation || cd.Circulation || '').toLowerCase();
+        if ((deliveryDays === '' || deliveryDays === null || deliveryDays === undefined) && (circ.includes('norm') || circ === '')) {
+          continue;
+        }
+
         const pDateIso = `${calendarYear}-${String(monthNum).padStart(2, '0')}-01`;
         const isQuarterlyAllowed = pubId !== 75 || [1, 4, 7, 10].includes(monthNum);
 
         if (isQuarterlyAllowed && sDateIso <= monthStartIso && (!cDateIso || cDateIso > monthStartIso)) {
-          if (!isPubDiscontinued(pubId, pDateIso) && !isHoliday(pubId, pDateIso, false) && !isDiscontinued(custId, pubId, pDateIso)) {
+          if (!isPubDiscontinued(pubId, pDateIso) && !isHoliday(pubId, pDateIso, false) && !isDiscontinued(custId, pubId, pDateIso, sDateIso)) {
+
             let rate = getEffectiveRate(pubId, 1, pDateIso) || getEffectiveRate(pubId, 0, pDateIso);
             if (!rate || rate === 0) {
               for (let d = 2; d <= 7; d++) {

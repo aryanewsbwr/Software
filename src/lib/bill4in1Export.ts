@@ -19,7 +19,9 @@ export interface BillRecord {
   bill_no: string | number;
   bill_date?: string;
   customer_id: number;
+  priority?: number;
   customer_name: string;
+
   customer_hindi?: string;
   address?: string;
   phone?: string;
@@ -103,8 +105,9 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number): string {
         <div class="meta-row">
           <div class="meta-left">
             <span class="meta-lbl">S. No.</span>
-            <span class="meta-val"><b>${b.customer_id}</b> - ${b.customer_name} ${displayHindi ? `<span class="hindi-name">(${displayHindi})</span>` : ''}</span>
+            <span class="meta-val"><b>${b.priority !== undefined && b.priority !== null ? b.priority : b.customer_id}</b> - ${b.customer_name} ${displayHindi ? `<span class="hindi-name">(${displayHindi})</span>` : ''}</span>
           </div>
+
           <div class="meta-right">
             <span class="meta-lbl">Bill No.</span>
             <span class="meta-val"><b>${b.bill_no}</b></span>

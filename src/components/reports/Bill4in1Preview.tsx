@@ -154,9 +154,10 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                       <div className="flex justify-between items-baseline">
                         <div className="truncate max-w-[65%]">
                           <span className="font-bold">S. No. </span>
-                          <span className="font-mono"><b>{b.customer_id}</b> - {b.customer_name}</span>
+                          <span className="font-mono"><b>{b.priority !== undefined && b.priority !== null ? b.priority : b.customer_id}</b> - {b.customer_name}</span>
                           {displayHindi && <span className="text-[8px] text-slate-600 ml-1">({displayHindi})</span>}
                         </div>
+
                         <div>
                           <span className="font-bold">Bill No. </span>
                           <span className="font-mono"><b>{b.bill_no}</b></span>
