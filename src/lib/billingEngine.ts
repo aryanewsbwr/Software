@@ -57,7 +57,7 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-const FORTNIGHTLY_PUBS = new Set([11, 13, 17, 18, 23, 24, 109]);
+const FORTNIGHTLY_PUBS = new Set([11, 13, 17, 18, 23, 24, 33, 109]);
 
 // Parse DD/MM/YYYY or YYYY-MM-DD to YYYY-MM-DD
 function parseLegacyDateToIso(dStr: string | null | undefined): string | null {
@@ -540,10 +540,10 @@ export function calculateBilling({
         : englishName;
       const typeP = pub?.type_p || pub?.TypeP || pub?.frequency || 'Daily';
       const is513 = pubId === 513;
-      const magzineDay = is513 ? 2 : (pubId === 33 ? 6 : (pub?.magzine_day || pub?.MagzineDay || 0));
-      const isDaily = !is513 && (typeP.toLowerCase() === 'daily' || typeP.toLowerCase() === 'newspaper');
-      const isWeekly = is513 || pubId === 33 || magzineDay >= 1 || typeP.toLowerCase() === 'weekly';
       const isFortnightly = FORTNIGHTLY_PUBS.has(pubId) || typeP.toLowerCase().includes('fortnight') || typeP.toLowerCase().includes('bi-month') || typeP.toLowerCase().includes('bi-weekly');
+      const magzineDay = is513 ? 2 : (pub?.magzine_day || pub?.MagzineDay || 0);
+      const isDaily = !is513 && !isFortnightly && (typeP.toLowerCase() === 'daily' || typeP.toLowerCase() === 'newspaper');
+      const isWeekly = (is513 || (magzineDay >= 1 && !isFortnightly) || typeP.toLowerCase() === 'weekly') && !isFortnightly;
 
       const sDateIso = parseLegacyDateToIso(cd.s_date || cd.S_Date) || '2000-01-01';
       const cDateIso = parseLegacyDateToIso(cd.c_date || cd.C_Date);
