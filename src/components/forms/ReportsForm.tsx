@@ -7,6 +7,8 @@ import {
   ArrowLeft, Eye, SlidersHorizontal, CheckSquare
 } from 'lucide-react';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { Bill4in1Preview } from '@/components/reports/Bill4in1Preview';
+import { printBills4in1 } from '@/lib/bill4in1Export';
 
 interface ReportsFormProps {
   onClose: () => void;
@@ -80,6 +82,7 @@ export default function ReportsForm({
   const [selectedYear, setSelectedYear] = useState<string>('2026');
   const [targetCustId, setTargetCustId] = useState<string>('');
   const [outputDest, setOutputDest] = useState<'preview' | 'direct_print'>('preview');
+  const [billBatchLimit, setBillBatchLimit] = useState<number>(40);
 
   // Report Data
   const [reportData, setReportData] = useState<any>(null);
@@ -151,7 +154,7 @@ export default function ReportsForm({
         month: selectedMonth,
         year: selectedYear,
         page: String(currentPage),
-        limit: activeReport.includes('bill_print') ? '20' : '50',
+        limit: activeReport.includes('bill_print') ? (billBatchLimit === 0 ? '9999' : String(billBatchLimit)) : '50',
         search: targetCustId || searchQuery
       });
 
@@ -166,7 +169,7 @@ export default function ReportsForm({
     } finally {
       setIsLoading(false);
     }
-  }, [activeReport, selectedRegion, selectedHawker, selectedPub, selectedMonth, selectedYear, currentPage, searchQuery, targetCustId]);
+  }, [activeReport, selectedRegion, selectedHawker, selectedPub, selectedMonth, selectedYear, currentPage, searchQuery, targetCustId, billBatchLimit]);
 
   useEffect(() => {
     if (viewMode === 'preview') {
@@ -181,7 +184,11 @@ export default function ReportsForm({
     if (outputDest === 'direct_print') {
       setViewMode('preview');
       setTimeout(() => {
-        window.print();
+        if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single') {
+          printBills4in1(reportData?.rows || [], currentMeta.title);
+        } else {
+          window.print();
+        }
       }, 800);
     } else {
       setViewMode('preview');
@@ -189,7 +196,11 @@ export default function ReportsForm({
   };
 
   const handlePrint = () => {
-    window.print();
+    if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single') {
+      printBills4in1(reportData?.rows || [], currentMeta.title);
+    } else {
+      window.print();
+    }
   };
 
   const handleExportCSV = () => {
@@ -362,6 +373,24 @@ export default function ReportsForm({
               </div>
             )}
 
+            {/* Batch Size for 4-in-1 Bill Printing */}
+            {(activeReport === 'bill_print_region') && (
+              <div className="flex items-center">
+                <label className="w-28 font-bold text-[#000080] shrink-0">Print Batch</label>
+                <select 
+                  value={billBatchLimit}
+                  onChange={(e) => setBillBatchLimit(Number(e.target.value))}
+                  className="px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none"
+                >
+                  <option value={20}>20 Bills (5 A4 Sheets)</option>
+                  <option value={40}>40 Bills (10 A4 Sheets) - Default</option>
+                  <option value={100}>100 Bills (25 A4 Sheets)</option>
+                  <option value={200}>200 Bills (50 A4 Sheets)</option>
+                  <option value={0}>All Bills in Selected Region</option>
+                </select>
+              </div>
+            )}
+
             {/* Output Mode Radio Buttons */}
             <div className="pt-2 border-t border-[#808080] flex items-center justify-between text-xs">
               <span className="font-bold text-slate-700">Output Mode:</span>
@@ -531,11 +560,15 @@ export default function ReportsForm({
           {/* Action Buttons */}
           <button 
             onClick={handlePrint}
-            className="px-2 py-0.5 bg-white hover:bg-slate-100 border border-[#808080] flex items-center gap-1 cursor-pointer"
-            title="Print Report (Ctrl+P)"
+            className={`px-2 py-0.5 border flex items-center gap-1 cursor-pointer font-bold ${
+              activeReport.includes('bill_print') 
+                ? 'bg-blue-700 hover:bg-blue-800 text-white border-blue-900 shadow-xs' 
+                : 'bg-white hover:bg-slate-100 border-[#808080]'
+            }`}
+            title={activeReport.includes('bill_print') ? "Print 4-in-1 A4 Sheets / Save PDF" : "Print Report (Ctrl+P)"}
           >
-            <Printer className="w-3.5 h-3.5 text-blue-900" />
-            <span>Print</span>
+            <Printer className={`w-3.5 h-3.5 ${activeReport.includes('bill_print') ? 'text-white' : 'text-blue-900'}`} />
+            <span>{activeReport.includes('bill_print') ? 'Print 4 in 1 A4 / Save PDF' : 'Print'}</span>
           </button>
 
           <button 
@@ -679,147 +712,14 @@ export default function ReportsForm({
             <div className="pt-3 font-sans">
               
               {/* ========================================================================= */}
-              {/* REPORT 1: AUTHENTIC 2-PART DOT-MATRIX BILL PRINTING (media_1790089831645.png) */}
+              {/* REPORT 1: AUTHENTIC 4-IN-1 A4 BILL PRINTING (media_1790483652507.jpg) */}
               {/* ========================================================================= */}
               {(activeReport === 'bill_print_region' || activeReport === 'bill_print_single') && (
-                <div className="space-y-6 font-mono text-black">
-                  {reportData.rows.map((b: any, bIdx: number) => {
-                    const displayHindiName = cleanOrTransliterateHindi(b.customer_hindi, b.customer_name);
-                    return (
-                      <div key={bIdx} className="border-2 border-black p-4 bg-white space-y-3 shadow-xs">
-                        
-                        {/* PART 1: CUSTOMER INVOICE (ग्राहक बिल) */}
-                        <div className="border-b-2 border-dashed border-black pb-3 space-y-2">
-                          <div className="flex justify-between items-start border-b border-black pb-2">
-                            <div>
-                              <h2 className="text-lg font-black tracking-wide uppercase font-serif">ARYAN NEWS AGENCY</h2>
-                              <p className="text-[11px] text-slate-800">Main Market, Near Clock Tower, Beawar (Raj.) - 305901</p>
-                              <p className="text-[11px] font-bold">Ph: 01462-250000 • Newspaper & Magazine Distributors</p>
-                            </div>
-                            <div className="text-right border border-black p-1 bg-slate-50 min-w-[210px]">
-                              <div className="font-bold text-xs">BILL NO: {b.bill_no}</div>
-                              <div className="text-[11px]">Date: {b.bill_date}</div>
-                              <div className="text-[11px] font-bold text-blue-900">Period: {b.month} {b.year}</div>
-                            </div>
-                          </div>
-
-                          {/* Customer Details Box */}
-                          <div className="grid grid-cols-2 gap-2 border border-black p-2 bg-slate-50/50 text-[11px]">
-                            <div>
-                              <div><strong>Cust ID:</strong> #{b.customer_id}</div>
-                              <div className="text-sm font-black">
-                                <strong>Name:</strong> {b.customer_name}
-                              </div>
-                              <div className="text-xs font-bold text-blue-950 font-sans">
-                                <strong>नाम (हिंदी):</strong> {displayHindiName}
-                              </div>
-                              <div><strong>Address:</strong> {b.address}</div>
-                            </div>
-                            <div className="text-right">
-                              <div><strong>Delivery Region:</strong> {b.region_name} (#{b.region_id})</div>
-                              <div><strong>Contact:</strong> {b.phone || '---'}</div>
-                              <div><strong>Bill Due Date:</strong> 10th {b.month} {b.year}</div>
-                            </div>
-                          </div>
-
-                          {/* Itemized Table */}
-                          <table className="w-full text-xs border-collapse border border-black">
-                            <thead>
-                              <tr className="bg-slate-100 border-b border-black font-bold">
-                                <th className="p-1 border-r border-black text-center w-8">#</th>
-                                <th className="p-1 border-r border-black text-left">Publication / Newspaper</th>
-                                <th className="p-1 border-r border-black text-center w-20">Shift</th>
-                                <th className="p-1 border-r border-black text-center w-12">Qty</th>
-                                <th className="p-1 border-r border-black text-center w-12">Days</th>
-                                <th className="p-1 border-r border-black text-right w-16">Rate (₹)</th>
-                                <th className="p-1 text-right font-black w-24">Amount (₹)</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {b.items.map((item: any) => (
-                                <tr key={item.sno} className="border-b border-slate-300 text-[11px]">
-                                  <td className="p-1 border-r border-slate-300 text-center">{item.sno}</td>
-                                  <td className="p-1 border-r border-slate-300 font-bold">{item.pub_name}</td>
-                                  <td className="p-1 border-r border-slate-300 text-center">{item.circulation}</td>
-                                  <td className="p-1 border-r border-slate-300 text-center font-bold">{item.qty}</td>
-                                  <td className="p-1 border-r border-slate-300 text-center">{item.days}</td>
-                                  <td className="p-1 border-r border-slate-300 text-right">₹{Number(item.rate).toFixed(2)}</td>
-                                  <td className="p-1 text-right font-bold">₹{Number(item.amount).toFixed(2)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-
-                          {/* Financial Summary */}
-                          <div className="flex justify-end pt-1">
-                            <div className="w-80 border-2 border-black divide-y divide-black text-xs">
-                              <div className="flex justify-between p-1">
-                                <span>Newspaper / Mag Amount:</span>
-                                <span className="font-bold">₹{Number(b.paper_amount).toFixed(2)}</span>
-                              </div>
-                              <div className="flex justify-between p-1">
-                                <span>Delivery / Line Charges:</span>
-                                <span className="font-bold">₹{Number(b.delivery_charge).toFixed(2)}</span>
-                              </div>
-                              <div className="flex justify-between p-1 bg-slate-100 font-bold">
-                                <span>Current Month Bill (चालू माह):</span>
-                                <span>₹{Number(b.current_bill).toFixed(2)}</span>
-                              </div>
-                              <div className="flex justify-between p-1 font-bold">
-                                <span className="text-red-900">Previous Balance / Due (बकाया):</span>
-                                <span className="text-red-900">₹{Number(b.previous_due).toFixed(2)}</span>
-                              </div>
-                              <div className="flex justify-between p-1.5 bg-slate-200 font-black text-sm border-t-2 border-black">
-                                <span className="uppercase">NET PAYABLE (कुल देय):</span>
-                                <span>₹{Number(b.net_payable).toFixed(2)}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Payment Instructions */}
-                          <div className="border-t border-black pt-1 flex justify-between items-center text-[10px] text-slate-700 font-sans">
-                            <span>* कृपया बिल का भुगतान 10 तारीख से पूर्व करें। समय पर भुगतान कर नियमित सेवा का अवसर देवें।</span>
-                            <span className="font-bold font-serif">For Aryan News Agency</span>
-                          </div>
-                        </div>
-
-                        {/* TEAR-OFF CUT LINE */}
-                        <div className="relative my-2 text-center select-none">
-                          <div className="border-t-2 border-dashed border-black w-full absolute top-1/2"></div>
-                          <span className="relative bg-white px-3 font-bold text-[10px] text-slate-700 tracking-widest uppercase">
-                            ✂ Tear Here (कार्यालय वसूली पर्ची / Office Collection Counterfoil) ✂
-                          </span>
-                        </div>
-
-                        {/* PART 2: OFFICE COLLECTION COUNTERFOIL */}
-                        <div className="border border-black p-2 bg-slate-50 text-xs space-y-1 font-mono">
-                          <div className="flex justify-between items-center border-b border-black pb-1">
-                            <span className="font-black font-serif text-sm">ARYAN NEWS AGENCY - OFFICE COUNTERFOIL</span>
-                            <span className="font-bold">BILL: {b.bill_no} | Period: {b.month} {b.year}</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-                            <div>
-                              <div><strong>Cust ID:</strong> #{b.customer_id}</div>
-                              <div className="font-bold"><strong>Customer:</strong> {b.customer_name}</div>
-                              <div className="text-xs font-bold text-blue-950 font-sans"><strong>नाम:</strong> {displayHindiName}</div>
-                            </div>
-                            <div className="text-right">
-                              <div><strong>Delivery Region:</strong> {b.region_name} (#{b.region_id})</div>
-                              <div className="text-sm font-black mt-1">
-                                <strong>TOTAL DUE:</strong> ₹{Number(b.net_payable).toFixed(2)}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex justify-between pt-2 border-t border-slate-300 text-[10px] text-slate-600 font-sans">
-                            <span>Receiver Signature: _______________________</span>
-                            <span>Date of Payment: _____ / _____ / 2026</span>
-                          </div>
-                        </div>
-
-                      </div>
-                    );
-                  })}
-                </div>
+                <Bill4in1Preview 
+                  bills={reportData.rows || []} 
+                  title={currentMeta.title} 
+                  zoomLevel={zoomLevel} 
+                />
               )}
 
               {/* ========================================================================= */}
