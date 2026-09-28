@@ -167,30 +167,33 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
 }
 
 async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
-  if (customerIds.length === 0) return { bills: [], receipts: [] };
+  if (customerIds.length === 0) return { bills: [], billHeaders: [], receipts: [] };
   const CHUNK_SIZE = 200;
   const allBills: any[] = [];
+  const allBillHeaders: any[] = [];
   const allReceipts: any[] = [];
 
   try {
     for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
       const chunk = customerIds.slice(i, i + CHUNK_SIZE);
-      const [{ data: bData }, { data: rData }] = await Promise.all([
+      const [{ data: bData }, { data: itemsData }, { data: rData }] = await Promise.all([
         supabase.from(`billno${fySuffix}`).select('*').in('customer_id', chunk),
+        supabase.from(`bill${fySuffix}`).select('*').in('customer_id', chunk),
         supabase.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk)
       ]);
-      if (bData) allBills.push(...bData);
+      if (bData) allBillHeaders.push(...bData);
+      if (itemsData) allBills.push(...itemsData);
       if (rData) allReceipts.push(...rData);
     }
-    if (allBills.length > 0 || allReceipts.length > 0) {
-      return { bills: allBills, receipts: allReceipts };
+    if (allBills.length > 0 || allBillHeaders.length > 0 || allReceipts.length > 0) {
+      return { bills: allBills, billHeaders: allBillHeaders, receipts: allReceipts };
     }
   } catch (e) {
     // fallback
   }
   const bFiltered = (cachedBills || []).filter(b => customerIds.includes(b.customer_id || b.Customer_id));
   const rFiltered = (cachedReceipts || []).filter(r => customerIds.includes(r.customer_id || r.Customer_id));
-  return { bills: bFiltered, receipts: rFiltered };
+  return { bills: bFiltered, billHeaders: bFiltered, receipts: rFiltered };
 }
 
 async function fetchRetailSales(customerIds: number[], fySuffix: string): Promise<any[]> {
@@ -298,7 +301,7 @@ export async function GET(request: NextRequest) {
       }
       const targetCusts = targetCust ? [targetCust] : [];
 
-      const [custSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, liveRetail, maxBillId, liveHolidays] = await Promise.all([
+      const [custSubs, { bills: liveCustBills, billHeaders: liveCustBillHeaders, receipts: liveCustReceipts }, pubDis, liveRetail, maxBillId, liveHolidays] = await Promise.all([
         fetchSubscriptions([cid]),
         fetchBillsAndReceipts([cid], fySuffix),
         getPublicationDiscontinues(),
@@ -320,6 +323,7 @@ export async function GET(request: NextRequest) {
         discontinues: discontinues,
         publicationDiscontinues: pubDis,
         bills: liveCustBills,
+        billHeaders: liveCustBillHeaders,
         receipts: liveCustReceipts,
         regions: regions,
         retailSales: liveRetail,
@@ -364,7 +368,7 @@ export async function GET(request: NextRequest) {
     const paginatedCusts = targetCusts.slice((page - 1) * limit, page * limit);
     const paginatedCustIds = paginatedCusts.map(c => c.customer_id || c.Customer_id);
 
-    const [paginatedSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId, liveHolidays] = await Promise.all([
+    const [paginatedSubs, { bills: liveCustBills, billHeaders: liveCustBillHeaders, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId, liveHolidays] = await Promise.all([
       fetchSubscriptions(paginatedCustIds),
       fetchBillsAndReceipts(paginatedCustIds, fySuffix),
       getPublicationDiscontinues(),
@@ -386,6 +390,7 @@ export async function GET(request: NextRequest) {
       discontinues: discontinues,
       publicationDiscontinues: pubDis,
       bills: liveCustBills,
+      billHeaders: liveCustBillHeaders,
       receipts: liveCustReceipts,
       regions: regions,
       retailSales: dbBatchRetail,

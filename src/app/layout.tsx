@@ -1,9 +1,15 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Aryan News Agency Management System (VB6 Edition)',
-  description: '1:1 Web Replica of the Original VB6 + MySQL Desktop Software',
+  title: 'Aryan News Agency Management System',
+  description: 'Full Newspaper & Publication Management System (Mobile, Tablet & Desktop)',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1
 };
 
 export default function RootLayout({

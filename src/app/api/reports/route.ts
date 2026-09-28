@@ -146,28 +146,31 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
 
 
 async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
-  if (customerIds.length === 0) return { bills: [], receipts: [] };
+  if (customerIds.length === 0) return { bills: [], billHeaders: [], receipts: [] };
   const CHUNK_SIZE = 200;
   const allBills: any[] = [];
+  const allBillHeaders: any[] = [];
   const allReceipts: any[] = [];
 
   try {
     for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
       const chunk = customerIds.slice(i, i + CHUNK_SIZE);
-      const [{ data: bData }, { data: rData }] = await Promise.all([
+      const [{ data: bData }, { data: itemsData }, { data: rData }] = await Promise.all([
         supabase.from(`billno${fySuffix}`).select('*').in('customer_id', chunk),
+        supabase.from(`bill${fySuffix}`).select('*').in('customer_id', chunk),
         supabase.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk)
       ]);
-      if (bData) allBills.push(...bData);
+      if (bData) allBillHeaders.push(...bData);
+      if (itemsData) allBills.push(...itemsData);
       if (rData) allReceipts.push(...rData);
     }
-    if (allBills.length > 0 || allReceipts.length > 0) {
-      return { bills: allBills, receipts: allReceipts };
+    if (allBills.length > 0 || allBillHeaders.length > 0 || allReceipts.length > 0) {
+      return { bills: allBills, billHeaders: allBillHeaders, receipts: allReceipts };
     }
   } catch (e) {
     // fallback
   }
-  return { bills: [], receipts: [] };
+  return { bills: [], billHeaders: [], receipts: [] };
 }
 
 async function fetchRetailSales(customerIds: number[], fySuffix: string): Promise<any[]> {
@@ -891,6 +894,7 @@ export async function GET(request: NextRequest) {
 
       let custSubs: any[] = [];
       let liveBills: any[] = [];
+      let liveBillHeaders: any[] = [];
       let liveReceipts: any[] = [];
       let pubDis: any[] = [];
       let liveRetail: any[] = [];
@@ -906,6 +910,7 @@ export async function GET(request: NextRequest) {
         ]);
         custSubs = subsData;
         liveBills = billsReceiptsData.bills;
+        liveBillHeaders = billsReceiptsData.billHeaders;
         liveReceipts = billsReceiptsData.receipts;
         pubDis = [
           ...(data.publicationdis || []),
@@ -946,6 +951,7 @@ export async function GET(request: NextRequest) {
         discontinues: data.discontinues,
         publicationDiscontinues: pubDis,
         bills: liveBills,
+        billHeaders: liveBillHeaders,
         receipts: liveReceipts,
         regions: data.regions,
         retailSales: liveRetail

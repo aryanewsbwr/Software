@@ -171,7 +171,7 @@ export function calculateBilling({
     let matchingChanges = ratechanges.filter(rc => {
       const rPub = rc.Publica_id || rc.publica_id;
       const rDay = rc.Dayofweek !== undefined ? rc.Dayofweek : rc.dayofweek;
-      const rDated = rc.Dated || rc.dated;
+      const rDated = rc.Dated || rc.dated || rc.effective_date;
       const rDatedIso = parseLegacyDateToIso(rDated);
       return (
         rPub === publicaId &&
@@ -184,7 +184,7 @@ export function calculateBilling({
     if (matchingChanges.length === 0) {
       matchingChanges = ratechanges.filter(rc => {
         const rPub = rc.Publica_id || rc.publica_id;
-        const rDated = rc.Dated || rc.dated;
+        const rDated = rc.Dated || rc.dated || rc.effective_date;
         const rDatedIso = parseLegacyDateToIso(rDated);
         return rPub === publicaId && rDatedIso && rDatedIso <= targetDateIso;
       });
@@ -192,8 +192,8 @@ export function calculateBilling({
 
     if (matchingChanges.length > 0) {
       matchingChanges.sort((a, b) => {
-        const dA = parseLegacyDateToIso(a.Dated || a.dated) || '';
-        const dB = parseLegacyDateToIso(b.Dated || b.dated) || '';
+        const dA = parseLegacyDateToIso(a.Dated || a.dated || a.effective_date) || '';
+        const dB = parseLegacyDateToIso(b.Dated || b.dated || b.effective_date) || '';
         if (dB !== dA) return dB.localeCompare(dA);
         // On same date, exact DayOfWeek match (1-7) takes priority over general DayOfWeek (0)
         const dayA = a.Dayofweek !== undefined ? a.Dayofweek : a.dayofweek;
@@ -414,15 +414,16 @@ export function calculateBilling({
     }
   }
 
-  // If separate line items exist in bills (TotalAmt), sum them by customer for prior months:
-  const hasLineItems = bills.some(b => b.totalamt !== undefined || b.TotalAmt !== undefined);
+  // If separate line items exist in bills (TotalAmt / total_amt), sum them by customer for prior months:
+  const hasLineItems = bills.some(b => b.total_amt !== undefined || b.totalamt !== undefined || b.TotalAmt !== undefined);
   if (hasLineItems) {
     for (const b of bills) {
       const cid = b.customer_id || b.Customer_id;
       const bMonth = (b.month || b.Month || '').toLowerCase().trim();
       const mIdx = FY_MONTH_ORDER[bMonth];
-      if (mIdx !== undefined && mIdx < targetFyIndex && (b.totalamt !== undefined || b.TotalAmt !== undefined)) {
-        const lineAmt = Number(b.totalamt !== undefined ? b.totalamt : b.TotalAmt);
+      const val = b.total_amt !== undefined ? b.total_amt : (b.totalamt !== undefined ? b.totalamt : b.TotalAmt);
+      if (mIdx !== undefined && mIdx < targetFyIndex && val !== undefined) {
+        const lineAmt = Number(val);
         priorBilledInFyMap.set(cid, (priorBilledInFyMap.get(cid) || 0) + lineAmt);
       }
     }
@@ -825,6 +826,11 @@ export function calculateBilling({
     if (rawCbal !== null && rawCbal !== 0) {
       customerPreviousBalance = -rawCbal;
     }
+
+    // Accumulate prior months billed in current financial year (e.g. August when calculating September)
+    const priorBilled = priorBilledInFyMap.get(custId) || 0;
+    const priorReceipts = priorReceiptsInFyMap.get(custId) || 0;
+    customerPreviousBalance = customerPreviousBalance + priorBilled - priorReceipts;
 
     const previousDue = Math.round(customerPreviousBalance * 100) / 100;
 
