@@ -819,18 +819,12 @@ export function calculateBilling({
     // - negative cbal means Due (customer owes money, e.g. -150.00 -> +150.00 on bill)
     // - positive cbal means Advance (customer overpaid, e.g. +20.50 -> -20.50 on bill)
     // - 0 cbal means zero previous balance (fully paid up)
-    // Note: dueamount is an old legacy column and MUST NEVER be used for monthly billing balance.
     let customerPreviousBalance = 0;
     const rawCbal = cust.cbal !== undefined && cust.cbal !== null ? Number(cust.cbal) : null;
 
     if (rawCbal !== null && rawCbal !== 0) {
       customerPreviousBalance = -rawCbal;
     }
-
-    // Accumulate prior months billed in current financial year (e.g. August when calculating September)
-    const priorBilled = priorBilledInFyMap.get(custId) || 0;
-    const priorReceipts = priorReceiptsInFyMap.get(custId) || 0;
-    customerPreviousBalance = customerPreviousBalance + priorBilled - priorReceipts;
 
     const previousDue = Math.round(customerPreviousBalance * 100) / 100;
 
