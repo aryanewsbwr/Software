@@ -1,486 +1,728 @@
 [
   {
     "region_id": 1,
-    "region_name": "ZAMBUJA"
+    "region_name": "ZAMBUJA",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 3,
-    "region_name": "Z4"
+    "region_name": "Z4",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 4,
-    "region_name": "ZShree Cement"
+    "region_name": "ZShree Cement",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 5,
-    "region_name": "ZMasuda Road"
+    "region_name": "ZMasuda Road",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 6,
-    "region_name": "ZDungri Road"
+    "region_name": "ZDungri Road",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 7,
-    "region_name": "ZPaliBazar"
+    "region_name": "ZPaliBazar",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 8,
-    "region_name": "ZAjmer Road"
+    "region_name": "ZAjmer Road",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 9,
-    "region_name": "Z2 I"
+    "region_name": "Z2 I",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 10,
-    "region_name": "Z2 II"
+    "region_name": "Z2 II",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 11,
-    "region_name": "2 III"
+    "region_name": "2 III",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 12,
-    "region_name": "Z3I"
+    "region_name": "Z3I",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 13,
-    "region_name": "Z3II"
+    "region_name": "Z3II",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 14,
-    "region_name": "Z3III"
+    "region_name": "Z3III",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 15,
-    "region_name": "ZDukan"
+    "region_name": "ZDukan",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 16,
-    "region_name": "ZBalad Road"
+    "region_name": "ZBalad Road",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 17,
-    "region_name": "ZNakad"
+    "region_name": "ZNakad",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 18,
-    "region_name": "ZDinesh N P C A"
+    "region_name": "ZDinesh N P C A",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 19,
-    "region_name": "ZGirdhari Mittal"
+    "region_name": "ZGirdhari Mittal",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 20,
-    "region_name": "ZGhanshyam Choti"
+    "region_name": "ZGhanshyam Choti",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 21,
-    "region_name": "ZSCLRas"
+    "region_name": "ZSCLRas",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 22,
-    "region_name": "ZLacchu"
+    "region_name": "ZLacchu",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 23,
-    "region_name": "ZRavipratap"
+    "region_name": "ZRavipratap",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 24,
-    "region_name": "ZAvnish Jain Jawaja"
+    "region_name": "ZAvnish Jain Jawaja",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 25,
-    "region_name": "ZSatat Shiksha Kendra"
+    "region_name": "ZSatat Shiksha Kendra",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 26,
-    "region_name": "ZRamesh Goyal"
+    "region_name": "ZRamesh Goyal",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 27,
-    "region_name": "ZFaruque"
+    "region_name": "ZFaruque",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 28,
-    "region_name": "ZMadhav Mittal"
+    "region_name": "ZMadhav Mittal",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 29,
-    "region_name": "ZSunil Mittal"
+    "region_name": "ZSunil Mittal",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 30,
-    "region_name": "ZDurgesh"
+    "region_name": "ZDurgesh",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 31,
-    "region_name": "ZKhandelwal "
+    "region_name": "ZKhandelwal",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 32,
-    "region_name": "Dairy"
+    "region_name": "Dairy",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 33,
-    "region_name": "Nagar"
+    "region_name": "Nagar",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 34,
-    "region_name": "Temp"
+    "region_name": "Temp",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 35,
-    "region_name": "ZShreeOffice"
+    "region_name": "ZShreeOffice",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 36,
-    "region_name": "Z"
+    "region_name": "Z",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 37,
-    "region_name": "ZRaju Courier"
+    "region_name": "ZRaju Courier",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 38,
-    "region_name": "1"
+    "region_name": "1",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 39,
-    "region_name": "ZAshokDawai"
+    "region_name": "ZAshokDawai",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 40,
-    "region_name": "ZHarish L"
+    "region_name": "ZHarish L",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 41,
-    "region_name": "ZRaju Dawai"
+    "region_name": "ZRaju Dawai",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 42,
-    "region_name": "Zbasant"
+    "region_name": "Zbasant",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 43,
-    "region_name": "ZShyam News"
+    "region_name": "ZShyam News",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 44,
-    "region_name": "ZOLD DUES"
+    "region_name": "ZOLD DUES",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 45,
-    "region_name": "ZShankarji"
+    "region_name": "ZShankarji",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 46,
-    "region_name": "ZGuptaNews"
+    "region_name": "ZGuptaNews",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 47,
-    "region_name": "ZHarish"
+    "region_name": "ZHarish",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 48,
-    "region_name": "ZSantosh News"
+    "region_name": "ZSantosh News",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 49,
-    "region_name": "ZNirantar"
+    "region_name": "ZNirantar",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 50,
-    "region_name": "ZLaduji"
+    "region_name": "ZLaduji",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 51,
-    "region_name": "ZParashar"
+    "region_name": "ZParashar",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 52,
-    "region_name": "ZNewTemp"
+    "region_name": "ZNewTemp",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 53,
-    "region_name": "ZSantosh"
+    "region_name": "ZSantosh",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 54,
-    "region_name": "ZRajuGoyalWala"
+    "region_name": "ZRajuGoyalWala",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 55,
-    "region_name": "ZARoad"
+    "region_name": "ZARoad",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 56,
-    "region_name": "ZChunnilal"
+    "region_name": "ZChunnilal",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 57,
-    "region_name": "ZBedDebts"
+    "region_name": "ZBedDebts",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 58,
-    "region_name": "ZMRSurvey"
+    "region_name": "ZMRSurvey",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 59,
-    "region_name": "MasudaRoadII"
+    "region_name": "MasudaRoadII",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 60,
-    "region_name": "MasudaraodI"
+    "region_name": "MasudaraodI",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 61,
-    "region_name": "ZSCL MandirSamahroh"
+    "region_name": "ZSCL MandirSamahroh",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 62,
-    "region_name": "NandNagar"
+    "region_name": "NandNagar",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 63,
-    "region_name": "ZFatehpuriy"
+    "region_name": "ZFatehpuriy",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 64,
-    "region_name": "ZSCL"
+    "region_name": "ZSCL",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 65,
-    "region_name": "ZBRM"
+    "region_name": "ZBRM",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 66,
-    "region_name": "SendraRoad"
+    "region_name": "SendraRoad",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 67,
-    "region_name": "ZAdarshnagar"
+    "region_name": "ZAdarshnagar",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 68,
-    "region_name": "ZGayatrinagar"
+    "region_name": "ZGayatrinagar",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 69,
-    "region_name": "ZBhajannagar"
+    "region_name": "ZBhajannagar",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 70,
-    "region_name": "ZRicco"
+    "region_name": "ZRicco",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 71,
-    "region_name": "MunnaBhai"
+    "region_name": "MunnaBhai",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 72,
-    "region_name": "ZUmeshGoyal"
+    "region_name": "ZUmeshGoyal",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 73,
-    "region_name": "ZAroadByPass"
+    "region_name": "ZAroadByPass",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 74,
-    "region_name": "ZKishanganj"
+    "region_name": "ZKishanganj",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 75,
-    "region_name": "Dungarifatak"
+    "region_name": "Dungarifatak",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 76,
-    "region_name": "Pratapnagar"
+    "region_name": "Pratapnagar",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 77,
-    "region_name": "ZGuptaji"
+    "region_name": "ZGuptaji",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 78,
-    "region_name": "ZNakadShree"
+    "region_name": "ZNakadShree",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 79,
-    "region_name": "Court"
+    "region_name": "Court",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 80,
-    "region_name": "ZFiroz"
+    "region_name": "ZFiroz",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 81,
-    "region_name": "Z1Palibazar"
+    "region_name": "Z1Palibazar",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 82,
-    "region_name": "ZOSMewarigate"
+    "region_name": "ZOSMewarigate",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 83,
-    "region_name": "GPR"
+    "region_name": "GPR",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 84,
-    "region_name": "3"
+    "region_name": "3",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 85,
-    "region_name": "MG3II"
+    "region_name": "MG3II",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 86,
-    "region_name": "ZGoyalNews"
+    "region_name": "ZGoyalNews",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 87,
-    "region_name": "3IMB"
+    "region_name": "3IMB",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 88,
-    "region_name": "ZSCLBagatpura"
+    "region_name": "ZSCLBagatpura",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 89,
-    "region_name": "SR2"
+    "region_name": "SR2",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 90,
-    "region_name": "Z2"
+    "region_name": "Z2",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 91,
-    "region_name": "CRd"
+    "region_name": "CRd",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 92,
-    "region_name": "Ngate"
+    "region_name": "Ngate",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 93,
-    "region_name": "ZDRoad"
+    "region_name": "ZDRoad",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 94,
-    "region_name": "HB"
+    "region_name": "HB",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 95,
-    "region_name": "ZRGPR"
+    "region_name": "ZRGPR",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 96,
-    "region_name": "ZRCMN"
+    "region_name": "ZRCMN",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 97,
-    "region_name": "ZRCMN2"
+    "region_name": "ZRCMN2",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 98,
-    "region_name": "ZMDR"
+    "region_name": "ZMDR",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 99,
-    "region_name": "5Delwararoad"
+    "region_name": "5Delwararoad",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 100,
-    "region_name": "5AN"
+    "region_name": "5AN",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 101,
-    "region_name": "5RHB"
+    "region_name": "5RHB",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 102,
-    "region_name": "Z5Bypass"
+    "region_name": "Z5Bypass",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 103,
-    "region_name": "5Dayanagar"
+    "region_name": "5Dayanagar",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 104,
-    "region_name": "5Gnagar"
+    "region_name": "5Gnagar",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 105,
-    "region_name": "Z4Dr"
+    "region_name": "Z4Dr",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 106,
-    "region_name": "ZSub Agent"
+    "region_name": "ZSub Agent",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 107,
-    "region_name": "SRoad"
+    "region_name": "SRoad",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 108,
-    "region_name": "Z1Nnagar"
+    "region_name": "Z1Nnagar",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 109,
-    "region_name": "4C"
+    "region_name": "4C",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 110,
-    "region_name": "SCL"
+    "region_name": "SCL",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 111,
-    "region_name": "ZOSMewarigate2"
+    "region_name": "ZOSMewarigate2",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 112,
-    "region_name": "SCLOffice"
+    "region_name": "SCLOffice",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 113,
-    "region_name": "Z3PC"
+    "region_name": "Z3PC",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 114,
-    "region_name": "ZSclRasOffice"
+    "region_name": "ZSclRasOffice",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 115,
-    "region_name": "ZDB"
+    "region_name": "ZDB",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 116,
-    "region_name": "1D"
+    "region_name": "1D",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 117,
-    "region_name": "UG"
+    "region_name": "UG",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 118,
-    "region_name": "Ag"
+    "region_name": "Ag",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 119,
-    "region_name": "GMR"
+    "region_name": "GMR",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 120,
-    "region_name": "Whatsapp"
+    "region_name": "Whatsapp",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 121,
-    "region_name": "Df"
+    "region_name": "Df",
+    "hindi_name": "",
+    "zone": ""
   },
   {
     "region_id": 122,
-    "region_name": "Mr2"
+    "region_name": "Mr2",
+    "hindi_name": "",
+    "zone": ""
   }
 ]

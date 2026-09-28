@@ -8,7 +8,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Newspaper",
     "type": "Publisher"
   },
@@ -21,7 +23,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Both",
     "type": "Dealer"
   },
@@ -34,7 +38,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Both",
     "type": "Publisher"
   },
@@ -47,7 +53,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Magzine",
     "type": "Dealer"
   },
@@ -60,7 +68,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Both",
     "type": "Dealer"
   },
@@ -73,7 +83,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Both",
     "type": "Publisher"
   },
@@ -86,7 +98,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Magzine",
     "type": "Dealer"
   },
@@ -99,7 +113,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Newspaper",
     "type": "Publisher"
   },
@@ -112,7 +128,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Magzine",
     "type": "Publisher"
   },
@@ -125,7 +143,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Both",
     "type": "Publisher"
   },
@@ -138,7 +158,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Magzine",
     "type": "Publisher"
   },
@@ -151,7 +173,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Newspaper",
     "type": "Publisher"
   },
@@ -164,7 +188,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Both",
     "type": "Publisher"
   },
@@ -177,7 +203,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Magzine",
     "type": "Publisher"
   },
@@ -190,7 +218,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Newspaper",
     "type": "Publisher"
   },
@@ -203,7 +233,9 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Newspaper",
     "type": "Publisher"
   },
@@ -216,20 +248,24 @@
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Both",
     "type": "Publisher"
   },
   {
     "publish_id": 18,
-    "name": "DNA ",
+    "name": "DNA",
     "address": "",
     "city": "",
     "state": "",
     "pincode": "",
     "phone": "",
     "mobile": "",
+    "fax": "",
     "email": "",
+    "website": "",
     "category": "Newspaper",
     "type": "Publisher"
   }
