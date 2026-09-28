@@ -481,26 +481,26 @@ export function calculateBilling({
     }
   }
 
+  // Pre-index months that actually have bills in this FY table (strictly prior to target billing month)
+  const priorBilledMonths = new Set<string>();
+  for (const b of allHeaders) {
+    const bMonth = (b.month || b.Month || '').toLowerCase().trim();
+    const mIdx = FY_MONTH_ORDER[bMonth];
+    if (mIdx !== undefined && mIdx >= 0 && mIdx < targetFyIndex) {
+      priorBilledMonths.add(bMonth);
+    }
+  }
+
   // Step C: Prior Receipts in the CURRENT FY (strictly prior to target billing month)
+  // Only deduct receipts for months that were actively billed in this FY table.
+  // Historical receipts for unbilled months (e.g. April-July) are already net-settled in customer.cbal.
   const priorReceiptsInFyMap = new Map<number, number>();
   for (const r of receipts) {
     const cid = r.customer_id || r.Customer_id;
     const rMonth = (r.month || r.Month || '').toLowerCase().trim();
     const mIdx = FY_MONTH_ORDER[rMonth];
 
-    const recDate = parseLegacyDateToIso(r.mal_recp_dt || r.MalRecpDt || r.bill_date || r.BillDate);
-    // In legacy ledger: receipt is prior if its voucher date is before target month start,
-    // OR if its associated month is strictly prior to target month and voucher date is not after target month
-    let isPrior = false;
-    if (mIdx !== undefined && mIdx < targetFyIndex) {
-      if (!recDate || recDate <= monthEndIso) {
-        isPrior = true;
-      }
-    } else if (recDate && recDate < monthStartIso) {
-      isPrior = true;
-    }
-
-    if (isPrior) {
+    if (mIdx !== undefined && priorBilledMonths.has(rMonth)) {
       const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
       const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
       priorReceiptsInFyMap.set(cid, (priorReceiptsInFyMap.get(cid) || 0) + recpAmt + lessAmt);
