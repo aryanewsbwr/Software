@@ -114,16 +114,6 @@ async function getMaxBillId(fySuffix: string): Promise<number> {
   try {
     const { data } = await supabase
       .from(`billno${fySuffix}`)
-      .select('Bill_id')
-      .order('Bill_id', { ascending: false })
-      .limit(1);
-    if (data && data.length > 0 && data[0].Bill_id) {
-      return Number(data[0].Bill_id);
-    }
-  } catch (_) {}
-  try {
-    const { data } = await supabase
-      .from('bill')
       .select('bill_id')
       .order('bill_id', { ascending: false })
       .limit(1);
@@ -182,38 +172,25 @@ async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
   const allBills: any[] = [];
   const allReceipts: any[] = [];
 
-  if (fySuffix === '20262027') {
+  try {
     for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
       const chunk = customerIds.slice(i, i + CHUNK_SIZE);
       const [{ data: bData }, { data: rData }] = await Promise.all([
-        supabase.from('bill').select('*').in('customer_id', chunk).eq('financial_year', '2026-2027'),
-        supabase.from('receipt').select('*').in('customer_id', chunk).eq('financial_year', '2026-2027')
+        supabase.from(`billno${fySuffix}`).select('*').in('customer_id', chunk),
+        supabase.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk)
       ]);
       if (bData) allBills.push(...bData);
       if (rData) allReceipts.push(...rData);
     }
-    return { bills: allBills, receipts: allReceipts };
-  } else {
-    try {
-      for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
-        const chunk = customerIds.slice(i, i + CHUNK_SIZE);
-        const [{ data: bData }, { data: rData }] = await Promise.all([
-          supabase.from(`billno${fySuffix}`).select('*').in('Customer_id', chunk),
-          supabase.from(`receipt${fySuffix}`).select('*').in('Customer_id', chunk)
-        ]);
-        if (bData) allBills.push(...bData);
-        if (rData) allReceipts.push(...rData);
-      }
-      if (allBills.length > 0) {
-        return { bills: allBills, receipts: allReceipts };
-      }
-    } catch (e) {
-      // fallback to cached
+    if (allBills.length > 0 || allReceipts.length > 0) {
+      return { bills: allBills, receipts: allReceipts };
     }
-    const bFiltered = (cachedBills || []).filter(b => customerIds.includes(b.customer_id || b.Customer_id));
-    const rFiltered = (cachedReceipts || []).filter(r => customerIds.includes(r.customer_id || r.Customer_id));
-    return { bills: bFiltered, receipts: rFiltered };
+  } catch (e) {
+    // fallback
   }
+  const bFiltered = (cachedBills || []).filter(b => customerIds.includes(b.customer_id || b.Customer_id));
+  const rFiltered = (cachedReceipts || []).filter(r => customerIds.includes(r.customer_id || r.Customer_id));
+  return { bills: bFiltered, receipts: rFiltered };
 }
 
 async function fetchRetailSales(customerIds: number[], fySuffix: string): Promise<any[]> {

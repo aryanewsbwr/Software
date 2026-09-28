@@ -151,36 +151,23 @@ async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
   const allBills: any[] = [];
   const allReceipts: any[] = [];
 
-  if (fySuffix === '20262027') {
+  try {
     for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
       const chunk = customerIds.slice(i, i + CHUNK_SIZE);
       const [{ data: bData }, { data: rData }] = await Promise.all([
-        supabase.from('bill').select('*').in('customer_id', chunk).eq('financial_year', '2026-2027'),
-        supabase.from('receipt').select('*').in('customer_id', chunk).eq('financial_year', '2026-2027')
+        supabase.from(`billno${fySuffix}`).select('*').in('customer_id', chunk),
+        supabase.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk)
       ]);
       if (bData) allBills.push(...bData);
       if (rData) allReceipts.push(...rData);
     }
-    return { bills: allBills, receipts: allReceipts };
-  } else {
-    try {
-      for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
-        const chunk = customerIds.slice(i, i + CHUNK_SIZE);
-        const [{ data: bData }, { data: rData }] = await Promise.all([
-          supabase.from(`billno${fySuffix}`).select('*').in('Customer_id', chunk),
-          supabase.from(`receipt${fySuffix}`).select('*').in('Customer_id', chunk)
-        ]);
-        if (bData) allBills.push(...bData);
-        if (rData) allReceipts.push(...rData);
-      }
-      if (allBills.length > 0) {
-        return { bills: allBills, receipts: allReceipts };
-      }
-    } catch (e) {
-      // fallback
+    if (allBills.length > 0 || allReceipts.length > 0) {
+      return { bills: allBills, receipts: allReceipts };
     }
-    return { bills: [], receipts: [] };
+  } catch (e) {
+    // fallback
   }
+  return { bills: [], receipts: [] };
 }
 
 async function fetchRetailSales(customerIds: number[], fySuffix: string): Promise<any[]> {

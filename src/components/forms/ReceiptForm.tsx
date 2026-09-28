@@ -58,8 +58,8 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   // Load next Receipt Number
   useEffect(() => {
     supabase
-      .from('receipt')
-      .select('receipt_id', { count: 'exact', head: true })
+      .from('receipt20262027')
+      .select('recp_no', { count: 'exact', head: true })
       .then(({ count }) => {
         if (count && count > 0) setReceiptNo(18383 + count);
       });
@@ -104,7 +104,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
       // 2. Fetch Customer Bills from Supabase
       const { data: bList } = await supabase
-        .from('bill')
+        .from('billno20262027')
         .select('*')
         .eq('customer_id', cid)
         .order('bill_id', { ascending: false })
@@ -114,10 +114,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
       // 3. Fetch Customer Previous Receipts from Supabase
       const { data: rList } = await supabase
-        .from('receipt')
+        .from('receipt20262027')
         .select('*')
         .eq('customer_id', cid)
-        .order('receipt_id', { ascending: false })
+        .order('id', { ascending: false })
         .limit(30);
 
       setCustomerReceipts(rList || []);
@@ -168,27 +168,19 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     setMsg('Saving payment receipt...');
     try {
       const receiptData = {
+        recp_no: receiptNo,
+        recp_date: receiptDate,
         customer_id: parseInt(customerId, 10),
-        receipt_no: String(receiptNo),
-        manual_rep_no: manualRecpNo,
-        bill_date: receiptDate,
-        bill_amt: billAmt,
-        month: month,
-        year: year,
-        due_amt: totalDues,
-        mal_recp_amt: manualRcpAmt,
-        balance: totalDues - revAmt - lessAmt,
+        bill_amt: totalDues,
         less_amt: lessAmt,
-        r_amt: revAmt,
-        cash_chq: paymentMode,
-        cheque_no: paymentMode === 'Cheque' ? chequeNo : '',
-        cheque_date: paymentMode === 'Cheque' ? chequeDate : '',
-        narr: narration,
-        financial_year: year
+        mal_recp_amt: revAmt,
+        month: month || 'Dues',
+        year: year || '2026',
+        remarks: narration
       };
 
       // 1. Insert into Supabase
-      const { error } = await supabase.from('receipt').insert([receiptData]);
+      const { error } = await supabase.from('receipt20262027').insert([receiptData]);
       if (error) throw error;
 
       // 2. Adjust Customer Due Balance in Supabase
