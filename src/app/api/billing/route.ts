@@ -515,6 +515,17 @@ export async function POST(request: NextRequest) {
             console.warn('billdel insert note:', delErr);
           }
         }
+
+        // Update customer cbal in customer table to reflect closing balance
+        for (let i = 0; i < result.bills.length; i += 100) {
+          const chunk = result.bills.slice(i, i + 100);
+          await Promise.all(
+            chunk.map(b =>
+              supabase.from('customer').update({ cbal: -b.total_payable }).eq('customer_id', b.customer_id)
+            )
+          );
+        }
+
         savedToSupabase = true;
         savedBillnoCount = billnoRows.length;
         savedBillItemsCount = billRows.length;
