@@ -52,7 +52,7 @@ export interface CustomerMonthlyBill {
   db_billdel_items?: any[];
 }
 
-const MONTH_NAMES = [
+export const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
@@ -60,7 +60,7 @@ const MONTH_NAMES = [
 const FORTNIGHTLY_PUBS = new Set([11, 13, 17, 18, 23, 24, 33, 109]);
 
 // Parse DD/MM/YYYY or YYYY-MM-DD to YYYY-MM-DD
-function parseLegacyDateToIso(dStr: string | null | undefined): string | null {
+export function parseLegacyDateToIso(dStr: string | null | undefined): string | null {
   if (!dStr || dStr.trim() === '' || dStr === 'null') return null;
   const clean = dStr.trim();
   if (clean.includes('/')) {
@@ -832,8 +832,9 @@ export function calculateBilling({
     const currentMonthCharges = Math.round((customerPaperTotal + customerDeliveryTotal + customerRetailTotal - customerDiscountTotal) * 100) / 100;
     const totalPayable = Math.round((openingBalanceThisBill + currentMonthCharges) * 100) / 100;
 
-    // Only generate bill if customer has active papers, retail sales, or outstanding dues
-    if (totalPayable === 0 && customerPaperTotal === 0 && customerRetailTotal === 0 && custBreakup.length === 0) {
+    // In FoxPro monthly delivery billing, bills are ONLY generated for customers with active paper/magazine deliveries or retail sales in this month.
+    // Discontinued customers with 0 current deliveries do not get recurring monthly delivery bills.
+    if (customerPaperTotal === 0 && customerRetailTotal === 0) {
       continue;
     }
 
@@ -885,13 +886,27 @@ export function calculateBilling({
       amount: totalPayable
     });
 
-    const reg = regMap.get(custRegionId);
+    // Check if customer already has a committed bill header in allHeaders for this month
+    const existingHeader = allHeaders.find(h => {
+      const hCid = Number(h.customer_id || h.Customer_id);
+      const hMonth = (h.month || h.Month || '').toLowerCase().trim();
+      const stdM = standardMonthName.toLowerCase();
+      return hCid === Number(custId) && (
+        hMonth === stdM ||
+        (stdM.startsWith('sep') && hMonth.startsWith('sep')) ||
+        (stdM.startsWith('aug') && hMonth.startsWith('aug'))
+      );
+    });
+
+    const assignedBillId = existingHeader && (existingHeader.bill_id || existingHeader.Bill_id)
+      ? Number(existingHeader.bill_id || existingHeader.Bill_id)
+      : nextBillId;
 
     // In billnoYYYYYYYY:
     // - Due_Amt is NULL for monthly bills (only populated in the FY anchor row Month='Dues')
     // - Balance stores the carried-forward opening balance (deficit = negative, advance = positive)
     const dbBillnoItem = {
-      Bill_id: nextBillId,
+      Bill_id: assignedBillId,
       Customer_id: custId,
       Region_id: custRegionId,
       Due_Amt: null,
@@ -902,8 +917,10 @@ export function calculateBilling({
       Balance: openingBalanceThisBill !== 0 ? -openingBalanceThisBill : 0
     };
 
+    const reg = regMap.get(custRegionId);
+
     const billObj: CustomerMonthlyBill = {
-      bill_no: nextBillId,
+      bill_no: assignedBillId,
       customer_id: custId,
       name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
       customer_hindi: cust.name_hindi || cust.Name_hindi || '',

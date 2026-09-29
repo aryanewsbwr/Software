@@ -330,6 +330,7 @@ export default function BillingForm({ onClose }: BillingFormProps) {
             <table className="w-full text-xs">
               <thead className="sticky top-0 bg-[#ECE9D8] border-b border-[#808080]">
                 <tr>
+                  <th className="p-1.5 border text-center">Cust ID</th>
                   <th className="p-1.5 border text-center">Bill No</th>
                   <th className="p-1.5 border text-left">Customer Name (Hindi/Eng)</th>
                   <th className="p-1.5 border text-left">Region</th>
@@ -344,7 +345,8 @@ export default function BillingForm({ onClose }: BillingFormProps) {
               <tbody>
                 {bills.map((b, idx) => (
                   <tr key={idx} className="border-b hover:bg-blue-50 text-[11px]">
-                    <td className="p-1 border-r font-mono text-center font-bold">#{b.bill_no}</td>
+                    <td className="p-1 border-r font-mono text-center font-bold text-slate-700 bg-slate-50">#{b.customer_id}</td>
+                    <td className="p-1 border-r font-mono text-center font-bold text-blue-900">#{b.bill_no}</td>
                     <td className="p-1 border-r font-bold text-blue-900">
                       <div>{b.name_eng}</div>
                       {b.customer_hindi && <div className="text-[10px] text-slate-500 font-normal">{b.customer_hindi}</div>}

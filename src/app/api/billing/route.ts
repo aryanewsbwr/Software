@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
 import { supabase } from '@/lib/supabaseClient';
-import { calculateBilling } from '@/lib/billingEngine';
+import { calculateBilling, MONTH_NAMES, parseLegacyDateToIso } from '@/lib/billingEngine';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 
 export const dynamic = 'force-dynamic';
@@ -17,6 +17,7 @@ let cachedBills: any[] | null = null;
 let cachedReceipts: any[] | null = null;
 let cachedRegions: any[] | null = null;
 let cachedPubDis: any[] | null = null;
+let cachedAllSubs: any[] | null = null;
 
 function loadJson(filename: string): any[] {
   const f = path.join(process.cwd(), 'public', 'data', filename);
@@ -84,6 +85,39 @@ function getCustomers(): any[] {
   if (cachedCusts && cachedCusts.length > 0) return cachedCusts;
   cachedCusts = loadJson('all_customers.json');
   return cachedCusts || [];
+}
+
+function getAllSubscriptions(): any[] {
+  if (cachedAllSubs && cachedAllSubs.length > 0) return cachedAllSubs;
+  cachedAllSubs = loadJson('all_subscriptions.json');
+  return cachedAllSubs || [];
+}
+
+function getActiveCustomerIds(month: string, year: number | string): Set<number> {
+  const allSubs = getAllSubscriptions();
+  const allRetail = loadJson('retailsale.json');
+
+  const targetMonthIdx = MONTH_NAMES.findIndex(m => m.toLowerCase() === month.toLowerCase() || m.toLowerCase().startsWith(month.toLowerCase().slice(0, 3)));
+  const actualMonthIdx = targetMonthIdx >= 0 ? targetMonthIdx : 8; // default September
+  const actualMonthNum = actualMonthIdx + 1;
+  const startYr = parseInt(String(year).slice(0, 4), 10) || 2026;
+  const calYr = actualMonthIdx >= 3 ? startYr : startYr + 1;
+  const daysInM = new Date(calYr, actualMonthIdx + 1, 0).getDate();
+  const mStartIso = `${calYr}-${String(actualMonthNum).padStart(2, '0')}-01`;
+  const mEndIso = `${calYr}-${String(actualMonthNum).padStart(2, '0')}-${String(daysInM).padStart(2, '0')}`;
+
+  const activeCustSet = new Set<number>();
+  for (const s of allSubs) {
+    const sDateIso = parseLegacyDateToIso(s.s_date || s.S_Date) || '2000-01-01';
+    const cDateIso = parseLegacyDateToIso(s.c_date || s.C_Date);
+    if (sDateIso <= mEndIso && (!cDateIso || cDateIso >= mStartIso)) {
+      activeCustSet.add(Number(s.customer_id || s.Customer_id));
+    }
+  }
+  for (const rs of allRetail) {
+    activeCustSet.add(Number(rs.customer_id || rs.Customer_id));
+  }
+  return activeCustSet;
 }
 
 function getHolidays(): any[] {
@@ -361,7 +395,19 @@ export async function GET(request: NextRequest) {
         (c.customer_id || c.Customer_id)?.toString() === search ||
         (c.phone || '').includes(search)
       );
+    } else {
+      // In FoxPro monthly delivery billing, only active delivery customers receive bills.
+      // Filter out discontinued / closed customers with 0 current deliveries.
+      const activeCustSet = getActiveCustomerIds(month, year);
+      targetCusts = targetCusts.filter(c => activeCustSet.has(Number(c.customer_id || c.Customer_id)));
     }
+
+    // Sort target customers strictly by customer_id ascending
+    targetCusts.sort((a, b) => {
+      const idA = Number(a.customer_id || a.Customer_id || 0);
+      const idB = Number(b.customer_id || b.Customer_id || 0);
+      return idA - idB;
+    });
 
     const totalCustCount = targetCusts.length;
     // Paginate target customers for instant response
@@ -448,8 +494,20 @@ export async function POST(request: NextRequest) {
       const startY = parseInt(yStr, 10) || 2025;
       fySuffix = `${startY}${startY + 1}`;
     }
+    // In FoxPro monthly delivery billing, only active delivery customers receive bills.
+    // Filter out discontinued / closed customers with 0 current deliveries.
+    const activeCustSet = getActiveCustomerIds(month, year);
+    targetCusts = targetCusts.filter(c => activeCustSet.has(Number(c.customer_id || c.Customer_id)));
+
+    // Sort target customers strictly by customer_id ascending
+    targetCusts.sort((a, b) => {
+      const idA = Number(a.customer_id || a.Customer_id || 0);
+      const idB = Number(b.customer_id || b.Customer_id || 0);
+      return idA - idB;
+    });
+
     const targetCustIds = targetCusts.map(c => c.customer_id || c.Customer_id);
-    const [targetSubs, { bills: liveCustBills, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId, liveHolidays, rates, ratechanges, pubs, discontinues, regions] = await Promise.all([
+    const [targetSubs, { bills: liveCustBills, billHeaders: liveCustBillHeaders, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId, liveHolidays, rates, ratechanges, pubs, discontinues, regions] = await Promise.all([
       fetchSubscriptions(targetCustIds),
       fetchBillsAndReceipts(targetCustIds, fySuffix),
       getPublicationDiscontinues(),
@@ -476,6 +534,7 @@ export async function POST(request: NextRequest) {
       discontinues: discontinues,
       publicationDiscontinues: pubDis,
       bills: liveCustBills,
+      billHeaders: liveCustBillHeaders,
       receipts: liveCustReceipts,
       regions: regions,
       retailSales: dbBatchRetail,
