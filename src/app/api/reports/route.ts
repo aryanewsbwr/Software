@@ -89,7 +89,7 @@ async function getCacheAsync() {
 async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
   if (customerIds.length === 0) return [];
 
-  const CHUNK_SIZE = 200;
+  const CHUNK_SIZE = 100;
   const result: any[] = [];
   const foundCustIds = new Set<number>();
 
@@ -100,7 +100,8 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
       const { data: cdSubs } = await supabase
         .from('customer_detail')
         .select('*')
-        .in('customer_id', chunk);
+        .in('customer_id', chunk)
+        .limit(50000);
       if (cdSubs && cdSubs.length > 0) {
         result.push(...cdSubs);
         cdSubs.forEach(s => foundCustIds.add(s.customer_id));
@@ -147,7 +148,7 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
 
 async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
   if (customerIds.length === 0) return { bills: [], billHeaders: [], receipts: [] };
-  const CHUNK_SIZE = 200;
+  const CHUNK_SIZE = 50;
   const allBills: any[] = [];
   const allBillHeaders: any[] = [];
   const allReceipts: any[] = [];
@@ -156,9 +157,9 @@ async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
     for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
       const chunk = customerIds.slice(i, i + CHUNK_SIZE);
       const [{ data: bData }, { data: itemsData }, { data: rData }] = await Promise.all([
-        supabase.from(`billno${fySuffix}`).select('*').in('customer_id', chunk),
-        supabase.from(`bill${fySuffix}`).select('*').in('customer_id', chunk),
-        supabase.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk)
+        supabase.from(`billno${fySuffix}`).select('*').in('customer_id', chunk).limit(50000),
+        supabase.from(`bill${fySuffix}`).select('*').in('customer_id', chunk).limit(50000),
+        supabase.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk).limit(50000)
       ]);
       if (bData) allBillHeaders.push(...bData);
       if (itemsData) allBills.push(...itemsData);

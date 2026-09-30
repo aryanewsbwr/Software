@@ -161,7 +161,7 @@ async function getMaxBillId(fySuffix: string): Promise<number> {
 async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
   if (customerIds.length === 0) return [];
 
-  const CHUNK_SIZE = 200;
+  const CHUNK_SIZE = 100;
   const result: any[] = [];
   const foundCustIds = new Set<number>();
 
@@ -172,7 +172,8 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
       const { data: cdSubs } = await supabase
         .from('customer_detail')
         .select('*')
-        .in('customer_id', chunk);
+        .in('customer_id', chunk)
+        .limit(50000);
       if (cdSubs && cdSubs.length > 0) {
         result.push(...cdSubs);
         cdSubs.forEach(s => foundCustIds.add(s.customer_id));
