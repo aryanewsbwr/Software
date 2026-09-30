@@ -387,7 +387,7 @@ export function calculateBilling({
     'june': 2, 'jun': 2,
     'july': 3, 'jul': 3,
     'august': 4, 'aug': 4,
-    'september': 5, 'sep': 5,
+    'september': 5, 'sep': 5, 'sept': 5,
     'october': 6, 'oct': 6,
     'november': 7, 'nov': 7,
     'december': 8, 'dec': 8,

@@ -87,7 +87,7 @@ export default function BillingForm({ onClose }: BillingFormProps) {
       const data = await res.json();
 
       // 2. Load first page of bills for preview
-      const gridRes = await fetch(`/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}&page=1&limit=50`);
+      const gridRes = await fetch(`/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}&page=1&limit=200`);
       const gridData = await gridRes.json();
 
       setProgress(100);
@@ -110,7 +110,7 @@ export default function BillingForm({ onClose }: BillingFormProps) {
   // Fetch paginated / searched bills when grid is open
   const fetchBillsPage = async (p: number, s: string) => {
     try {
-      const query = `/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}&search=${encodeURIComponent(s)}&page=${p}&limit=50`;
+      const query = `/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}&search=${encodeURIComponent(s)}&page=${p}&limit=200`;
       const res = await fetch(query);
       const data = await res.json();
       setBills(data.bills || []);
@@ -148,7 +148,7 @@ export default function BillingForm({ onClose }: BillingFormProps) {
     }
   };
 
-  const totalPages = Math.ceil(totalCustomers / 50) || 1;
+  const totalPages = Math.ceil(totalCustomers / 200) || 1;
 
   return (
     <div className={`relative ${showGrid ? 'w-[920px] h-[640px]' : 'w-[600px] h-auto'} bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden transition-all duration-200`}>

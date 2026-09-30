@@ -202,7 +202,7 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
 
 async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
   if (customerIds.length === 0) return { bills: [], billHeaders: [], receipts: [] };
-  const CHUNK_SIZE = 200;
+  const CHUNK_SIZE = 50;
   const allBills: any[] = [];
   const allBillHeaders: any[] = [];
   const allReceipts: any[] = [];
@@ -211,9 +211,9 @@ async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
     for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
       const chunk = customerIds.slice(i, i + CHUNK_SIZE);
       const [{ data: bData }, { data: itemsData }, { data: rData }] = await Promise.all([
-        supabase.from(`billno${fySuffix}`).select('*').in('customer_id', chunk),
-        supabase.from(`bill${fySuffix}`).select('*').in('customer_id', chunk),
-        supabase.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk)
+        supabase.from(`billno${fySuffix}`).select('*').in('customer_id', chunk).limit(50000),
+        supabase.from(`bill${fySuffix}`).select('*').in('customer_id', chunk).limit(50000),
+        supabase.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk).limit(50000)
       ]);
       if (bData) allBillHeaders.push(...bData);
       if (itemsData) allBills.push(...itemsData);
@@ -304,7 +304,7 @@ export async function GET(request: NextRequest) {
     const customerIdStr = searchParams.get('customer_id');
     const search = (searchParams.get('search') || '').trim().toLowerCase();
     const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const limit = parseInt(searchParams.get('limit') || '200', 10);
 
     // Fetch core reference datasets directly from Supabase
     const [rates, ratechanges, pubs, discontinues, regions] = await Promise.all([
