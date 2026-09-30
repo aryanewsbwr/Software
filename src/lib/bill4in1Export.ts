@@ -225,9 +225,17 @@ export function renderA4Page(fourBills: BillRecord[]): string {
  */
 export function generateFullPrintHtml(bills: BillRecord[], title: string = 'Aryan News Agency - Bills'): string {
   // Chunk bills into groups of 4 (each group = 1 A4 page)
+  // Reorder each group for column-first layout matching FoxPro:
+  // [a,b,c,d] → [a,c,b,d] so CSS grid renders: TL=a, TR=c, BL=b, BR=d
   const pages: BillRecord[][] = [];
   for (let i = 0; i < bills.length; i += 4) {
-    pages.push(bills.slice(i, i + 4));
+    const group = bills.slice(i, i + 4);
+    const reordered: BillRecord[] = [];
+    if (group[0]) reordered.push(group[0]); // TL
+    if (group[2]) reordered.push(group[2]); // TR (was BL)
+    if (group[1]) reordered.push(group[1]); // BL (was TR)
+    if (group[3]) reordered.push(group[3]); // BR
+    pages.push(reordered);
   }
 
   const pagesHtml = pages.map(p => renderA4Page(p)).join('\n');
