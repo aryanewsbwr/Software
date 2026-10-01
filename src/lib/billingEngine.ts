@@ -767,21 +767,19 @@ export function calculateBilling({
       const vrDate = parseLegacyDateToIso(rs.vr_date || rs.Vr_Date || rs.dated || rs.Dated);
       // Ensure transaction falls within target billing month
       if (vrDate && vrDate >= monthStartIso && vrDate <= monthEndIso) {
+        const pubId = rs.publica_id || rs.Publica_id;
         const copies = Number(rs.copies || rs.Copies || 1);
         const givenRate = Number(rs.rate !== undefined && rs.rate !== null ? rs.rate : (rs.Rate || 0));
-        let effectiveRate = givenRate;
-        let lineAmt = 0;
+        const rawAmt = rs.amt !== undefined && rs.amt !== null ? Number(rs.amt)
+          : (rs.Amt !== undefined && rs.Amt !== null ? Number(rs.Amt)
+          : (rs.amount !== undefined && rs.amount !== null ? Number(rs.amount) : 0));
 
-        if (effectiveRate > 0 && copies > 0) {
-          lineAmt = Math.round(copies * effectiveRate * 100) / 100;
-        } else {
-          const rawAmt = rs.amt !== undefined && rs.amt !== null ? Number(rs.amt)
-            : (rs.Amt !== undefined && rs.Amt !== null ? Number(rs.Amt)
-            : (rs.amount !== undefined && rs.amount !== null ? Number(rs.amount) : 0));
-          lineAmt = rawAmt;
-          effectiveRate = copies > 0 ? Math.round((rawAmt / copies) * 100) / 100 : rawAmt;
-        }
-        const pubId = rs.publica_id || rs.Publica_id;
+        // Master rate on the transaction date takes priority (e.g. rate changes on 1st of month)
+        const masterRate = getEffectiveRate(pubId, 0, vrDate);
+        const effectiveRate = masterRate > 0 
+          ? masterRate 
+          : (givenRate > 0 ? givenRate : (copies > 0 ? Math.round((rawAmt / copies) * 100) / 100 : rawAmt));
+        const lineAmt = Math.round(copies * effectiveRate * 100) / 100;
         const pub = pubMap.get(pubId);
         const pubName = pub?.pub_hindi 
           ? cleanOrTransliterateHindi(pub.pub_hindi, pub.name || pub.public_name)

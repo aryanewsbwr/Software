@@ -4865,7 +4865,7 @@
     "customer_id": 3352,
     "publica_id": 24,
     "copies": 1,
-    "rate": 55,
+    "rate": 65,
     "amt": 65,
     "narr": ""
   },
@@ -5085,8 +5085,8 @@
     "customer_id": 24818,
     "publica_id": 24,
     "copies": 2,
-    "rate": 55,
-    "amt": 65,
+    "rate": 65,
+    "amt": 130,
     "narr": ""
   },
   {
@@ -5115,7 +5115,7 @@
     "customer_id": 14617,
     "publica_id": 24,
     "copies": 1,
-    "rate": 55,
+    "rate": 65,
     "amt": 65,
     "narr": ""
   },
@@ -5156,7 +5156,7 @@
     "publica_id": 23,
     "copies": 2,
     "rate": 65,
-    "amt": 65,
+    "amt": 130,
     "narr": ""
   },
   {
@@ -5196,7 +5196,7 @@
     "publica_id": 23,
     "copies": 2,
     "rate": 65,
-    "amt": 65,
+    "amt": 130,
     "narr": ""
   },
   {
