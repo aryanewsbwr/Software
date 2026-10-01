@@ -248,6 +248,14 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'gehlot': 'गेहलोत',
   'yadav': 'यादव',
   'mishra': 'मिश्रा',
+
+  // Institutions, Banks & Common Words
+  'state': 'स्टेट',
+  'bank': 'बैंक',
+  'of': 'ऑफ',
+  'city': 'सिटी',
+  'andheri': 'अंधेरी',
+  'devri': 'देवड़ी',
   'pandey': 'पांडेय',
   'shukla': 'शुक्ला',
   'tiwari': 'तिवारी',
@@ -667,6 +675,23 @@ const KNOWN_PHRASES_MAP: Record<string, string> = {
   'rajendra agarwal': 'राजेन्द्र अग्रवाल',
   'suresh sharma': 'सुरेश शर्मा',
   'rameshwar lal': 'रामेश्वर लाल',
+  // Banks & Organizations
+  'state bank of india beawar city': 'स्टेट बैंक ऑफ इंडिया ब्यावर सिटी',
+  'state bank of india beawar city 1': 'स्टेट बैंक ऑफ इंडिया ब्यावर सिटी',
+  'state bank of india': 'स्टेट बैंक ऑफ इंडिया',
+  'state bank of india andheri devri': 'स्टेट बैंक ऑफ इंडिया अंधेरी देवड़ी',
+  'state bank of india ii 4': 'स्टेट बैंक ऑफ इंडिया II',
+  'state bank of bikaner & jaipur ajmer road': 'स्टेट बैंक ऑफ बीकानेर एंड जयपुर अजमेर रोड',
+  'state bank of bikaner & jaipur ajmer road 5': 'स्टेट बैंक ऑफ बीकानेर एंड जयपुर अजमेर रोड',
+  'state bank of bikaner and jaipur ajmer road': 'स्टेट बैंक ऑफ बीकानेर एंड जयपुर अजमेर रोड',
+  'state bank of bikaner & jaipur': 'स्टेट बैंक ऑफ बीकानेर एंड जयपुर',
+  'state bank of bikaner and jaipur': 'स्टेट बैंक ऑफ बीकानेर एंड जयपुर',
+  'punjab national bank': 'पंजाब नेशनल बैंक',
+  'bank of baroda': 'बैंक ऑफ बड़ौदा',
+  'central bank of india': 'सेंट्रल बैंक ऑफ इंडिया',
+  'union bank of india': 'यूनियन बैंक ऑफ इंडिया',
+  'canara bank': 'केनरा बैंक',
+  'uco bank': 'यूको बैंक',
 };
 
 /**
@@ -677,15 +702,22 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
   const rawHindiStr = typeof rawHindi === 'string' ? rawHindi : (rawHindi != null ? String(rawHindi) : '');
   const engTrimmed = engStr.trim();
   const engLower = engTrimmed.toLowerCase();
+  const engNoTrailingNum = engLower.replace(/\s+\d+$/, '').trim();
   const rawHindiTrimmed = rawHindiStr.trim();
 
   if (KNOWN_PHRASES_MAP[engLower]) {
     return KNOWN_PHRASES_MAP[engLower];
   }
+  if (KNOWN_PHRASES_MAP[engNoTrailingNum]) {
+    return KNOWN_PHRASES_MAP[engNoTrailingNum];
+  }
 
   // Check known publications
   if (KNOWN_PUBLICATIONS_HINDI[engLower]) {
     return KNOWN_PUBLICATIONS_HINDI[engLower];
+  }
+  if (KNOWN_PUBLICATIONS_HINDI[engNoTrailingNum]) {
+    return KNOWN_PUBLICATIONS_HINDI[engNoTrailingNum];
   }
 
   // Specific check for Whatsapp in rawHindi or English
@@ -693,8 +725,8 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
     return 'व्हाट्सएप सैम्पल';
   }
 
-  // If already contains genuine Unicode Hindi characters
-  if (rawHindiTrimmed && /[\u0900-\u097F]/.test(rawHindiTrimmed)) {
+  // If already contains genuine Unicode Hindi characters and no replacement characters
+  if (rawHindiTrimmed && /[\u0900-\u097F]/.test(rawHindiTrimmed) && !rawHindiTrimmed.includes('\ufffd')) {
     return rawHindiTrimmed;
   }
 
@@ -704,9 +736,10 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
   }
 
   // Check Susha font decoding if rawHindi looks like Susha ASCII
-  if (rawHindiTrimmed && rawHindiTrimmed.length > 0) {
+  if (rawHindiTrimmed && rawHindiTrimmed.length > 0 && !rawHindiTrimmed.includes('\ufffd')) {
     const decoded = sushaToUnicode(rawHindiTrimmed);
-    if (decoded && /[\u0900-\u097F]/.test(decoded)) {
+    // Only accept if decoded has Hindi and doesn't have leftover unmapped English letters
+    if (decoded && /[\u0900-\u097F]/.test(decoded) && !/[a-zA-Z]/.test(decoded)) {
       return decoded;
     }
   }

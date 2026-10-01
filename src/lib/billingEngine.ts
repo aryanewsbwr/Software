@@ -768,21 +768,18 @@ export function calculateBilling({
       // Ensure transaction falls within target billing month
       if (vrDate && vrDate >= monthStartIso && vrDate <= monthEndIso) {
         const copies = Number(rs.copies || rs.Copies || 1);
+        const givenRate = Number(rs.rate !== undefined && rs.rate !== null ? rs.rate : (rs.Rate || 0));
+        let effectiveRate = givenRate;
         let lineAmt = 0;
-        let effectiveRate = 0;
 
-        if (rs.amt !== undefined && rs.amt !== null) {
-          lineAmt = Number(rs.amt);
-          effectiveRate = Number(rs.rate || rs.Rate || (copies > 0 ? lineAmt / copies : lineAmt));
-        } else if (rs.Amt !== undefined && rs.Amt !== null) {
-          lineAmt = Number(rs.Amt);
-          effectiveRate = Number(rs.Rate || rs.rate || (copies > 0 ? lineAmt / copies : lineAmt));
-        } else if (rs.amount !== undefined && rs.amount !== null) {
-          lineAmt = Number(rs.amount);
-          effectiveRate = Number(rs.rate || rs.Rate || (copies > 0 ? lineAmt / copies : lineAmt));
-        } else {
-          effectiveRate = Number(rs.rate || rs.Rate || 0);
+        if (effectiveRate > 0 && copies > 0) {
           lineAmt = Math.round(copies * effectiveRate * 100) / 100;
+        } else {
+          const rawAmt = rs.amt !== undefined && rs.amt !== null ? Number(rs.amt)
+            : (rs.Amt !== undefined && rs.Amt !== null ? Number(rs.Amt)
+            : (rs.amount !== undefined && rs.amount !== null ? Number(rs.amount) : 0));
+          lineAmt = rawAmt;
+          effectiveRate = copies > 0 ? Math.round((rawAmt / copies) * 100) / 100 : rawAmt;
         }
         const pubId = rs.publica_id || rs.Publica_id;
         const pub = pubMap.get(pubId);
