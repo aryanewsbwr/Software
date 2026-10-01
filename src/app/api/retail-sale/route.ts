@@ -48,7 +48,8 @@ export async function GET(request: NextRequest) {
       const { data: dbCusts } = await supabase
         .from('customer')
         .select('customer_id, name_eng, name_hindi, add1, region_id')
-        .in('customer_id', customerIds.slice(0, 200));
+        .in('customer_id', customerIds.slice(0, 200))
+        .limit(50000);
 
       (dbCusts || []).forEach((c: any) => custMap.set(Number(c.customer_id), c));
     }

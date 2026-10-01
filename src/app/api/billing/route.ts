@@ -241,7 +241,7 @@ async function fetchRetailSales(customerIds: number[], fySuffix: string): Promis
 
   const matchingDb: any[] = [];
   try {
-    const CHUNK_SIZE = 200;
+    const CHUNK_SIZE = 50;
     for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
       const chunk = customerIds.slice(i, i + CHUNK_SIZE);
       
@@ -250,7 +250,8 @@ async function fetchRetailSales(customerIds: number[], fySuffix: string): Promis
         const { data: genData } = await supabase
           .from('retailsale')
           .select('*')
-          .in('customer_id', chunk);
+          .in('customer_id', chunk)
+          .limit(50000);
         if (genData && genData.length > 0) {
           matchingDb.push(...genData.map(r => ({
             Retail_id: r.retail_id || r.Retail_id || r.sale_id,
@@ -272,7 +273,8 @@ async function fetchRetailSales(customerIds: number[], fySuffix: string): Promis
         const { data: fyData } = await supabase
           .from(`retailsale${fySuffix}`)
           .select('*')
-          .in('Customer_id', chunk);
+          .in('Customer_id', chunk)
+          .limit(50000);
         if (fyData && fyData.length > 0) {
           matchingDb.push(...fyData);
         }

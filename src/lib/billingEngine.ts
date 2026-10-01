@@ -516,6 +516,8 @@ export function calculateBilling({
   for (let cIdx = 0; cIdx < targetCustomers.length; cIdx++) {
     const cust = targetCustomers[cIdx];
     const custId = cust.customer_id || cust.Customer_id;
+    const custNameEng = cust.name_eng || cust.Name_eng || `Customer #${custId}`;
+    const custNameHindi = cleanOrTransliterateHindi(cust.name_hindi || cust.Name_hindi || '', custNameEng);
     const custSubs = subsByCust.get(custId) || [];
 
     const custBreakup: BillingLineItem[] = [];
@@ -667,8 +669,8 @@ export function calculateBilling({
         customerPaperTotal += lineAmt;
         custBreakup.push({
           customer_id: custId,
-          name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
-          customer_hindi: cust.name_hindi || cust.Name_hindi || '',
+          name_eng: custNameEng,
+          customer_hindi: custNameHindi,
           sort_order: 1,
           item: pubName,
           rate: rate,
@@ -709,8 +711,8 @@ export function calculateBilling({
         customerDeliveryTotal += dely;
         custBreakup.push({
           customer_id: custId,
-          name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
-          customer_hindi: cust.name_hindi || cust.Name_hindi || '',
+          name_eng: custNameEng,
+          customer_hindi: custNameHindi,
           sort_order: 2,
           item: `${pubName} - Delivery`,
           rate: dely,
@@ -768,8 +770,8 @@ export function calculateBilling({
         // Add to breakup with sort_order 1 (Paper / Magazine Item) so it appears in itemized line items
         custBreakup.push({
           customer_id: custId,
-          name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
-          customer_hindi: cust.name_hindi || cust.Name_hindi || '',
+          name_eng: custNameEng,
+          customer_hindi: custNameHindi,
           sort_order: 1,
           item: pubName,
           rate: effectiveRate,
@@ -800,8 +802,8 @@ export function calculateBilling({
     if (customerDiscountTotal > 0) {
       custBreakup.push({
         customer_id: custId,
-        name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
-        customer_hindi: cust.name_hindi || cust.Name_hindi || '',
+        name_eng: custNameEng,
+        customer_hindi: custNameHindi,
         sort_order: 3,
         item: `Total Discount`,
         rate: null,
@@ -849,8 +851,8 @@ export function calculateBilling({
 
     custBreakup.push({
       customer_id: custId,
-      name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
-      customer_hindi: cust.name_hindi || cust.Name_hindi || '',
+      name_eng: custNameEng,
+      customer_hindi: custNameHindi,
       sort_order: 4,
       item: currentMonthLabel,
       rate: null,
@@ -863,8 +865,8 @@ export function calculateBilling({
     if (previousDue !== 0) {
       custBreakup.push({
         customer_id: custId,
-        name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
-        customer_hindi: cust.name_hindi || cust.Name_hindi || '',
+        name_eng: custNameEng,
+        customer_hindi: custNameHindi,
         sort_order: 5,
         item: previousDue > 0 ? 'Previous Due (गत बकाया)' : 'Advance Balance (जमा अग्रिम)',
         rate: null,
@@ -876,8 +878,8 @@ export function calculateBilling({
 
     custBreakup.push({
       customer_id: custId,
-      name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
-      customer_hindi: cust.name_hindi || cust.Name_hindi || '',
+      name_eng: custNameEng,
+      customer_hindi: custNameHindi,
       sort_order: 9,
       item: 'GRAND TOTAL',
       rate: null,
@@ -922,10 +924,10 @@ export function calculateBilling({
     const billObj: CustomerMonthlyBill = {
       bill_no: assignedBillId,
       customer_id: custId,
-      name_eng: cust.name_eng || cust.Name_eng || `Customer #${custId}`,
-      customer_hindi: cust.name_hindi || cust.Name_hindi || '',
+      name_eng: custNameEng,
+      customer_hindi: custNameHindi,
       region_id: custRegionId,
-      region_name: reg ? (reg.name || reg.region_name || reg.Region_name) : `Region #${custRegionId}`,
+      region_name: reg ? String(reg.name || reg.region_name || reg.Region_name || `Region #${custRegionId}`) : `Region #${custRegionId}`,
       month: standardMonthName,
       year: startYear,
       opening_balance_this_bill: openingBalanceThisBill,

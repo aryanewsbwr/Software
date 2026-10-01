@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 
 let cachedPubs: any[] | null = null;
 let cachedHawkers: any[] | null = null;
+let cachedSubs: any[] | null = null;
 
 function loadData() {
   if (!cachedPubs) {
@@ -18,6 +19,11 @@ function loadData() {
     const f = path.join(process.cwd(), 'public', 'data', 'hawkers.json');
     if (fs.existsSync(f)) cachedHawkers = JSON.parse(fs.readFileSync(f, 'utf-8'));
     else cachedHawkers = [];
+  }
+  if (!cachedSubs) {
+    const f = path.join(process.cwd(), 'public', 'data', 'all_subscriptions.json');
+    if (fs.existsSync(f)) cachedSubs = JSON.parse(fs.readFileSync(f, 'utf-8'));
+    else cachedSubs = [];
   }
 }
 
@@ -47,14 +53,11 @@ export async function GET(request: NextRequest) {
     // getDay(): 0=Sun..6=Sat => legacy 1=Sun..7=Sat
     const legacyDay = targetDate.getDay() + 1;
 
-    // Fetch active subscriptions directly from customer_detail in Supabase
-    let query = supabase.from('customer_detail').select('*');
+    // Use complete subscriptions dataset
+    let dbSubs = cachedSubs || [];
     if (hawkerIdFilter !== 'all') {
-      query = query.eq('hawker_id', parseInt(hawkerIdFilter, 10));
-    }
-    const { data: dbSubs, error: subErr } = await query;
-    if (subErr) {
-      console.warn('Error querying customer_detail in daily-process:', subErr);
+      const hid = parseInt(hawkerIdFilter, 10);
+      dbSubs = dbSubs.filter((s: any) => Number(s.hawker_id || s.Hawker_id) === hid);
     }
 
     // Filter active subscriptions on target date
