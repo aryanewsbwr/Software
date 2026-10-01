@@ -953,66 +953,24 @@ export async function GET(request: NextRequest) {
       const bills = billingResult.bills.map((b) => {
         const c = pageCusts.find(cust => cust.customer_id === b.customer_id) || {};
 
-        // 1. Group delivery charges by publication
-        const deliveryByPub = new Map<string, number>();
-        (b.breakup || [])
-          .filter(item => item.sort_order === 2)
-          .forEach(del => {
-            const pubName = del.item.replace(' - Delivery', '').trim();
-            deliveryByPub.set(pubName, (deliveryByPub.get(pubName) || 0) + del.amount);
-          });
-
-        // 2. Consolidate items by publication name (combining multi-rate days matching FoxPro)
-        const consolidatedMap = new Map<string, any>();
-        (b.breakup || [])
+        const lineItems = (b.breakup || [])
           .filter(item => item.sort_order === 1)
-          .forEach(item => {
-            const key = item.item.trim();
-            if (!consolidatedMap.has(key)) {
-              consolidatedMap.set(key, {
-                pub_name: item.item,
-                circulation: 'Morning',
-                qty: item.qty || 1,
-                days: item.days_or_copies || 0,
-                rates: item.rate !== null && item.rate !== undefined ? [item.rate] : [],
-                amount: item.amount
-              });
-            } else {
-              const existing = consolidatedMap.get(key);
-              existing.qty = (existing.qty || 0) + (item.qty || 0);
-              existing.days = (existing.days || 0) + (item.days_or_copies || 0);
-              existing.amount = Math.round((existing.amount + item.amount) * 100) / 100;
-              if (item.rate !== null && item.rate !== undefined && !existing.rates.includes(item.rate)) {
-                existing.rates.push(item.rate);
-              }
-            }
-          });
+          .map((item, idx) => ({
+            sno: idx + 1,
+            pub_name: item.item,
+            circulation: 'Morning',
+            qty: item.qty || 1,
+            days: item.days_or_copies || item.qty || daysInMonth,
+            rate: item.rate,
+            amount: item.amount
+          }));
 
-        // 3. Embed delivery charges directly into the publication line item amount (FoxPro standard)
-        let embeddedDeliveryTotal = 0;
-        consolidatedMap.forEach((val, key) => {
-          if (deliveryByPub.has(key)) {
-            const dely = deliveryByPub.get(key)!;
-            val.amount = Math.round((val.amount + dely) * 100) / 100;
-            embeddedDeliveryTotal += dely;
-          }
-          val.rate = val.rates.length === 1 
-            ? val.rates[0] 
-            : (val.days > 0 ? Math.round((val.amount / val.days) * 100) / 100 : (val.rates[0] || null));
-        });
-
-        const lineItems = Array.from(consolidatedMap.values()).map((item, idx) => ({
-          sno: idx + 1,
-          pub_name: item.pub_name,
-          circulation: 'Morning',
-          qty: item.qty || 1,
-          days: item.days || daysInMonth,
-          rate: item.rate,
-          amount: item.amount
-        }));
-
-        const remainingDelivery = Math.max(0, Math.round(((b.delivery_amount || 0) - embeddedDeliveryTotal) * 100) / 100);
         const totalItemsAmount = Math.round(lineItems.reduce((acc, it) => acc + it.amount, 0) * 100) / 100;
+        const deliveryCharge = b.delivery_amount || 0;
+        const paperAmount = b.paper_amount !== undefined ? b.paper_amount : totalItemsAmount;
+        const currentBill = b.current_month_charges !== undefined ? b.current_month_charges : Math.round((paperAmount + deliveryCharge) * 100) / 100;
+        const prevDue = b.previous_due !== undefined ? b.previous_due : (b.opening_balance_this_bill || 0);
+        const netPayable = b.total_payable !== undefined ? b.total_payable : Math.round((currentBill + prevDue) * 100) / 100;
 
         return {
           bill_no: `BILL-${year}-${String(b.customer_id).padStart(5, '0')}`,
@@ -1028,12 +986,12 @@ export async function GET(request: NextRequest) {
           month: month,
           year: year,
           items: lineItems,
-          delivery_charge: remainingDelivery,
-          paper_amount: totalItemsAmount,
-          current_bill: b.current_month_charges || totalItemsAmount,
-          previous_due: b.previous_due !== undefined ? b.previous_due : (b.opening_balance_this_bill || 0),
+          delivery_charge: deliveryCharge,
+          paper_amount: paperAmount,
+          current_bill: currentBill,
+          previous_due: prevDue,
           advance: c.cbal || 0,
-          net_payable: b.total_payable !== undefined ? b.total_payable : (totalItemsAmount + (b.previous_due || 0))
+          net_payable: netPayable
         };
       });
 

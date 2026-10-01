@@ -813,19 +813,37 @@ export function calculateBilling({
       });
     }
 
+    // Check if customer already has a committed bill header in allHeaders for this month
+    const existingHeader = allHeaders.find(h => {
+      const hCid = Number(h.customer_id || h.Customer_id);
+      const hMonth = (h.month || h.Month || '').toLowerCase().trim();
+      const stdM = standardMonthName.toLowerCase();
+      return hCid === Number(custId) && (
+        hMonth === stdM ||
+        (stdM.startsWith('sep') && hMonth.startsWith('sep')) ||
+        (stdM.startsWith('aug') && hMonth.startsWith('aug'))
+      );
+    });
+
+    const assignedBillId = existingHeader && (existingHeader.bill_id || existingHeader.Bill_id)
+      ? Number(existingHeader.bill_id || existingHeader.Bill_id)
+      : nextBillId;
+
     // =========================================================================
     // 2. CHARGES & TOTAL COMPUTATION (Formula 8)
     // =========================================================================
-    // Determine Previous Due / Opening Balance strictly from customer.cbal:
-    // In FoxPro accounting:
-    // - negative cbal means Due (customer owes money, e.g. -150.00 -> +150.00 on bill)
-    // - positive cbal means Advance (customer overpaid, e.g. +20.50 -> -20.50 on bill)
-    // - 0 cbal means zero previous balance (fully paid up)
+    // Determine Previous Due / Opening Balance:
+    // 1) If an authentic committed bill header exists in billnoYYYYYYYY for this month, its recorded balance is authoritative:
+    //    In FoxPro billno.balance: deficit/due is negative (e.g. -409.50 -> +409.50 on bill), advance is positive.
+    // 2) Otherwise fall back to live customer.cbal.
     let customerPreviousBalance = 0;
-    const rawCbal = cust.cbal !== undefined && cust.cbal !== null ? Number(cust.cbal) : null;
-
-    if (rawCbal !== null && rawCbal !== 0) {
-      customerPreviousBalance = -rawCbal;
+    if (existingHeader && existingHeader.balance !== null && existingHeader.balance !== undefined) {
+      customerPreviousBalance = -Number(existingHeader.balance);
+    } else {
+      const rawCbal = cust.cbal !== undefined && cust.cbal !== null ? Number(cust.cbal) : null;
+      if (rawCbal !== null && rawCbal !== 0) {
+        customerPreviousBalance = -rawCbal;
+      }
     }
 
     const previousDue = Math.round(customerPreviousBalance * 100) / 100;
@@ -887,22 +905,6 @@ export function calculateBilling({
       days_or_copies: null,
       amount: totalPayable
     });
-
-    // Check if customer already has a committed bill header in allHeaders for this month
-    const existingHeader = allHeaders.find(h => {
-      const hCid = Number(h.customer_id || h.Customer_id);
-      const hMonth = (h.month || h.Month || '').toLowerCase().trim();
-      const stdM = standardMonthName.toLowerCase();
-      return hCid === Number(custId) && (
-        hMonth === stdM ||
-        (stdM.startsWith('sep') && hMonth.startsWith('sep')) ||
-        (stdM.startsWith('aug') && hMonth.startsWith('aug'))
-      );
-    });
-
-    const assignedBillId = existingHeader && (existingHeader.bill_id || existingHeader.Bill_id)
-      ? Number(existingHeader.bill_id || existingHeader.Bill_id)
-      : nextBillId;
 
     // In billnoYYYYYYYY:
     // - Due_Amt is NULL for monthly bills (only populated in the FY anchor row Month='Dues')
