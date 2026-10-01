@@ -7,6 +7,7 @@ import {
   printBills4in1 
 } from '@/lib/bill4in1Export';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
+import { roundToFoxProRule } from '@/lib/billingEngine';
 
 interface Bill4in1PreviewProps {
   bills: BillRecord[];
@@ -253,11 +254,11 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                       <div className="w-[37%] flex flex-col justify-between text-[8px]">
                         <div className="flex justify-between items-center py-1 px-1.5 border-b border-black">
                           <span className="text-slate-800">Total</span>
-                          <span className="font-mono font-bold text-[9px]">{formatMoney(b.paper_amount)}</span>
+                          <span className="font-mono font-bold text-[9px]">{formatMoney(roundToFoxProRule(b.paper_amount))}</span>
                         </div>
                         <div className="flex justify-between items-center py-1 px-1.5 border-b border-black">
                           <span className="text-slate-800">Delivery Charge</span>
-                          <span className="font-mono font-bold text-[9px]">{formatMoney(b.delivery_charge)}</span>
+                          <span className="font-mono font-bold text-[9px]">{formatMoney(roundToFoxProRule(b.delivery_charge))}</span>
                         </div>
                         <div className="flex justify-between items-center py-1 px-1.5 border-b border-black">
                           <span className="text-slate-800">Previous Balance</span>
@@ -265,7 +266,7 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                         </div>
                         <div className="flex justify-between items-center py-1.5 px-1.5 bg-slate-50 font-black">
                           <span className="uppercase text-[8.5px]">Grand Total</span>
-                          <span className="font-mono text-[10px]">{formatMoney(b.net_payable)}</span>
+                          <span className="font-mono text-[10px]">{formatMoney(roundToFoxProRule(b.net_payable))}</span>
                         </div>
                       </div>
                     </div>

@@ -78,6 +78,31 @@ export function parseLegacyDateToIso(dStr: string | null | undefined): string | 
   return null;
 }
 
+/**
+ * FoxPro / Indian Newspaper Agency Rounding Rule:
+ * If the fractional (paise/decimal) part is >= 0.25, round UP (+1).
+ * If the fractional part is < 0.25 (e.g. 0.24, 0.10, 0.00), round DOWN / retain integer.
+ * Examples:
+ *   217.25 -> 218
+ *   217.50 -> 218
+ *   517.50 -> 518
+ *   217.24 -> 217
+ *   217.00 -> 217
+ */
+export function roundToFoxProRule(amount: number): number {
+  if (!amount || isNaN(amount)) return 0;
+  const isNegative = amount < 0;
+  const absVal = Math.abs(amount);
+  const integerPart = Math.floor(absVal);
+  const fraction = Math.round((absVal - integerPart) * 100) / 100;
+
+  let rounded = integerPart;
+  if (fraction >= 0.25) {
+    rounded = integerPart + 1;
+  }
+  return isNegative ? -rounded : rounded;
+}
+
 export function calculateBilling({
   monthName,
   year,
@@ -849,8 +874,9 @@ export function calculateBilling({
     const previousDue = Math.round(customerPreviousBalance * 100) / 100;
 
     const openingBalanceThisBill = previousDue;
-    const currentMonthCharges = Math.round((customerPaperTotal + customerDeliveryTotal + customerRetailTotal - customerDiscountTotal) * 100) / 100;
-    const totalPayable = Math.round((openingBalanceThisBill + currentMonthCharges) * 100) / 100;
+    const roundedPaperTotal = roundToFoxProRule(customerPaperTotal + customerRetailTotal);
+    const currentMonthCharges = roundToFoxProRule(customerPaperTotal + customerDeliveryTotal + customerRetailTotal - customerDiscountTotal);
+    const totalPayable = roundToFoxProRule(openingBalanceThisBill + currentMonthCharges);
 
     // In FoxPro monthly delivery billing, bills are ONLY generated for customers with active paper/magazine deliveries or retail sales in this month.
     // Discontinued customers with 0 current deliveries do not get recurring monthly delivery bills.
@@ -935,7 +961,7 @@ export function calculateBilling({
       opening_balance_this_bill: openingBalanceThisBill,
       current_month_charges: currentMonthCharges,
       previous_due: openingBalanceThisBill,
-      paper_amount: customerPaperTotal + customerRetailTotal,
+      paper_amount: roundedPaperTotal,
       delivery_amount: customerDeliveryTotal,
       discount_amount: customerDiscountTotal,
       retail_sale_amount: customerRetailTotal,

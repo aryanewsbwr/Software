@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import { supabase } from '@/lib/supabaseClient';
-import { calculateBilling } from '@/lib/billingEngine';
+import { calculateBilling, roundToFoxProRule } from '@/lib/billingEngine';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 
 export const dynamic = 'force-dynamic';
@@ -966,11 +966,11 @@ export async function GET(request: NextRequest) {
           }));
 
         const totalItemsAmount = Math.round(lineItems.reduce((acc, it) => acc + it.amount, 0) * 100) / 100;
-        const deliveryCharge = b.delivery_amount || 0;
-        const paperAmount = b.paper_amount !== undefined ? b.paper_amount : totalItemsAmount;
-        const currentBill = b.current_month_charges !== undefined ? b.current_month_charges : Math.round((paperAmount + deliveryCharge) * 100) / 100;
+        const deliveryCharge = roundToFoxProRule(b.delivery_amount || 0);
+        const paperAmount = roundToFoxProRule(b.paper_amount !== undefined ? b.paper_amount : totalItemsAmount);
+        const currentBill = roundToFoxProRule(b.current_month_charges !== undefined ? b.current_month_charges : Math.round((paperAmount + deliveryCharge) * 100) / 100);
         const prevDue = b.previous_due !== undefined ? b.previous_due : (b.opening_balance_this_bill || 0);
-        const netPayable = b.total_payable !== undefined ? b.total_payable : Math.round((currentBill + prevDue) * 100) / 100;
+        const netPayable = roundToFoxProRule(b.total_payable !== undefined ? b.total_payable : (currentBill + prevDue));
 
         return {
           bill_no: `BILL-${year}-${String(b.customer_id).padStart(5, '0')}`,
