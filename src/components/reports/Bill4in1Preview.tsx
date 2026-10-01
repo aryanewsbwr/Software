@@ -27,21 +27,10 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'single_sheet' | 'all_sheets'>('single_sheet');
 
-  // Chunk bills into groups of 4 (each group = 1 A4 page)
-  // Then reorder each group for column-first layout matching FoxPro:
-  // Original order [0,1,2,3] → Grid positions [TL,TR,BL,BR]
-  // FoxPro column-first: col1 top=bill0, col1 bottom=bill1, col2 top=bill2, col2 bottom=bill3
-  // So we reorder [0,1,2,3] → [0,2,1,3] so CSS grid (row-major) renders: TL=0, TR=2, BL=1, BR=3
+  // Chunk bills into groups of 4 (each group = 1 A4 page with 2x2 quadrants: [0=TL, 1=TR, 2=BL, 3=BR])
   const a4Pages: BillRecord[][] = [];
   for (let i = 0; i < bills.length; i += 4) {
-    const group = bills.slice(i, i + 4);
-    // Reorder for column-first: [a,b,c,d] → [a,c,b,d]
-    const reordered: BillRecord[] = [];
-    if (group[0]) reordered.push(group[0]); // TL → bill 0
-    if (group[2]) reordered.push(group[2]); // TR → bill 2 (was BL)
-    if (group[1]) reordered.push(group[1]); // BL → bill 1 (was TR)
-    if (group[3]) reordered.push(group[3]); // BR → bill 3
-    a4Pages.push(reordered);
+    a4Pages.push(bills.slice(i, i + 4));
   }
 
   const totalPages = Math.max(1, a4Pages.length);
