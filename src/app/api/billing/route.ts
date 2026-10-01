@@ -132,7 +132,7 @@ async function getPublicationDiscontinues(): Promise<any[]> {
   try {
     const { data } = await supabase.from('publicationdis').select('*');
     if (data && data.length > 0) {
-      cachedPubDis = [...localPubDis, ...data];
+      cachedPubDis = data;
       return cachedPubDis;
     }
   } catch (err) {

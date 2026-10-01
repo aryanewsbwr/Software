@@ -899,10 +899,9 @@ export async function GET(request: NextRequest) {
         liveBills = billsReceiptsData.bills;
         liveBillHeaders = billsReceiptsData.billHeaders;
         liveReceipts = billsReceiptsData.receipts;
-        pubDis = [
-          ...(data.publicationdis || []),
-          ...((pubDisRes && pubDisRes.data) || [])
-        ];
+        pubDis = (pubDisRes && pubDisRes.data && pubDisRes.data.length > 0)
+          ? pubDisRes.data
+          : (data.publicationdis || []);
         liveRetail = retailData || [];
         // Merge Supabase holidays with full authoritative dataset (prevents 1000-row PostgREST truncation)
         const holidayMap = new Map<string, any>();
