@@ -78,11 +78,11 @@ export default function ReportsForm({
   const [selectedRegion, setSelectedRegion] = useState<string>(String(initialRegion));
   const [selectedHawker, setSelectedHawker] = useState<string>(String(initialHawker));
   const [selectedPub, setSelectedPub] = useState<string>(String(initialPub));
-  const [selectedMonth, setSelectedMonth] = useState<string>('August');
+  const [selectedMonth, setSelectedMonth] = useState<string>('September');
   const [selectedYear, setSelectedYear] = useState<string>('2026');
   const [targetCustId, setTargetCustId] = useState<string>('');
   const [outputDest, setOutputDest] = useState<'preview' | 'direct_print'>('preview');
-  const [billBatchLimit, setBillBatchLimit] = useState<number>(40);
+  const [billBatchLimit, setBillBatchLimit] = useState<number>(0);
 
   // Report Data
   const [reportData, setReportData] = useState<any>(null);
@@ -382,11 +382,11 @@ export default function ReportsForm({
                   onChange={(e) => setBillBatchLimit(Number(e.target.value))}
                   className="px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold outline-none"
                 >
-                  <option value={20}>20 Bills (5 A4 Sheets)</option>
-                  <option value={40}>40 Bills (10 A4 Sheets) - Default</option>
+                  <option value={0}>All Bills in Selected Region (Default)</option>
+                  <option value={40}>40 Bills (10 A4 Sheets)</option>
                   <option value={100}>100 Bills (25 A4 Sheets)</option>
                   <option value={200}>200 Bills (50 A4 Sheets)</option>
-                  <option value={0}>All Bills in Selected Region</option>
+                  <option value={20}>20 Bills (5 A4 Sheets)</option>
                 </select>
               </div>
             )}

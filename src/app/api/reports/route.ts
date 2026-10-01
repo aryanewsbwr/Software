@@ -111,35 +111,19 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
     }
   }
 
-  // 2. Fallback to all_subscriptions.json for any missing customers or sync c_date
-  try {
-    const localSubsPath = path.join(process.cwd(), 'public', 'data', 'all_subscriptions.json');
-    if (fs.existsSync(localSubsPath)) {
-      const localSubs = JSON.parse(fs.readFileSync(localSubsPath, 'utf-8'));
-      const localMap = new Map<string, any>();
-      for (const ls of localSubs) {
-        const key = `${ls.customer_id}_${ls.publica_id}_${ls.sno || 0}`;
-        localMap.set(key, ls);
-      }
-      // If result has rows where c_date is null but localSubs has c_date, overlay it
-      for (const r of result) {
-        const key = `${r.customer_id}_${r.publica_id}_${r.sno || 0}`;
-        const match = localMap.get(key) || localSubs.find((ls: any) => ls.customer_id === r.customer_id && ls.publica_id === r.publica_id);
-        if (match && match.c_date && !r.c_date) {
-          r.c_date = match.c_date;
-        }
-        if (match && match.from_day !== undefined && (r.from_day === undefined || r.from_day === null || r.from_day === '')) {
-          r.from_day = match.from_day;
-        }
-      }
-      const missingCustIds = customerIds.filter(id => !foundCustIds.has(id));
-      if (missingCustIds.length > 0) {
+  // 2. Fallback to all_subscriptions.json for any missing customers
+  const missingCustIds = customerIds.filter(id => !foundCustIds.has(id));
+  if (missingCustIds.length > 0) {
+    try {
+      const localSubsPath = path.join(process.cwd(), 'public', 'data', 'all_subscriptions.json');
+      if (fs.existsSync(localSubsPath)) {
+        const localSubs = JSON.parse(fs.readFileSync(localSubsPath, 'utf-8'));
         const fallback = localSubs.filter((s: any) => missingCustIds.includes(s.customer_id));
         result.push(...fallback);
       }
+    } catch (err) {
+      console.error('Error reading local all_subscriptions.json fallback:', err);
     }
-  } catch (err) {
-    console.error('Error reading local all_subscriptions.json fallback:', err);
   }
 
   return result;
