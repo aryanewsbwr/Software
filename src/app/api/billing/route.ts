@@ -397,9 +397,13 @@ export async function GET(request: NextRequest) {
     // Filter by search text
     if (search) {
       targetCusts = targetCusts.filter(c => 
-        (c.name_eng || c.Name_eng || '').toLowerCase().includes(search) ||
-        (c.customer_id || c.Customer_id)?.toString() === search ||
-        (c.phone || '').includes(search)
+        String(c.name_eng || c.Name_eng || '').toLowerCase().includes(search) ||
+        String(c.name_hindi || c.Name_hindi || '').toLowerCase().includes(search) ||
+        String(c.customer_id || c.Customer_id || '') === search ||
+        String(c.customer_id || c.Customer_id || '').includes(search) ||
+        String(c.phone || '').includes(search) ||
+        String(c.add1 || '').toLowerCase().includes(search) ||
+        String(c.hindi_add || '').toLowerCase().includes(search)
       );
     } else {
       // In FoxPro monthly delivery billing, only active delivery customers receive bills.

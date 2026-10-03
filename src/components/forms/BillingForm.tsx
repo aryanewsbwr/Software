@@ -317,8 +317,10 @@ export default function BillingForm({ onClose }: BillingFormProps) {
                 placeholder="Search Customer / Hindi / Phone..."
                 value={searchQuery}
                 onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  fetchBillsPage(1, e.target.value);
+                  const val = e.target.value;
+                  setSearchQuery(val);
+                  setPage(1);
+                  fetchBillsPage(1, val);
                 }}
                 className="outline-none text-xs w-56 font-bold"
               />
