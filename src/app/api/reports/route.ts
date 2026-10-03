@@ -327,14 +327,47 @@ export async function GET(request: NextRequest) {
 
     // 2. Customer Outstanding Dues Ledger & Previous Dues
     if (reportType === 'dues_ledger' || reportType === 'previous_dues_wise' || reportType === 'advance_list') {
-      let rows = data.customers.filter(c => {
-        const due = c.dueamount ?? c.due_amount ?? 0;
-        if (reportType === 'advance_list') return due < 0;
-        return due > 0;
+      const customersWithBalances = data.customers.map(c => {
+        const rawCbal = Number(c.cbal || 0);
+        const rawDueAmt = Number(c.dueamount ?? c.due_amount ?? 0);
+        const paidStatus = String(c.paid || '').trim().toUpperCase();
+
+        let dueAmount = 0;
+        let advanceAmount = 0;
+
+        if (rawCbal < 0) {
+          dueAmount = -rawCbal;
+        } else if (rawCbal > 0) {
+          advanceAmount = rawCbal;
+        } else if (rawDueAmt > 0 && paidStatus !== 'P') {
+          dueAmount = rawDueAmt;
+        }
+
+        const netBalance = dueAmount > 0 ? dueAmount : -advanceAmount;
+        const status = dueAmount > 0 ? 'Due' : (advanceAmount > 0 ? 'Advance' : 'Clear');
+
+        return {
+          customer_id: c.customer_id,
+          name: c.name_eng || `Customer #${c.customer_id}`,
+          name_hindi: c.name_hindi || '',
+          address: [c.add1, c.add2].filter(Boolean).join(', ') || '---',
+          phone: c.phone || '---',
+          region_id: c.region_id || 1,
+          region_name: regMap.get(c.region_id)?.region_name || `Region #${c.region_id}`,
+          due_amount: dueAmount,
+          advance: advanceAmount,
+          net_balance: netBalance,
+          status: status
+        };
+      });
+
+      let rows = customersWithBalances.filter(c => {
+        if (reportType === 'advance_list') return c.advance > 0;
+        return c.due_amount > 0;
       });
 
       if (reportType === 'previous_dues_wise') {
-        rows.sort((a, b) => (b.dueamount || 0) - (a.dueamount || 0));
+        rows.sort((a, b) => b.due_amount - a.due_amount);
       }
 
       if (regionId && regionId !== 'all') {
@@ -343,28 +376,16 @@ export async function GET(request: NextRequest) {
       }
       if (search) {
         rows = rows.filter(c => 
-          (c.name_eng || '').toLowerCase().includes(search) || 
-          (c.add1 || '').toLowerCase().includes(search) ||
+          String(c.name || '').toLowerCase().includes(search) || 
+          String(c.address || '').toLowerCase().includes(search) ||
           String(c.customer_id).includes(search)
         );
       }
 
-      const totalDue = rows.reduce((sum, c) => sum + (c.dueamount || 0), 0);
-      const totalAdv = rows.reduce((sum, c) => sum + (c.cbal || 0), 0);
+      const totalDue = rows.reduce((sum, c) => sum + c.due_amount, 0);
+      const totalAdv = rows.reduce((sum, c) => sum + c.advance, 0);
 
-      const paginated = rows.slice((page - 1) * limit, page * limit).map(c => ({
-        customer_id: c.customer_id,
-        name: c.name_eng || `Customer #${c.customer_id}`,
-        name_hindi: c.name_hindi || '',
-        address: [c.add1, c.add2].filter(Boolean).join(', ') || '---',
-        phone: c.phone || '---',
-        region_id: c.region_id || 1,
-        region_name: regMap.get(c.region_id)?.region_name || `Region #${c.region_id}`,
-        due_amount: c.dueamount || 0,
-        advance: c.cbal || 0,
-        net_balance: (c.dueamount || 0) - (c.cbal || 0),
-        status: (c.dueamount || 0) > 0 ? 'Due' : 'Clear'
-      }));
+      const paginated = rows.slice((page - 1) * limit, page * limit);
 
       return NextResponse.json({
         report_title: reportType === 'advance_list' ? 'CUSTOMER ADVANCE BALANCE LIST' : 'CUSTOMER OUTSTANDING DUES LEDGER',
@@ -406,12 +427,26 @@ export async function GET(request: NextRequest) {
           };
         }
         regStats[rid].totalCust++;
-        const due = c.dueamount || 0;
+
+        const rawCbal = Number(c.cbal || 0);
+        const rawDueAmt = Number(c.dueamount ?? c.due_amount ?? 0);
+        const paidStatus = String(c.paid || '').trim().toUpperCase();
+
+        let due = 0;
+        let adv = 0;
+        if (rawCbal < 0) {
+          due = -rawCbal;
+        } else if (rawCbal > 0) {
+          adv = rawCbal;
+        } else if (rawDueAmt > 0 && paidStatus !== 'P') {
+          due = rawDueAmt;
+        }
+
         if (due > 0) {
           regStats[rid].dueCust++;
           regStats[rid].totalDue += due;
-        } else if (due < 0) {
-          regStats[rid].totalAdv += Math.abs(due);
+        } else if (adv > 0) {
+          regStats[rid].totalAdv += adv;
         }
       });
 
@@ -1165,9 +1200,24 @@ export async function GET(request: NextRequest) {
       // Calculate dues per agent or by region
       const agentStats = agents.map(ag => {
         const assignedCusts = data.customers.filter(c => (c.collect_id || (c.region_id % agents.length + 1)) === ag.collect_id);
-        const dueCusts = assignedCusts.filter(c => (c.dueamount || 0) > 0);
-        const totalDue = dueCusts.reduce((sum, c) => sum + (c.dueamount || 0), 0);
-        const totalAdv = assignedCusts.reduce((sum, c) => sum + (c.cbal || 0), 0);
+        const dueCusts = assignedCusts.filter(c => {
+          const rawCbal = Number(c.cbal || 0);
+          const rawDue = Number(c.dueamount ?? c.due_amount ?? 0);
+          const paid = String(c.paid || '').trim().toUpperCase();
+          return rawCbal < 0 || (rawCbal === 0 && rawDue > 0 && paid !== 'P');
+        });
+        const totalDue = assignedCusts.reduce((sum, c) => {
+          const rawCbal = Number(c.cbal || 0);
+          const rawDue = Number(c.dueamount ?? c.due_amount ?? 0);
+          const paid = String(c.paid || '').trim().toUpperCase();
+          if (rawCbal < 0) return sum + (-rawCbal);
+          if (rawCbal === 0 && rawDue > 0 && paid !== 'P') return sum + rawDue;
+          return sum;
+        }, 0);
+        const totalAdv = assignedCusts.reduce((sum, c) => {
+          const rawCbal = Number(c.cbal || 0);
+          return rawCbal > 0 ? sum + rawCbal : sum;
+        }, 0);
 
         return {
           agent_id: ag.collect_id,
