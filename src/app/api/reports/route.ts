@@ -968,12 +968,16 @@ export async function GET(request: NextRequest) {
             amount: item.amount
           }));
 
+        const isGovtSupply = c.govt_supply === -1 || c.govt_supply === 1 || c.govt_supply === true || String(c.govt_supply) === '1' || String(c.govt_supply) === '-1';
+
         const totalItemsAmount = Math.round(lineItems.reduce((acc, it) => acc + it.amount, 0) * 100) / 100;
         const deliveryCharge = roundToFoxProRule(b.delivery_amount || 0);
         const paperAmount = roundToFoxProRule(b.paper_amount !== undefined ? b.paper_amount : totalItemsAmount);
         const currentBill = roundToFoxProRule(b.current_month_charges !== undefined ? b.current_month_charges : Math.round((paperAmount + deliveryCharge) * 100) / 100);
-        const prevDue = b.previous_due !== undefined ? b.previous_due : (b.opening_balance_this_bill || 0);
-        const netPayable = roundToFoxProRule(b.total_payable !== undefined ? b.total_payable : (currentBill + prevDue));
+        const rawPrevDue = b.previous_due !== undefined ? b.previous_due : (b.opening_balance_this_bill || 0);
+        // In FoxPro, printed bills for Govt Supply customers omit previous due (current month charges only)
+        const prevDue = isGovtSupply ? 0 : rawPrevDue;
+        const netPayable = isGovtSupply ? currentBill : roundToFoxProRule(b.total_payable !== undefined ? b.total_payable : (currentBill + prevDue));
 
         return {
           bill_no: `BILL-${year}-${String(b.customer_id).padStart(5, '0')}`,
