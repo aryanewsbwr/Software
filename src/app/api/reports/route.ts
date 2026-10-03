@@ -226,7 +226,10 @@ async function fetchRetailSales(customerIds: number[], fySuffix: string): Promis
   const seen = new Set<string>();
   const merged: any[] = [];
   for (const item of [...matchingLocal, ...matchingDb]) {
-    const key = `${item.Customer_id || item.customer_id}-${item.Publica_id || item.publica_id}-${item.Vr_Date || item.vr_date}`;
+    const rId = item.Retail_id || item.retail_id || item.sale_id;
+    const key = rId 
+      ? `id-${rId}` 
+      : `${item.Customer_id || item.customer_id}-${item.Publica_id || item.publica_id}-${item.Vr_Date || item.vr_date}-${item.Rate || item.rate || 0}-${item.Amt || item.amt || 0}-${item.Copies || item.copies || 1}`;
     if (!seen.has(key)) {
       seen.add(key);
       merged.push(item);

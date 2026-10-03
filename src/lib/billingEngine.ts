@@ -323,7 +323,7 @@ export function calculateBilling({
   };
 
   // Pre-index discontinues by customerId
-  const custDisMap = new Map<number, { pubId: number; tempFrom: string; isPerm: boolean; tempTo: string | null }[]>();
+  const custDisMap = new Map<number, { pubId: number; tempFrom: string; isPerm: boolean; tempTo: string | null; sDateIso: string | null }[]>();
   for (const d of discontinues) {
     const cid = Number(d.customer_id || d.Customer_id);
     if (!cid) continue;
@@ -334,7 +334,8 @@ export function calculateBilling({
       pubId: Number(d.publica_id || d.Publica_id || 0),
       tempFrom,
       isPerm: (d.temp_perma || d.Temp_Perma || 'P').toUpperCase().startsWith('P'),
-      tempTo: parseLegacyDateToIso(d.temp_to || d.Temp_To)
+      tempTo: parseLegacyDateToIso(d.temp_to || d.Temp_To),
+      sDateIso: parseLegacyDateToIso(d.s_date || d.S_Date)
     });
   }
 
@@ -345,6 +346,8 @@ export function calculateBilling({
     if (!list) return false;
     return list.some(d => {
       if (d.pubId !== 0 && d.pubId !== publicaId) return false;
+      // If the discontinue explicitly references a specific subscription s_date, it only affects that subscription
+      if (d.sDateIso && sDateIso && d.sDateIso !== sDateIso) return false;
       if (d.isPerm) {
         // If the subscription was created on or after the discontinue date,
         // it is a newer subscription that is not affected by older discontinue records
@@ -730,9 +733,9 @@ export function calculateBilling({
         customerDiscountTotal += subDisAmt;
       }
 
-      // Delivery Charges per Subscription: only if subscription was active during the month
+      // Delivery Charges per Subscription: only if subscription had active paper deliveries during the month
       const dely = Number(cd.delivery_charge !== undefined ? cd.delivery_charge : (cd.dely || cd.Dely || 0));
-      if (dely > 0 && sDateIso <= monthEndIso && (!cDateIso || cDateIso >= monthStartIso)) {
+      if (dely > 0 && subPaperTotal > 0) {
         customerDeliveryTotal += dely;
         custBreakup.push({
           customer_id: custId,
@@ -774,12 +777,26 @@ export function calculateBilling({
           : (rs.Amt !== undefined && rs.Amt !== null ? Number(rs.Amt)
           : (rs.amount !== undefined && rs.amount !== null ? Number(rs.amount) : 0));
 
-        // Master rate on the transaction date takes priority (e.g. rate changes on 1st of month)
-        const masterRate = getEffectiveRate(pubId, 0, vrDate);
-        const effectiveRate = masterRate > 0 
-          ? masterRate 
-          : (givenRate > 0 ? givenRate : (copies > 0 ? Math.round((rawAmt / copies) * 100) / 100 : rawAmt));
-        const lineAmt = Math.round(copies * effectiveRate * 100) / 100;
+        let lineAmt = 0;
+        let effectiveRate = 0;
+
+        if (copies > 1 && givenRate > 0 && Math.abs(rawAmt - givenRate) < 0.01) {
+          // Operator entered single-copy rate in both rate and amt fields for multiple copies
+          effectiveRate = givenRate;
+          lineAmt = Math.round(copies * effectiveRate * 100) / 100;
+        } else if (rawAmt > 0) {
+          lineAmt = rawAmt;
+          effectiveRate = copies > 0 ? Math.round((rawAmt / copies) * 100) / 100 : rawAmt;
+        } else if (givenRate > 0) {
+          effectiveRate = givenRate;
+          lineAmt = Math.round(copies * effectiveRate * 100) / 100;
+        } else {
+          const masterRate = getEffectiveRate(pubId, 0, vrDate);
+          effectiveRate = masterRate > 0 
+            ? masterRate 
+            : (copies > 0 ? Math.round((rawAmt / copies) * 100) / 100 : rawAmt);
+          lineAmt = Math.round(copies * effectiveRate * 100) / 100;
+        }
         const pub = pubMap.get(pubId);
         const pubName = pub?.pub_hindi 
           ? cleanOrTransliterateHindi(pub.pub_hindi, pub.name || pub.public_name)
