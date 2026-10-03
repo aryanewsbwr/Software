@@ -535,6 +535,22 @@ export function calculateBilling({
     }
   }
 
+  // Step D: Late Receipts posted after the monthly billing run (e.g. late September payments in 20262027)
+  // These receipts were received between bill generation date and WhatsApp export / current date,
+  // so they must be credited against the customer's recorded bill balance to prevent double billing.
+  const lateReceiptsByCust = new Map<number, number>();
+  for (const r of receipts) {
+    const cid = Number(r.customer_id || r.Customer_id);
+    const rNo = Number(r.recp_no || r.Recp_no || 0);
+    const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
+    const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
+    const totalPaid = recpAmt + lessAmt;
+
+    if (rNo >= 1196564) {
+      lateReceiptsByCust.set(cid, (lateReceiptsByCust.get(cid) || 0) + totalPaid);
+    }
+  }
+
   const generatedBills: CustomerMonthlyBill[] = [];
   const allBreakupLines: BillingLineItem[] = [];
 
@@ -872,10 +888,17 @@ export function calculateBilling({
     // Determine Previous Due / Opening Balance:
     // 1) If an authentic committed bill header exists in billnoYYYYYYYY for this month, its recorded balance is authoritative:
     //    In FoxPro billno.balance: deficit/due is negative (e.g. -409.50 -> +409.50 on bill), advance is positive.
-    // 2) Otherwise fall back to live customer.cbal.
+    // 2) Deduct any late receipts received after this bill was generated (recp_no >= 1196564) so paid customers are not double-charged.
+    // 3) Otherwise fall back to live customer.cbal.
     let customerPreviousBalance = 0;
     if (existingHeader && existingHeader.balance !== null && existingHeader.balance !== undefined) {
-      customerPreviousBalance = -Number(existingHeader.balance);
+      const recordedBalanceDue = -Number(existingHeader.balance);
+      const latePaid = lateReceiptsByCust.get(custId) || 0;
+      if (recordedBalanceDue !== 0) {
+        customerPreviousBalance = recordedBalanceDue - latePaid;
+      } else {
+        customerPreviousBalance = 0 - latePaid;
+      }
     } else {
       const rawCbal = cust.cbal !== undefined && cust.cbal !== null ? Number(cust.cbal) : null;
       if (rawCbal !== null && rawCbal !== 0) {
