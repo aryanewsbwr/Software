@@ -25,14 +25,10 @@ export default function DiscontinueForm({ onClose, publications = [] }: Disconti
   const loadDiscontinues = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('discontinue')
-        .select('*')
-        .order('discontinue_id', { ascending: false })
-        .limit(100);
-
-      if (!error && data) {
-        setDiscontinueList(data);
+      const res = await fetch('/api/discontinue');
+      if (res.ok) {
+        const d = await res.json();
+        setDiscontinueList(d.discontinues || []);
       }
     } catch (err) {
       console.error(err);
@@ -52,15 +48,19 @@ export default function DiscontinueForm({ onClose, publications = [] }: Disconti
       setCustomerName('');
       return;
     }
-    const { data } = await supabase
-      .from('customer')
-      .select('customer_id, name_eng, name_hindi')
-      .eq('customer_id', parseInt(idStr, 10))
-      .single();
+    try {
+      const { data } = await supabase
+        .from('customer')
+        .select('customer_id, name_eng, name_hindi')
+        .eq('customer_id', parseInt(idStr, 10))
+        .single();
 
-    if (data) {
-      setCustomerName(`${data.name_eng} (${data.name_hindi || ''})`);
-    } else {
+      if (data) {
+        setCustomerName(`${data.name_eng} (${data.name_hindi || ''})`);
+      } else {
+        setCustomerName('Customer not found');
+      }
+    } catch {
       setCustomerName('Customer not found');
     }
   };
@@ -87,8 +87,13 @@ export default function DiscontinueForm({ onClose, publications = [] }: Disconti
         financial_year: '2026-2027'
       };
 
-      const { error } = await supabase.from('discontinue').insert([payload]);
-      if (error) throw error;
+      const res = await fetch('/api/discontinue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save');
 
       setMsg('Vacation hold / discontinue saved successfully!');
       setCustId('');
@@ -106,8 +111,10 @@ export default function DiscontinueForm({ onClose, publications = [] }: Disconti
   const handleDelete = async (discId: number) => {
     if (!confirm('Are you sure you want to cancel this vacation hold?')) return;
     try {
-      await supabase.from('discontinue').delete().eq('discontinue_id', discId);
-      loadDiscontinues();
+      const res = await fetch(`/api/discontinue?id=${discId}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadDiscontinues();
+      }
     } catch (err) {
       console.error(err);
     }

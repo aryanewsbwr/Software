@@ -39,8 +39,37 @@ export default function PubDiscontinueForm({ onClose, publications = [], mode = 
       setMsg('Please select a publication.');
       return;
     }
-    setMsg(`Publication discontinuation saved for ${selectedPub}`);
-    setTimeout(() => setMsg(''), 3000);
+
+    const matchedPub = pubList.find(p => p.public_name === selectedPub || String(p.publica_id) === selectedPub);
+    if (!matchedPub) {
+      setMsg('Invalid publication selected.');
+      return;
+    }
+
+    if (isSupplement) {
+      setMsg(`Publication supplement saved for ${matchedPub.public_name}`);
+      setTimeout(() => setMsg(''), 3000);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/publicationdis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          publica_id: matchedPub.publica_id,
+          from_date: fromDate,
+          to_date: toDate,
+          dis_type: toDate ? 'T' : 'P'
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save');
+      setMsg(`Publication discontinue saved successfully for ${matchedPub.public_name}!`);
+      setTimeout(() => setMsg(''), 3000);
+    } catch (err: any) {
+      setMsg(`Error: ${err.message}`);
+    }
   };
 
   const handleCancel = () => {

@@ -354,8 +354,8 @@ export function calculateBilling({
         if (sDateIso && sDateIso >= d.tempFrom) return false;
         return targetDateIso >= d.tempFrom;
       } else {
-        if (!d.tempTo) return targetDateIso >= d.tempFrom;
-        return targetDateIso >= d.tempFrom && targetDateIso <= d.tempTo;
+        const effectiveTo = d.tempTo || d.tempFrom;
+        return targetDateIso >= d.tempFrom && targetDateIso <= effectiveTo;
       }
     });
   };
