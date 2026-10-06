@@ -63,9 +63,21 @@ const FORTNIGHTLY_PUBS = new Set([11, 13, 17, 18, 23, 24, 33, 109]);
 export function parseLegacyDateToIso(dStr: string | null | undefined): string | null {
   if (!dStr || dStr.trim() === '' || dStr === 'null') return null;
   const clean = dStr.trim();
-  if (clean.includes('/')) {
-    const parts = clean.split('/');
+  // Continuous digits: DDMMYYYY (e.g. 08102026) or YYYYMMDD
+  if (/^\d{8}$/.test(clean)) {
+    const yrFirst = parseInt(clean.slice(0, 4), 10);
+    if (yrFirst >= 1990 && yrFirst <= 2099) {
+      return `${clean.slice(0, 4)}-${clean.slice(4, 6)}-${clean.slice(6, 8)}`;
+    }
+    return `${clean.slice(4, 8)}-${clean.slice(2, 4)}-${clean.slice(0, 2)}`;
+  }
+  if (clean.includes('/') || clean.includes('-')) {
+    const sep = clean.includes('/') ? '/' : '-';
+    const parts = clean.split(sep);
     if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+      }
       const d = parts[0].padStart(2, '0');
       const m = parts[1].padStart(2, '0');
       const y = parts[2].length === 2 ? `20${parts[2]}` : parts[2];

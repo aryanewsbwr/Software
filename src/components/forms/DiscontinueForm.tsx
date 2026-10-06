@@ -156,12 +156,28 @@ export default function DiscontinueForm({
     }
   };
 
-  // Date parsing helper (DD/MM/YYYY or YYYY-MM-DD -> ISO)
+  // Auto-format continuous 8 digits to DD/MM/YYYY on display
+  const formatDateDisplay = (val: string): string => {
+    const s = val.trim().replace(/\D/g, '');
+    if (s.length === 8) {
+      return `${s.slice(0, 2)}/${s.slice(2, 4)}/${s.slice(4, 8)}`;
+    }
+    return val;
+  };
+
+  // Date parsing helper (DD/MM/YYYY, DD-MM-YYYY, DDMMYYYY, or YYYY-MM-DD -> ISO)
   const toIsoDate = (val: string): string => {
     if (!val) return '';
     const s = val.trim();
     if (!s || s === '-' || s === '---') return '';
     if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    if (/^\d{8}$/.test(s)) {
+      const yrFirst = parseInt(s.slice(0, 4), 10);
+      if (yrFirst >= 1990 && yrFirst <= 2099) {
+        return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+      }
+      return `${s.slice(4, 8)}-${s.slice(2, 4)}-${s.slice(0, 2)}`;
+    }
     const parts = s.split(/[\/\-]/);
     if (parts.length === 3) {
       if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
@@ -502,6 +518,7 @@ export default function DiscontinueForm({
                     type="text" 
                     value={fromDate}
                     onChange={(e) => setFromDate(e.target.value)}
+                    onBlur={() => setFromDate(formatDateDisplay(fromDate))}
                     placeholder="DD/MM/YYYY"
                     className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent"
                   />
@@ -515,6 +532,7 @@ export default function DiscontinueForm({
                     type="text" 
                     value={toDate}
                     onChange={(e) => setToDate(e.target.value)}
+                    onBlur={() => setToDate(formatDateDisplay(toDate))}
                     disabled={holdType === 'Permanent'}
                     placeholder={holdType === 'Permanent' ? '---' : 'DD/MM/YYYY'}
                     className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent disabled:cursor-not-allowed"

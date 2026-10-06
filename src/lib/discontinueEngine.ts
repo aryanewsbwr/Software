@@ -65,6 +65,16 @@ export function parseDateToIso(val: any): string | null {
   // Already YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
 
+  // Continuous digits: DDMMYYYY (e.g. 08102026) or YYYYMMDD
+  if (/^\d{8}$/.test(s)) {
+    const yrFirst = parseInt(s.slice(0, 4), 10);
+    if (yrFirst >= 1990 && yrFirst <= 2099) {
+      return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+    }
+    // DDMMYYYY
+    return `${s.slice(4, 8)}-${s.slice(2, 4)}-${s.slice(0, 2)}`;
+  }
+
   // DD/MM/YYYY or DD-MM-YYYY
   const parts = s.split(/[\/\-]/);
   if (parts.length === 3) {
