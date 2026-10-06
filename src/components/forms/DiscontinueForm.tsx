@@ -78,19 +78,49 @@ export default function DiscontinueForm({
 
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Sync publications
+  // Helper to normalize publication objects
+  const normalizeAndSortPubs = (list: any[]) => {
+    const cleaned = (list || []).map((p: any) => {
+      const pid = Number(p.publica_id ?? p.publication_id ?? p.Publica_id ?? p.id ?? 0);
+      const name = String(p.public_name || p.name || p.Public_name || (pid > 0 ? `Publication #${pid}` : '')).trim();
+      const hindi = p.pub_hindi || p.Pub_Hindi || '';
+      return {
+        ...p,
+        publica_id: pid,
+        public_name: name,
+        pub_hindi: hindi ? cleanOrTransliterateHindi(hindi, name) : ''
+      };
+    }).filter((p: any) => p.publica_id > 0 && p.public_name && !p.public_name.includes('NaN'));
+
+    // Alphabetical sort by Publication Name (A to Z)
+    cleaned.sort((a: any, b: any) => a.public_name.localeCompare(b.public_name, undefined, { sensitivity: 'base' }));
+    return cleaned;
+  };
+
+  // Sync publications (sorted alphabetically, no NaN)
   useEffect(() => {
     if (publications && publications.length > 0) {
-      setPubDisList(publications);
-    } else {
-      fetch('/api/publications')
-        .then(r => r.json())
-        .then(data => {
-          if (data.publications) setPubDisList(data.publications);
-          else if (Array.isArray(data)) setPubDisList(data);
-        })
-        .catch(() => {});
+      setPubDisList(normalizeAndSortPubs(publications));
     }
+    // Also fetch fresh from API or static JSON to ensure complete list
+    fetch('/api/publications?with_rates=false')
+      .then(r => r.json())
+      .then(data => {
+        const list = data.publications || (Array.isArray(data) ? data : []);
+        if (list.length > 0) {
+          setPubDisList(normalizeAndSortPubs(list));
+        }
+      })
+      .catch(() => {
+        fetch('/data/publications.json')
+          .then(r => r.json())
+          .then(list => {
+            if (Array.isArray(list) && list.length > 0) {
+              setPubDisList(normalizeAndSortPubs(list));
+            }
+          })
+          .catch(() => {});
+      });
   }, [publications]);
 
   // Load Hawkers if not provided
@@ -715,16 +745,24 @@ export default function DiscontinueForm({
                   ) : (
                     <>
                       <option value="0">All Papers (सभी अखबार/पत्रिका)</option>
-                      {customerSubs.map((sub: any) => {
-                        const pId = sub.publica_id || sub.publication_id;
-                        const pName = sub.publication_name || (publications.find(p => p.publica_id === pId)?.public_name) || `Paper #${pId}`;
-                        const isClosed = sub.is_active === false || (sub.c_date && sub.c_date !== '' && sub.c_date !== '-');
-                        return (
-                          <option key={sub.sno || pId} value={pId}>
-                            {pName} {sub.qty ? `(Qty: ${sub.qty})` : ''} {isClosed ? '[ALREADY CLOSED]' : '[ACTIVE]'}
-                          </option>
-                        );
-                      })}
+                      {(() => {
+                        const sortedSubs = [...customerSubs].sort((a: any, b: any) => {
+                          const aName = a.publication_name || (pubDisList.find(p => p.publica_id === (a.publica_id || a.publication_id))?.public_name) || '';
+                          const bName = b.publication_name || (pubDisList.find(p => p.publica_id === (b.publica_id || b.publication_id))?.public_name) || '';
+                          return aName.localeCompare(bName, undefined, { sensitivity: 'base' });
+                        });
+                        return sortedSubs.map((sub: any) => {
+                          const pId = sub.publica_id || sub.publication_id;
+                          const matched = pubDisList.find(p => p.publica_id === pId);
+                          const pName = sub.publication_name || matched?.public_name || `Paper #${pId}`;
+                          const isClosed = sub.is_active === false || (sub.c_date && sub.c_date !== '' && sub.c_date !== '-');
+                          return (
+                            <option key={sub.sno || pId} value={pId}>
+                              {pName} {sub.qty ? `(Qty: ${sub.qty})` : ''} {isClosed ? '[ALREADY CLOSED]' : '[ACTIVE]'}
+                            </option>
+                          );
+                        });
+                      })()}
                     </>
                   )}
                 </select>
