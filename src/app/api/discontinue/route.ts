@@ -74,9 +74,24 @@ export async function POST(request: NextRequest) {
       temp_to: toIso
     };
 
-    // 1. Save to Supabase discontinue table
+    // 1. Save to Supabase discontinue tables
     try {
       await supabase.from('customer_discontinue').insert([record]);
+    } catch (dbErr) {
+      console.warn('Supabase customer_discontinue warning:', dbErr);
+    }
+    try {
+      await supabase.from('discontinue').insert([{
+        discontinue_id: record.discontinue_id,
+        sno: record.sno,
+        customer_id: record.customer_id,
+        publica_id: record.publica_id,
+        temp_perma: record.temp_perma,
+        temp_from: record.temp_from,
+        temp_to: record.temp_to,
+        entry_date: record.entry_date,
+        financial_year: '2026-2027'
+      }]);
     } catch (dbErr) {
       console.warn('Supabase discontinue warning:', dbErr);
     }
@@ -139,7 +154,12 @@ export async function DELETE(request: NextRequest) {
     try {
       await supabase.from('customer_discontinue').delete().eq('discontinue_id', did);
     } catch (dbErr) {
-      console.warn('Supabase delete warning:', dbErr);
+      console.warn('Supabase delete customer_discontinue warning:', dbErr);
+    }
+    try {
+      await supabase.from('discontinue').delete().eq('discontinue_id', did);
+    } catch (dbErr) {
+      console.warn('Supabase delete discontinue warning:', dbErr);
     }
 
     try {

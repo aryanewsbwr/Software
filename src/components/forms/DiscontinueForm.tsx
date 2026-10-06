@@ -158,15 +158,16 @@ export default function DiscontinueForm({
 
   // Date parsing helper (DD/MM/YYYY or YYYY-MM-DD -> ISO)
   const toIsoDate = (val: string): string => {
-    if (!val) return todayIso;
+    if (!val) return '';
     const s = val.trim();
+    if (!s || s === '-' || s === '---') return '';
     if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
     const parts = s.split(/[\/\-]/);
     if (parts.length === 3) {
       if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
       return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
     }
-    return todayIso;
+    return '';
   };
 
   // Save / Submit Discontinue Entry

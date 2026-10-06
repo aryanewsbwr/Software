@@ -69,10 +69,31 @@ function getPublications(): any[] {
   return cachedPubs || [];
 }
 
-function getDiscontinues(): any[] {
-  if (cachedDiscontinues && cachedDiscontinues.length > 0) return cachedDiscontinues;
-  cachedDiscontinues = loadJson('discontinues.json');
-  return cachedDiscontinues || [];
+async function getDiscontinues(): Promise<any[]> {
+  const localDiscs = loadJson('discontinues.json') || [];
+  try {
+    const [dRes, cdRes] = await Promise.all([
+      supabase.from('discontinue').select('*'),
+      supabase.from('customer_discontinue').select('*')
+    ]);
+
+    const liveList = [...(dRes.data || []), ...(cdRes.data || [])];
+    if (liveList.length > 0) {
+      const merged = [...liveList];
+      const seen = new Set(liveList.map((d: any) => `${d.customer_id}-${d.publica_id}-${d.temp_from}-${d.temp_to}`));
+      for (const ld of localDiscs) {
+        const key = `${ld.customer_id || ld.Customer_id}-${ld.publica_id || ld.Publica_id}-${ld.temp_from || ld.Temp_From}-${ld.temp_to || ld.Temp_To}`;
+        if (!seen.has(key)) {
+          merged.push(ld);
+          seen.add(key);
+        }
+      }
+      return merged;
+    }
+  } catch (err) {
+    console.warn('Supabase live discontinue fetch error in billing:', err);
+  }
+  return localDiscs;
 }
 
 function getRegions(): any[] {
