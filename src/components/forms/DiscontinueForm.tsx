@@ -129,8 +129,8 @@ export default function DiscontinueForm({
     setMsg(null);
 
     // Auto-select customer's hawker
-    if (c.hawker_id) {
-      setSelectedHawkerId(String(c.hawker_id));
+    if ((c as any).hawker_id) {
+      setSelectedHawkerId(String((c as any).hawker_id));
     }
 
     // Fetch this customer's actual subscriptions to populate Publication dropdown accurately
