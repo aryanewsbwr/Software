@@ -58,15 +58,19 @@ export async function POST(request: NextRequest) {
     const maxId = discs.reduce((max: number, d: any) => Math.max(max, d.discontinue_id || d.Discontinue_id || 0), 0);
     const newId = maxId + 1;
 
+    const fromIso = parseDateToIso(temp_from) || entry_date;
+    const isPerm = temp_perma.startsWith('P') || temp_perma.toUpperCase() === 'PERMANENT';
+    const toIso = isPerm ? fromIso : (parseDateToIso(temp_to) || fromIso);
+
     const record = {
       discontinue_id: newId,
       sno: discs.filter((d: any) => d.customer_id === cid).length + 1,
       entry_date,
       customer_id: cid,
       publica_id: pubId,
-      temp_perma: temp_perma.startsWith('P') ? 'Permanent' : 'Temporary',
-      temp_from: temp_from || entry_date,
-      temp_to: temp_perma.startsWith('P') ? temp_from || entry_date : (temp_to || null)
+      temp_perma: isPerm ? 'Permanent' : 'Temporary',
+      temp_from: fromIso,
+      temp_to: toIso
     };
 
     // 1. Save to Supabase discontinue table
@@ -77,13 +81,34 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. If permanent stop, update c_date in customer_detail
-    if (temp_perma.startsWith('P') && pubId > 0) {
+    if (isPerm) {
       try {
-        await supabase
-          .from('customer_detail')
-          .update({ c_date: temp_from || entry_date })
-          .match({ customer_id: cid, publication_id: pubId });
+        if (pubId > 0) {
+          await supabase
+            .from('customer_detail')
+            .update({ c_date: fromIso })
+            .match({ customer_id: cid, publication_id: pubId });
+        } else {
+          await supabase
+            .from('customer_detail')
+            .update({ c_date: fromIso })
+            .match({ customer_id: cid });
+        }
       } catch (cdErr) {}
+
+      // Keep local subscriptions JSON in sync if present
+      try {
+        const subs = loadJson('all_subscriptions.json');
+        let updated = false;
+        for (const s of subs) {
+          if (s.customer_id === cid && (pubId === 0 || s.publica_id === pubId)) {
+            s.c_date = fromIso;
+            s.is_active = false;
+            updated = true;
+          }
+        }
+        if (updated) saveJson('all_subscriptions.json', subs);
+      } catch {}
     }
 
     // 3. Update local discontinues.json

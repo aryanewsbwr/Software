@@ -748,11 +748,12 @@ export default function VB6DesktopLayout() {
           />
         )}
 
-        {/* 9b. Customer Vacation Hold / Discontinue Form (screenshot_11.jpg) */}
+        {/* 9b. Customer Vacation Hold / Discontinue Form (screenshot_10.jpg) */}
         {activeWindow === 'discontinue' && (
           <DiscontinueForm 
             onClose={() => setActiveWindow(null)} 
             publications={publications}
+            hawkers={hawkers}
           />
         )}
 
