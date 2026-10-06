@@ -96,20 +96,18 @@ export async function POST(request: NextRequest) {
       console.warn('Supabase discontinue warning:', dbErr);
     }
 
-    // 2. If permanent stop, update c_date in customer_detail
+    // 2. If permanent stop, update c_date in customer_detail ONLY for subscriptions started before or on the discontinue date
     if (isPerm) {
       try {
+        let query = supabase
+          .from('customer_detail')
+          .update({ c_date: fromIso })
+          .eq('customer_id', cid)
+          .lte('s_date', fromIso);
         if (pubId > 0) {
-          await supabase
-            .from('customer_detail')
-            .update({ c_date: fromIso })
-            .match({ customer_id: cid, publication_id: pubId });
-        } else {
-          await supabase
-            .from('customer_detail')
-            .update({ c_date: fromIso })
-            .match({ customer_id: cid });
+          query = query.eq('publication_id', pubId);
         }
+        await query;
       } catch (cdErr) {}
 
       // Keep local subscriptions JSON in sync if present
@@ -117,10 +115,14 @@ export async function POST(request: NextRequest) {
         const subs = loadJson('all_subscriptions.json');
         let updated = false;
         for (const s of subs) {
+          const sDate = parseDateToIso(s.s_date || s.S_Date);
           if (s.customer_id === cid && (pubId === 0 || s.publica_id === pubId)) {
-            s.c_date = fromIso;
-            s.is_active = false;
-            updated = true;
+            // Only close subscription if it started on or before the discontinue date
+            if (!sDate || sDate <= fromIso) {
+              s.c_date = fromIso;
+              s.is_active = false;
+              updated = true;
+            }
           }
         }
         if (updated) saveJson('all_subscriptions.json', subs);

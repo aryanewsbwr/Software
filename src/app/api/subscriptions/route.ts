@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
 import path from 'path';
 import fs from 'fs';
+import { parseDateToIso } from '@/lib/discontinueEngine';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,8 +57,27 @@ export async function GET(request: NextRequest) {
       subs = cachedAllSubs.filter((s: any) => Number(s.customer_id || s.Customer_id) === cid);
     }
 
-    // 2. Find customer discontinues
-    const custDiscs = (cachedDiscontinues || []).filter(d => (d.customer_id || d.Customer_id) === cid);
+    // 2. Find customer discontinues (Fetch live from Supabase merged with local)
+    let custDiscs: any[] = [];
+    try {
+      const [dRes, cdRes] = await Promise.all([
+        supabase.from('discontinue').select('*').eq('customer_id', cid),
+        supabase.from('customer_discontinue').select('*').eq('customer_id', cid)
+      ]);
+      const liveDiscs = [...(dRes.data || []), ...(cdRes.data || [])];
+      const localDiscs = (cachedDiscontinues || []).filter(d => (d.customer_id || d.Customer_id) === cid);
+      custDiscs = [...liveDiscs];
+      const seen = new Set(liveDiscs.map((d: any) => `${d.customer_id}-${d.publica_id}-${d.temp_from}-${d.temp_to}`));
+      for (const ld of localDiscs) {
+        const key = `${ld.customer_id || ld.Customer_id}-${ld.publica_id || ld.Publica_id}-${ld.temp_from || ld.Temp_From}-${ld.temp_to || ld.Temp_To}`;
+        if (!seen.has(key)) {
+          custDiscs.push(ld);
+          seen.add(key);
+        }
+      }
+    } catch {
+      custDiscs = (cachedDiscontinues || []).filter(d => (d.customer_id || d.Customer_id) === cid);
+    }
 
     const todayIso = new Date().toISOString().split('T')[0];
 
@@ -66,15 +86,34 @@ export async function GET(request: NextRequest) {
       const hId = s.hawker_id || s.Hawker_id;
       const pub = (cachedPubs || []).find(p => (p.publica_id || p.publication_id) === pId);
       const hw = (cachedHawkers || []).find(h => (h.hawker_id || h.Hawker_id) === hId);
+      const subSno = s.sno || s.SNo;
+      const sDateIso = parseDateToIso(s.s_date || s.S_Date);
 
       // Check explicit close date in subscription
       const rawCDate = s.c_date || s.C_Date;
       const hasCloseDate = rawCDate && String(rawCDate).trim().length > 0 && String(rawCDate).trim() !== 'null' && String(rawCDate).trim() !== '-';
 
       // Check if matching permanent or temporary discontinue exists
+      // Authentic rule: A discontinue record must match this publication AND must belong to this subscription
+      // (Older discontinue stops from prior subscriptions MUST NOT affect a re-started subscription)
       const matchingDisc = custDiscs.find(d => {
-        const dPub = d.publica_id || d.Publica_id;
-        return dPub === pId || dPub === 0 || !dPub;
+        const dPub = d.publica_id !== undefined ? d.publica_id : d.Publica_id;
+        if (dPub !== pId && dPub !== 0 && dPub !== null && dPub !== undefined) return false;
+
+        // If discontinue specifies sno, match exact sno
+        const dSno = d.sno || d.SNo;
+        if (dSno && subSno && dSno === subSno) return true;
+
+        // If discontinue specifies s_date, match exact subscription start date
+        const dSDateIso = parseDateToIso(d.s_date || d.S_Date);
+        if (dSDateIso && sDateIso && dSDateIso === sDateIso) return true;
+
+        // Re-subscription scope: If discontinue happened BEFORE this subscription started (e.g. stopped 02/08, new start 06/08),
+        // it cannot discontinue this newer subscription!
+        const dFromIso = parseDateToIso(d.temp_from || d.Temp_From);
+        if (dFromIso && sDateIso && sDateIso > dFromIso) return false;
+
+        return true;
       });
 
       let is_active = !hasCloseDate;
@@ -92,7 +131,9 @@ export async function GET(request: NextRequest) {
             effectiveCloseDate = tFrom;
           }
         } else if (tFrom && tTo) {
-          const isOnHold = todayIso >= tFrom && todayIso <= tTo;
+          const tFromIso = parseDateToIso(tFrom) || tFrom;
+          const tToIso = parseDateToIso(tTo) || tTo;
+          const isOnHold = todayIso >= tFromIso && todayIso <= tToIso;
           hold_info = {
             is_on_hold: isOnHold,
             from: tFrom,
