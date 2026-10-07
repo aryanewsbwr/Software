@@ -8,7 +8,6 @@ interface DiscontinueFormProps {
   onClose: () => void;
   publications?: Publication[];
   hawkers?: Hawker[];
-  initialTab?: 'publication' | 'customer';
 }
 
 // Helper to normalize publication objects and sort alphabetically (A to Z)
@@ -37,12 +36,8 @@ const normalizeAndSortPubs = (list: any[]) => {
 export default function DiscontinueForm({ 
   onClose, 
   publications = [], 
-  hawkers: initialHawkers = [],
-  initialTab = 'publication'
+  hawkers: initialHawkers = []
 }: DiscontinueFormProps) {
-  // Tabs: 1st Publication, 2nd Customer
-  const [activeTab, setActiveTab] = useState<'publication' | 'customer'>(initialTab);
-
   // Today's formatted dates
   const today = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -50,21 +45,7 @@ export default function DiscontinueForm({
   const todayIso = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
 
   // ==========================================
-  // TAB 1: PUBLICATION DISCONTINUE STATE
-  // ==========================================
-  const [pubDisMode, setPubDisMode] = useState<'single' | 'holiday'>('single');
-  const [pubHolidayDesc, setPubHolidayDesc] = useState<string>('');
-  const [pubDisList, setPubDisList] = useState<Publication[]>(() => normalizeAndSortPubs(publications));
-  const [pubSelectedId, setPubSelectedId] = useState<string>('');
-  const [pubHoldType, setPubHoldType] = useState<'Temporary' | 'Permanent'>('Temporary');
-  const [pubFromDate, setPubFromDate] = useState<string>(todayDdmmyyyy);
-  const [pubToDate, setPubToDate] = useState<string>('');
-  const [pubRemark, setPubRemark] = useState<string>('Discontinued');
-  const [pubMsg, setPubMsg] = useState<{ text: string; isError?: boolean } | null>(null);
-  const [isPubSaving, setIsPubSaving] = useState(false);
-
-  // ==========================================
-  // TAB 2: CUSTOMER DISCONTINUE STATE
+  // CUSTOMER DISCONTINUE STATE
   // ==========================================
   const [entryDate, setEntryDate] = useState<string>(todayDdmmyyyy);
   const [periodStr, setPeriodStr] = useState<string>('2026-2027');
@@ -76,12 +57,13 @@ export default function DiscontinueForm({
   const [showCustSuggestions, setShowCustSuggestions] = useState(false);
   const [selectedCust, setSelectedCust] = useState<Customer | null>(null);
 
-  // Customer's Subscribed Publications (Accurate to this person, NO NaN!)
+  // Customer's Subscribed Publications
   const [customerSubs, setCustomerSubs] = useState<any[]>([]);
   const [selectedPubId, setSelectedPubId] = useState<string>('0'); // '0' = All Papers
   const [isLoadingSubs, setIsLoadingSubs] = useState(false);
 
-  // Hawkers
+  // Publications & Hawkers
+  const [pubList, setPubList] = useState<Publication[]>(() => normalizeAndSortPubs(publications));
   const [hawkerList, setHawkerList] = useState<Hawker[]>(initialHawkers);
   const [selectedHawkerId, setSelectedHawkerId] = useState<string>('');
 
@@ -98,7 +80,6 @@ export default function DiscontinueForm({
   const [showFindModal, setShowFindModal] = useState(false);
   const [findSearch, setFindSearch] = useState('');
   const [allDiscontinues, setAllDiscontinues] = useState<any[]>([]);
-  const [allPubDiscontinues, setAllPubDiscontinues] = useState<any[]>([]);
   const [isLoadingDiscs, setIsLoadingDiscs] = useState(false);
 
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -109,21 +90,20 @@ export default function DiscontinueForm({
     const p = (n: number) => String(n).padStart(2, '0');
     const dStr = `${p(cur.getDate())}/${p(cur.getMonth() + 1)}/${cur.getFullYear()}`;
     setEntryDate(dStr);
-    setPubFromDate(dStr);
+    setFromDate(dStr);
   }, []);
 
   // Sync publications (sorted alphabetically, no NaN)
   useEffect(() => {
     if (publications && publications.length > 0) {
-      setPubDisList(normalizeAndSortPubs(publications));
+      setPubList(normalizeAndSortPubs(publications));
     }
-    // Also fetch fresh from API or static JSON to ensure complete list
     fetch('/api/publications?with_rates=false')
       .then(r => r.json())
       .then(data => {
         const list = data.publications || (Array.isArray(data) ? data : []);
         if (list.length > 0) {
-          setPubDisList(normalizeAndSortPubs(list));
+          setPubList(normalizeAndSortPubs(list));
         }
       })
       .catch(() => {
@@ -131,7 +111,7 @@ export default function DiscontinueForm({
           .then(r => r.json())
           .then(list => {
             if (Array.isArray(list) && list.length > 0) {
-              setPubDisList(normalizeAndSortPubs(list));
+              setPubList(normalizeAndSortPubs(list));
             }
           })
           .catch(() => {});
@@ -156,18 +136,10 @@ export default function DiscontinueForm({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F1') {
         e.preventDefault();
-        if (activeTab === 'publication') {
-          setPubHoldType('Temporary');
-        } else {
-          setHoldType('Temporary');
-        }
+        setHoldType('Temporary');
       } else if (e.key === 'F2') {
         e.preventDefault();
-        if (activeTab === 'publication') {
-          setPubHoldType('Permanent');
-        } else {
-          setHoldType('Permanent');
-        }
+        setHoldType('Permanent');
       } else if (e.key === 'Escape') {
         if (showFindModal) {
           setShowFindModal(false);
@@ -180,7 +152,7 @@ export default function DiscontinueForm({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showFindModal, showCustSuggestions, activeTab, onClose]);
+  }, [showFindModal, showCustSuggestions, onClose]);
 
   // Customer search by Name or ID
   const handleCustSearchChange = (val: string) => {
@@ -339,101 +311,16 @@ export default function DiscontinueForm({
     }
   };
 
-  // Save Publication Discontinue (Tab 1)
-  const handlePubSave = async () => {
-    const isHoliday = pubDisMode === 'holiday' || pubSelectedId === '0';
-    if (!isHoliday && !pubSelectedId) {
-      setPubMsg({ text: 'कृपया पहले पत्रिका/अखबार (Publication) चुनें.', isError: true });
-      return;
-    }
-    if (!pubFromDate) {
-      setPubMsg({ text: 'कृपया फ्रॉम डेट (From Date) दर्ज करें.', isError: true });
-      return;
-    }
-    if (pubHoldType === 'Temporary' && !pubToDate) {
-      setPubMsg({ text: 'अस्थाई छुट्टी के लिए समाप्ति दिनांक (To Date) दर्ज करें.', isError: true });
-      return;
-    }
-
-    setIsPubSaving(true);
-    setPubMsg(null);
-    try {
-      const fromIso = toIsoDate(pubFromDate);
-      const toIso = pubHoldType === 'Permanent' ? '2050-03-31' : toIsoDate(pubToDate);
-      const pid = isHoliday ? 0 : parseInt(pubSelectedId, 10);
-      const descText = isHoliday 
-        ? (pubHolidayDesc.trim() || pubRemark.trim() || 'General Holiday')
-        : (pubRemark.trim() || 'Discontinued');
-
-      const res = await fetch('/api/publicationdis', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          publica_id: pid,
-          from_date: fromIso,
-          to_date: toIso,
-          dis_type: pubHoldType === 'Permanent' ? 'P' : 'T',
-          remark: descText
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save publication discontinue');
-
-      const savedRec = data.record || {
-        id: data.id || Date.now(),
-        publica_id: pid,
-        from_date: fromIso,
-        to_date: toIso,
-        entry_date: fromIso,
-        oc_date: toIso,
-        dis_type: pubHoldType === 'Permanent' ? 'P' : 'T',
-        remark: descText
-      };
-      setAllPubDiscontinues(prev => [savedRec, ...prev.filter(d => d.id !== savedRec.id)]);
-
-      const label = isHoliday 
-        ? `[Holiday] सभी समाचार पत्र (All Daily Newspapers - ${descText})` 
-        : (pubDisList.find(p => p.publica_id === pid)?.public_name || `Pub #${pid}`);
-      setPubMsg({
-        text: `✓ ${label} का ${pubHoldType === 'Permanent' ? 'स्थाई बंद (Permanent Stop)' : 'अस्थाई रोक / अवकाश (Hold / Holiday)'} सफलतापूर्वक दर्ज हुआ!`,
-        isError: false
-      });
-    } catch (err: any) {
-      setPubMsg({ text: `त्रुटि (Error): ${err.message}`, isError: true });
-    } finally {
-      setIsPubSaving(false);
-    }
-  };
-
-  const handlePubCancel = () => {
-    setPubDisMode('single');
-    setPubHolidayDesc('');
-    setPubSelectedId('');
-    setPubHoldType('Temporary');
-    setPubFromDate(todayDdmmyyyy);
-    setPubToDate('');
-    setPubRemark('Discontinued');
-    setPubMsg(null);
-  };
-
   // Load Discontinues for Find Dialog
   const handleOpenFind = async () => {
     setShowFindModal(true);
     setIsLoadingDiscs(true);
     try {
-      const [cRes, pRes] = await Promise.all([
-        fetch('/api/discontinue', { cache: 'no-store' }),
-        fetch('/api/publicationdis', { cache: 'no-store' })
-      ]);
-      if (cRes.ok) {
-        const data = await cRes.json();
+      const res = await fetch('/api/discontinue', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
         const list = (data.discontinues || []).sort((a: any, b: any) => (b.discontinue_id || 0) - (a.discontinue_id || 0));
         setAllDiscontinues(list);
-      }
-      if (pRes.ok) {
-        const pData = await pRes.json();
-        const pList = (pData.discontinues || []).sort((a: any, b: any) => (b.id || 0) - (a.id || 0));
-        setAllPubDiscontinues(pList);
       }
     } catch (err) {
       console.error(err);
@@ -444,32 +331,23 @@ export default function DiscontinueForm({
 
   // Cancel / Reset Form
   const handleCancel = () => {
-    if (activeTab === 'publication') {
-      handlePubCancel();
-    } else {
-      setCustSearchTerm('');
-      setSelectedCust(null);
-      setCustomerSubs([]);
-      setSelectedPubId('0');
-      setHoldType('Temporary');
-      setFromDate(todayDdmmyyyy);
-      setToDate('');
-      setMsg(null);
-    }
+    setCustSearchTerm('');
+    setSelectedCust(null);
+    setCustomerSubs([]);
+    setSelectedPubId('0');
+    setHoldType('Temporary');
+    setFromDate(todayDdmmyyyy);
+    setToDate('');
+    setMsg(null);
   };
 
   // Delete Discontinue Record (by ID)
-  const handleDeleteRecord = async (discId: number, isPub: boolean = false) => {
-    if (!confirm(`Are you sure you want to delete this discontinue record #${discId}?`)) return;
+  const handleDeleteRecord = async (discId: number) => {
+    if (!confirm(`Are you sure you want to delete this customer discontinue record #${discId}?`)) return;
     try {
-      const url = isPub ? `/api/publicationdis?id=${discId}` : `/api/discontinue?id=${discId}`;
-      const res = await fetch(url, { method: 'DELETE' });
+      const res = await fetch(`/api/discontinue?id=${discId}`, { method: 'DELETE' });
       if (res.ok) {
-        if (isPub) {
-          setAllPubDiscontinues(prev => prev.filter(d => d.id !== discId));
-        } else {
-          setAllDiscontinues(prev => prev.filter(d => (d.discontinue_id || d.Discontinue_id) !== discId));
-        }
+        setAllDiscontinues(prev => prev.filter(d => (d.discontinue_id || d.Discontinue_id) !== discId));
         alert(`Record #${discId} successfully deleted.`);
       } else {
         const d = await res.json();
@@ -482,60 +360,28 @@ export default function DiscontinueForm({
 
   // Main Form Delete Button Action
   const handleMainDelete = async () => {
-    if (activeTab === 'publication') {
-      const isHoliday = pubDisMode === 'holiday' || pubSelectedId === '0';
-      if (!isHoliday && !pubSelectedId) {
+    if (!selectedCust) {
+      handleOpenFind();
+      return;
+    }
+    try {
+      const res = await fetch(`/api/discontinue?customer_id=${selectedCust.customer_id}`, { cache: 'no-store' });
+      const data = await res.json();
+      const existing = data.discontinues || [];
+      if (existing.length === 0) {
+        alert(`No active discontinue entry found for Customer #${selectedCust.customer_id} (${selectedCust.name_eng}). Opening Find list.`);
         handleOpenFind();
         return;
       }
-      const pid = isHoliday ? 0 : parseInt(pubSelectedId, 10);
-      const pubName = isHoliday ? `[Holiday] All Newspapers` : (pubDisList.find(p => p.publica_id === pid)?.public_name || `Pub #${pid}`);
-      
-      try {
-        const res = await fetch(`/api/publicationdis?publica_id=${pid}`, { cache: 'no-store' });
-        const data = await res.json();
-        const existing = data.discontinues || [];
-        if (existing.length === 0) {
-          alert(`No active discontinue entry found for ${pubName}. Opening Find list.`);
-          handleOpenFind();
-          return;
-        }
 
-        const latest = existing[0];
-        const fDate = latest.from_date || latest.entry_date || '-';
-        const tDate = latest.to_date || latest.oc_date || 'Permanent';
-        if (!confirm(`Are you sure you want to delete discontinue record #${latest.id} for ${pubName} (${fDate} to ${tDate})?`)) return;
+      const latest = existing[0];
+      if (!confirm(`Are you sure you want to delete discontinue record #${latest.discontinue_id} for Customer #${selectedCust.customer_id} (${latest.temp_from} to ${latest.temp_to})?`)) return;
 
-        await handleDeleteRecord(latest.id, true);
-        setPubMsg({ text: `✓ Discontinue entry #${latest.id} for ${pubName} has been deleted.`, isError: false });
-        handlePubCancel();
-      } catch (err: any) {
-        alert(`Error: ${err.message}`);
-      }
-    } else {
-      if (!selectedCust) {
-        handleOpenFind();
-        return;
-      }
-      try {
-        const res = await fetch(`/api/discontinue?customer_id=${selectedCust.customer_id}`, { cache: 'no-store' });
-        const data = await res.json();
-        const existing = data.discontinues || [];
-        if (existing.length === 0) {
-          alert(`No active discontinue entry found for Customer #${selectedCust.customer_id} (${selectedCust.name_eng}). Opening Find list.`);
-          handleOpenFind();
-          return;
-        }
-
-        const latest = existing[0];
-        if (!confirm(`Are you sure you want to delete discontinue record #${latest.discontinue_id} for Customer #${selectedCust.customer_id} (${latest.temp_from} to ${latest.temp_to})?`)) return;
-
-        await handleDeleteRecord(latest.discontinue_id, false);
-        setMsg({ text: `✓ Discontinue entry #${latest.discontinue_id} deleted.`, isError: false });
-        handleCancel();
-      } catch (err: any) {
-        alert(`Error: ${err.message}`);
-      }
+      await handleDeleteRecord(latest.discontinue_id);
+      setMsg({ text: `✓ Discontinue entry #${latest.discontinue_id} deleted.`, isError: false });
+      handleCancel();
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
     }
   };
 
@@ -552,7 +398,7 @@ export default function DiscontinueForm({
             onError={(e) => (e.currentTarget.style.display = 'none')} 
           />
           <span className="text-xs tracking-wide">
-            {activeTab === 'publication' ? 'Publication Discontinue' : 'Customer Discontinue'}
+            Customer Discontinue
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -562,513 +408,266 @@ export default function DiscontinueForm({
         </div>
       </div>
 
-      {/* VB6 Two Tabs Bar: 1st Publication, 2nd Customer */}
-      <div className="flex items-end px-3 pt-2 bg-[#D4D0C8] border-b border-[#808080] gap-1">
-        <button
-          type="button"
-          onClick={() => setActiveTab('publication')}
-          className={`px-4 py-1 font-bold text-xs border-t-2 border-l-2 border-r-2 rounded-t-sm cursor-pointer transition-colors ${
-            activeTab === 'publication'
-              ? 'bg-[#ECE9D8] text-[#800000] border-t-white border-l-white border-r-[#404040] -mb-[1px] pb-1.5 shadow-sm'
-              : 'bg-[#C0BCB0] text-slate-700 border-t-[#D4D0C8] border-l-[#D4D0C8] border-r-[#808080] hover:bg-[#D4D0C8]'
-          }`}
-        >
-          📰 1. Publication Discontinue (अखबार रोक)
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('customer')}
-          className={`px-4 py-1 font-bold text-xs border-t-2 border-l-2 border-r-2 rounded-t-sm cursor-pointer transition-colors ${
-            activeTab === 'customer'
-              ? 'bg-[#ECE9D8] text-[#000080] border-t-white border-l-white border-r-[#404040] -mb-[1px] pb-1.5 shadow-sm'
-              : 'bg-[#C0BCB0] text-slate-700 border-t-[#D4D0C8] border-l-[#D4D0C8] border-r-[#808080] hover:bg-[#D4D0C8]'
-          }`}
-        >
-          👤 2. Customer Discontinue (ग्राहक रोक)
-        </button>
-      </div>
-
       {/* Main Body */}
       <div className="p-4 flex flex-col justify-between space-y-3 bg-[#ECE9D8] min-h-[380px]">
         
-        {/* ========================================================================= */}
-        {/* TAB 1: PUBLICATION DISCONTINUE (Whole Publication Stop)                  */}
-        {/* ========================================================================= */}
-        {activeTab === 'publication' && (
-          <div className="space-y-3">
-            <div className="text-center">
-              <h1 
-                className="text-2xl font-black text-[#800000] tracking-wider uppercase" 
-                style={{ fontFamily: 'Georgia, serif' }}
-              >
-                PUBLICATIONS DISCONTINUE
-              </h1>
-            </div>
+        {/* CUSTOMER DISCONTINUE INFO (screenshot_10.jpg) */}
+        <div className="space-y-2.5">
+          {/* Header Title matching screenshot_10.jpg */}
+          <div className="text-center">
+            <h1 
+              className="text-2xl font-black text-[#800000] tracking-wider uppercase" 
+              style={{ fontFamily: 'Georgia, serif' }}
+            >
+              CUSTOMER DISCONTINUE INFO
+            </h1>
+          </div>
 
-            {/* Date & Period Row */}
-            <div className="flex items-center justify-between px-1">
-              <div className="flex items-center gap-2">
-                <label className="font-bold text-[#800000] text-xs">Date</label>
-                <div className="border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white px-1 py-0.5 shadow-inner">
-                  <input 
-                    type="text" 
-                    value={entryDate}
-                    onChange={(e) => setEntryDate(e.target.value)}
-                    className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent"
-                    placeholder="DD/MM/YYYY"
-                  />
-                </div>
-              </div>
-
-              <div className="font-bold text-black text-xs">
-                Period :- <span className="text-[#000080] font-mono">{periodStr}</span>
-              </div>
-            </div>
-
-            {/* Mode Selection: Single Publication vs Holiday */}
-            <div className="flex items-center justify-center gap-8 py-1 px-2 bg-[#E3DFCA] border border-[#BFBAA0] rounded-xs">
-              <label className="flex items-center gap-2 font-bold text-[#800000] cursor-pointer text-xs">
+          {/* Date & Period Row */}
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <label className="font-bold text-[#800000] text-xs">Date</label>
+              <div className="border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white px-1 py-0.5 shadow-inner">
                 <input 
-                  type="radio" 
-                  name="pubDisMode"
-                  value="single"
-                  checked={pubDisMode === 'single'}
-                  onChange={() => {
-                    setPubDisMode('single');
-                  }}
-                  className="cursor-pointer"
+                  type="text" 
+                  value={entryDate}
+                  onChange={(e) => setEntryDate(e.target.value)}
+                  className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent"
+                  placeholder="DD/MM/YYYY"
                 />
-                <span>Single Publication (विशिष्ट अखबार)</span>
-              </label>
-
-              <label className="flex items-center gap-2 font-bold text-[#006600] cursor-pointer text-xs bg-white px-2 py-0.5 border border-[#006600]/40 rounded-xs shadow-xs">
-                <input 
-                  type="radio" 
-                  name="pubDisMode"
-                  value="holiday"
-                  checked={pubDisMode === 'holiday'}
-                  onChange={() => {
-                    setPubDisMode('holiday');
-                    setPubHoldType('Temporary');
-                  }}
-                  className="cursor-pointer"
-                />
-                <span>🏖️ Holiday (अवकाश - सभी समाचार पत्र)</span>
-              </label>
+              </div>
             </div>
 
-            {/* If Single Publication: Show Publication Dropdown */}
-            {pubDisMode === 'single' ? (
-              <>
-                {/* Publication Select */}
-                <div className="flex items-center gap-2">
-                  <label className="w-28 font-bold text-[#800000] text-right shrink-0">
-                    Publication
-                  </label>
-                  <div className="flex-1">
-                    <select 
-                      value={pubSelectedId}
-                      onChange={(e) => setPubSelectedId(e.target.value)}
-                      className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
-                    >
-                      <option value="">-- कृपया पत्रिका/अखबार चुनें (Select Publication) --</option>
-                      {pubDisList.map((p) => (
-                        <option key={p.publica_id} value={p.publica_id}>
-                          #{p.publica_id} - {p.public_name} {p.pub_hindi ? `(${p.pub_hindi})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+            <div className="font-bold text-black text-xs">
+              Period :- <span className="text-[#000080] font-mono">{periodStr}</span>
+            </div>
+          </div>
 
-                {/* Remark / Reason */}
-                <div className="flex items-center gap-2">
-                  <label className="w-28 font-bold text-[#800000] text-right shrink-0">
-                    Remark / कारण
-                  </label>
-                  <div className="flex-1">
-                    <input 
-                      type="text" 
-                      value={pubRemark}
-                      onChange={(e) => setPubRemark(e.target.value)}
-                      placeholder="e.g. Strike / Discontinued"
-                      className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
-                    />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Holiday Mode: All Newspapers Banner */}
-                <div className="flex items-center gap-2">
-                  <label className="w-28 font-bold text-[#006600] text-right shrink-0">
-                    Target
-                  </label>
-                  <div className="flex-1 px-3 py-1.5 bg-[#E8F5E9] border border-[#81C784] font-bold text-[#1B5E20] text-xs rounded-xs flex items-center gap-2 shadow-inner">
-                    <span>🏖️</span>
-                    <span>All Daily Newspapers (सभी दैनिक समाचार पत्र - पत्रिकाएं शामिल नहीं)</span>
-                  </div>
-                </div>
-
-                {/* Holiday Description Input Box */}
-                <div className="flex items-center gap-2">
-                  <label className="w-28 font-bold text-[#006600] text-right shrink-0">
-                    Description / विवरण
-                  </label>
-                  <div className="flex-1">
-                    <input 
-                      type="text" 
-                      value={pubHolidayDesc}
-                      onChange={(e) => setPubHolidayDesc(e.target.value)}
-                      placeholder="e.g. Diwali Holiday, Holi, Press Closed, Strike, etc."
-                      className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner focus:border-green-600"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Temporary / Permanent Group Box */}
-            <fieldset className="border border-[#808080] p-3 mx-1 my-1 relative">
-              <legend className="px-1.5 font-bold text-[#800000] text-xs">
-                Temporary/Permanent (अस्थाई / स्थाई रोक)
-              </legend>
-
-              {/* Checkboxes Row */}
-              <div className="flex items-center justify-center gap-10 pb-2">
-                <label className="flex items-center gap-1.5 font-bold text-black cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={pubHoldType === 'Temporary'}
-                    onChange={() => setPubHoldType('Temporary')}
-                    className="cursor-pointer"
-                  />
-                  <span>Temporary (अस्थाई रोक)</span>
-                </label>
-
-                <label className="flex items-center gap-1.5 font-bold text-black cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={pubHoldType === 'Permanent'}
-                    onChange={() => setPubHoldType('Permanent')}
-                    className="cursor-pointer"
-                  />
-                  <span>Permanent (स्थाई बंद)</span>
-                </label>
+          {/* Customer Name Search (Search by Name, NOT by ID) */}
+          <div className="relative">
+            <div className="flex items-center gap-2">
+              <label className="w-28 font-bold text-[#800000] text-right shrink-0">
+                Customer Name
+              </label>
+              <div className="flex-1 relative">
+                <input 
+                  type="text" 
+                  value={custSearchTerm}
+                  onChange={(e) => handleCustSearchChange(e.target.value)}
+                  onFocus={() => { if (custSuggestions.length > 0) setShowCustSuggestions(true); }}
+                  placeholder="ग्राहक का नाम टाइप करके खोजें (Type name to search)..."
+                  className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
+                />
+                {isSearchingCust && (
+                  <span className="absolute right-2 top-1 text-[10px] text-slate-500 font-bold">
+                    खोज जारी...
+                  </span>
+                )}
               </div>
+            </div>
 
-              {/* From & To Dates */}
-              <div className="flex items-center justify-center gap-8 pt-1">
-                <div className="flex items-center gap-2">
-                  <label className="font-bold text-[#800000]">From</label>
-                  <div className="border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white px-1.5 py-0.5 shadow-inner">
-                    <input 
-                      type="text" 
-                      value={pubFromDate}
-                      onChange={(e) => setPubFromDate(e.target.value)}
-                      onBlur={() => setPubFromDate(formatDateDisplay(pubFromDate))}
-                      placeholder="DD/MM/YYYY"
-                      className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent"
-                    />
+            {/* Customer Autocomplete Dropdown */}
+            {showCustSuggestions && custSuggestions.length > 0 && (
+              <div className="absolute left-30 right-0 top-7 z-50 bg-white border border-[#808080] shadow-xl max-h-48 overflow-y-auto">
+                {custSuggestions.map((c) => (
+                  <div 
+                    key={c.customer_id}
+                    onClick={() => handleSelectCustomer(c)}
+                    className="p-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer border-b border-slate-100 flex items-center justify-between text-xs"
+                  >
+                    <div>
+                      <strong className="text-blue-900 group-hover:text-white font-mono">#{c.customer_id}</strong>
+                      <span className="ml-1 font-bold">{c.name_eng}</span>
+                      {c.name_hindi && (
+                        <span className="ml-1 text-slate-600 group-hover:text-slate-200">
+                          ({cleanOrTransliterateHindi(c.name_hindi, c.name_eng)})
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-slate-500 group-hover:text-slate-200">
+                      {[c.add1, c.add2].filter(Boolean).join(', ') || 'No Addr'}
+                    </span>
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <label className="font-bold text-[#800000]">To</label>
-                  <div className={`border border-t-[#808080] border-l-[#808080] border-r-white border-b-white px-1.5 py-0.5 shadow-inner ${pubHoldType === 'Permanent' ? 'bg-slate-200 opacity-60' : 'bg-white'}`}>
-                    <input 
-                      type="text" 
-                      value={pubToDate}
-                      onChange={(e) => setPubToDate(e.target.value)}
-                      onBlur={() => setPubToDate(formatDateDisplay(pubToDate))}
-                      disabled={pubHoldType === 'Permanent'}
-                      placeholder={pubHoldType === 'Permanent' ? '---' : 'DD/MM/YYYY'}
-                      className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent disabled:cursor-not-allowed"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Hotkeys Hint */}
-              <div className="text-center pt-2.5 font-bold text-[#800000] text-[11px]">
-                F1 - Temporary &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; F2 - Permanent
-              </div>
-            </fieldset>
-
-            {/* Publication Status Msg */}
-            {pubMsg && (
-              <div className={`text-center py-1 px-2 border font-bold text-xs ${
-                pubMsg.isError 
-                  ? 'bg-red-100 text-red-900 border-red-300' 
-                  : 'bg-emerald-100 text-emerald-900 border-emerald-400'
-              }`}>
-                {pubMsg.text}
+                ))}
               </div>
             )}
           </div>
-        )}
 
-        {/* ========================================================================= */}
-        {/* TAB 2: CUSTOMER DISCONTINUE (screenshot_10.jpg)                           */}
-        {/* ========================================================================= */}
-        {activeTab === 'customer' && (
-          <div className="space-y-2.5">
-            {/* Header Title matching screenshot_10.jpg */}
-            <div className="text-center">
-              <h1 
-                className="text-2xl font-black text-[#800000] tracking-wider uppercase" 
-                style={{ fontFamily: 'Georgia, serif' }}
+          {/* Publication Dropdown - Populated according to the person */}
+          <div className="flex items-center gap-2">
+            <label className="w-28 font-bold text-[#800000] text-right shrink-0">
+              Publication
+            </label>
+            <div className="flex-1">
+              <select 
+                value={selectedPubId}
+                onChange={(e) => setSelectedPubId(e.target.value)}
+                className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
               >
-                CUSTOMER DISCONTINUE INFO
-              </h1>
-            </div>
-
-            {/* Date & Period Row */}
-            <div className="flex items-center justify-between px-1">
-              <div className="flex items-center gap-2">
-                <label className="font-bold text-[#800000] text-xs">Date</label>
-                <div className="border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white px-1 py-0.5 shadow-inner">
-                  <input 
-                    type="text" 
-                    value={entryDate}
-                    onChange={(e) => setEntryDate(e.target.value)}
-                    className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent"
-                    placeholder="DD/MM/YYYY"
-                  />
-                </div>
-              </div>
-
-              <div className="font-bold text-black text-xs">
-                Period :- <span className="text-[#000080] font-mono">{periodStr}</span>
-              </div>
-            </div>
-
-            {/* Customer Name Search (Search by Name, NOT by ID) */}
-            <div className="relative">
-              <div className="flex items-center gap-2">
-                <label className="w-28 font-bold text-[#800000] text-right shrink-0">
-                  Customer Name
-                </label>
-                <div className="flex-1 relative">
-                  <input 
-                    type="text" 
-                    value={custSearchTerm}
-                    onChange={(e) => handleCustSearchChange(e.target.value)}
-                    onFocus={() => { if (custSuggestions.length > 0) setShowCustSuggestions(true); }}
-                    placeholder="ग्राहक का नाम टाइप करके खोजें (Type name to search)..."
-                    className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
-                  />
-                  {isSearchingCust && (
-                    <span className="absolute right-2 top-1 text-[10px] text-slate-500 font-bold">
-                      खोज जारी...
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Customer Autocomplete Dropdown */}
-              {showCustSuggestions && custSuggestions.length > 0 && (
-                <div className="absolute left-30 right-0 top-7 z-50 bg-white border border-[#808080] shadow-xl max-h-48 overflow-y-auto">
-                  {custSuggestions.map((c) => (
-                    <div 
-                      key={c.customer_id}
-                      onClick={() => handleSelectCustomer(c)}
-                      className="p-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer border-b border-slate-100 flex items-center justify-between text-xs"
-                    >
-                      <div>
-                        <strong className="text-blue-900 group-hover:text-white font-mono">#{c.customer_id}</strong>
-                        <span className="ml-1 font-bold">{c.name_eng}</span>
-                        {c.name_hindi && (
-                          <span className="ml-1 text-slate-600 group-hover:text-slate-200">
-                            ({cleanOrTransliterateHindi(c.name_hindi, c.name_eng)})
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-slate-500 group-hover:text-slate-200">
-                        {[c.add1, c.add2].filter(Boolean).join(', ') || 'No Addr'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Publication Dropdown - Populated according to the person, NO NaN! */}
-            <div className="flex items-center gap-2">
-              <label className="w-28 font-bold text-[#800000] text-right shrink-0">
-                Publication
-              </label>
-              <div className="flex-1">
-                <select 
-                  value={selectedPubId}
-                  onChange={(e) => setSelectedPubId(e.target.value)}
-                  className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
-                >
-                  <option value="0">All Papers (सभी अखबार/पत्रिका)</option>
-                  {customerSubs && customerSubs.length > 0 && (
-                    <optgroup label="-- Customer's Subscribed Papers --">
-                      {customerSubs
-                        .map((sub: any) => {
-                          const pId = Number(sub.publica_id || sub.publication_id);
-                          const matched = pubDisList.find(p => p.publica_id === pId);
-                          const pName = sub.publication_name || matched?.public_name || `Paper #${pId}`;
-                          const isClosed = sub.is_active === false || (sub.c_date && sub.c_date !== '' && sub.c_date !== '-');
-                          return { pId, pName, qty: sub.qty, isClosed, sno: sub.sno };
-                        })
-                        .filter(s => s.pId > 0 && !isNaN(s.pId) && !s.pName.includes('NaN'))
-                        .sort((a, b) => a.pName.localeCompare(b.pName, undefined, { sensitivity: 'base' }))
-                        .map(sub => (
-                          <option key={`sub-${sub.sno || sub.pId}`} value={sub.pId}>
-                            #{sub.pId} - {sub.pName} {sub.qty ? `(Qty: ${sub.qty})` : ''} {sub.isClosed ? '[ALREADY CLOSED]' : '[ACTIVE]'}
-                          </option>
-                        ))}
-                    </optgroup>
-                  )}
-                  <optgroup label="-- All Publications (A to Z) --">
-                    {pubDisList
-                      .filter(p => !customerSubs.some((s: any) => Number(s.publica_id || s.publication_id) === p.publica_id))
-                      .map(p => (
-                        <option key={`pub-${p.publica_id}`} value={p.publica_id}>
-                          #{p.publica_id} - {p.public_name} {p.pub_hindi ? `(${p.pub_hindi})` : ''}
+                <option value="0">All Papers (सभी अखबार/पत्रिका)</option>
+                {customerSubs && customerSubs.length > 0 && (
+                  <optgroup label="-- Customer's Subscribed Papers --">
+                    {customerSubs
+                      .map((sub: any) => {
+                        const pId = Number(sub.publica_id || sub.publication_id);
+                        const matched = pubList.find(p => p.publica_id === pId);
+                        const pName = sub.publication_name || matched?.public_name || `Paper #${pId}`;
+                        const isClosed = sub.is_active === false || (sub.c_date && sub.c_date !== '' && sub.c_date !== '-');
+                        return { pId, pName, qty: sub.qty, isClosed, sno: sub.sno };
+                      })
+                      .filter(s => s.pId > 0 && !isNaN(s.pId) && !s.pName.includes('NaN'))
+                      .sort((a, b) => a.pName.localeCompare(b.pName, undefined, { sensitivity: 'base' }))
+                      .map(sub => (
+                        <option key={`sub-${sub.sno || sub.pId}`} value={sub.pId}>
+                          #{sub.pId} - {sub.pName} {sub.qty ? `(Qty: ${sub.qty})` : ''} {sub.isClosed ? '[ALREADY CLOSED]' : '[ACTIVE]'}
                         </option>
                       ))}
                   </optgroup>
-                </select>
-              </div>
+                )}
+                <optgroup label="-- All Publications (A to Z) --">
+                  {pubList
+                    .filter(p => !customerSubs.some((s: any) => Number(s.publica_id || s.publication_id) === p.publica_id))
+                    .map(p => (
+                      <option key={`pub-${p.publica_id}`} value={p.publica_id}>
+                        #{p.publica_id} - {p.public_name} {p.pub_hindi ? `(${p.pub_hindi})` : ''}
+                      </option>
+                    ))}
+                </optgroup>
+              </select>
             </div>
+          </div>
 
-            {/* Hawker Dropdown */}
-            <div className="flex items-center gap-2">
-              <label className="w-28 font-bold text-[#800000] text-right shrink-0">
-                Hawker
-              </label>
-              <div className="flex-1">
-                <select 
-                  value={selectedHawkerId}
-                  onChange={(e) => setSelectedHawkerId(e.target.value)}
-                  className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
-                >
-                  <option value="">-- Select Hawker --</option>
-                  {hawkerList.map((h) => (
-                    <option key={h.hawker_id} value={h.hawker_id}>
-                      #{h.hawker_id} {h.name} {h.hindi_name ? `(${h.hindi_name})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          {/* Hawker Dropdown */}
+          <div className="flex items-center gap-2">
+            <label className="w-28 font-bold text-[#800000] text-right shrink-0">
+              Hawker
+            </label>
+            <div className="flex-1">
+              <select 
+                value={selectedHawkerId}
+                onChange={(e) => setSelectedHawkerId(e.target.value)}
+                className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
+              >
+                <option value="">-- Select Hawker --</option>
+                {hawkerList.map((h) => (
+                  <option key={h.hawker_id} value={h.hawker_id}>
+                    #{h.hawker_id} {h.name} {h.hindi_name ? `(${h.hindi_name})` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
+          </div>
 
-            {/* Address & Subscription Details Inset Box matching screenshot_10.jpg */}
-            <div className="ml-30 mr-1 p-2 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white shadow-inner min-h-[52px] text-[11px] text-slate-700">
-              {selectedCust ? (
-                <div className="space-y-0.5">
-                  <div>
-                    <strong>Address:</strong> {[selectedCust.add1, selectedCust.add2].filter(Boolean).join(', ') || 'None'}
-                  </div>
-                  <div>
-                    <strong>Active Papers:</strong> {
-                      customerSubs.filter(s => s.is_active !== false && (!s.c_date || s.c_date === '-')).length > 0
-                        ? customerSubs
-                            .filter(s => s.is_active !== false && (!s.c_date || s.c_date === '-'))
-                            .map(s => s.publication_name || `Pub #${s.publica_id}`)
-                            .join(', ')
-                        : <span className="text-red-700 font-bold">No active papers currently delivered</span>
-                    }
-                  </div>
+          {/* Address & Subscription Details Inset Box matching screenshot_10.jpg */}
+          <div className="ml-30 mr-1 p-2 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white shadow-inner min-h-[52px] text-[11px] text-slate-700">
+            {selectedCust ? (
+              <div className="space-y-0.5">
+                <div>
+                  <strong>Address:</strong> {[selectedCust.add1, selectedCust.add2].filter(Boolean).join(', ') || 'None'}
                 </div>
-              ) : (
-                <span className="text-slate-400 italic">
-                  ग्राहक का चयन करने पर पता एवं चालू अखबार यहाँ दिखाई देंगे (Address & active papers will appear here)
-                </span>
-              )}
-            </div>
-
-            {/* Temporary / Permanent Group Box matching screenshot_10.jpg */}
-            <fieldset className="border border-[#808080] p-3 mx-1 my-1 relative">
-              <legend className="px-1.5 font-bold text-[#800000] text-xs">
-                Temporary/Permanent
-              </legend>
-
-              {/* Checkboxes Row */}
-              <div className="flex items-center justify-center gap-10 pb-2">
-                <label className="flex items-center gap-1.5 font-bold text-black cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={holdType === 'Temporary'}
-                    onChange={() => setHoldType('Temporary')}
-                    className="cursor-pointer"
-                  />
-                  <span>Temporary (अस्थाई छुट्टी)</span>
-                </label>
-
-                <label className="flex items-center gap-1.5 font-bold text-black cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={holdType === 'Permanent'}
-                    onChange={() => setHoldType('Permanent')}
-                    className="cursor-pointer"
-                  />
-                  <span>Permanent (स्थाई बंद)</span>
-                </label>
-              </div>
-
-              {/* From & To Dates */}
-              <div className="flex items-center justify-center gap-8 pt-1">
-                <div className="flex items-center gap-2">
-                  <label className="font-bold text-[#800000]">From</label>
-                  <div className="border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white px-1.5 py-0.5 shadow-inner">
-                    <input 
-                      type="text" 
-                      value={fromDate}
-                      onChange={(e) => setFromDate(e.target.value)}
-                      onBlur={() => setFromDate(formatDateDisplay(fromDate))}
-                      placeholder="DD/MM/YYYY"
-                      className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <label className="font-bold text-[#800000]">To</label>
-                  <div className={`border border-t-[#808080] border-l-[#808080] border-r-white border-b-white px-1.5 py-0.5 shadow-inner ${holdType === 'Permanent' ? 'bg-slate-200 opacity-60' : 'bg-white'}`}>
-                    <input 
-                      type="text" 
-                      value={toDate}
-                      onChange={(e) => setToDate(e.target.value)}
-                      onBlur={() => setToDate(formatDateDisplay(toDate))}
-                      disabled={holdType === 'Permanent'}
-                      placeholder={holdType === 'Permanent' ? '---' : 'DD/MM/YYYY'}
-                      className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent disabled:cursor-not-allowed"
-                    />
-                  </div>
+                <div>
+                  <strong>Active Papers:</strong> {
+                    customerSubs.filter(s => s.is_active !== false && (!s.c_date || s.c_date === '-')).length > 0
+                      ? customerSubs
+                          .filter(s => s.is_active !== false && (!s.c_date || s.c_date === '-'))
+                          .map(s => s.publication_name || `Pub #${s.publica_id}`)
+                          .join(', ')
+                      : <span className="text-red-700 font-bold">No active papers currently delivered</span>
+                  }
                 </div>
               </div>
-
-              {/* Hotkeys Hint matching screenshot_10.jpg */}
-              <div className="text-center pt-2.5 font-bold text-[#800000] text-[11px]">
-                F1 - Temporary &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; F2 - Permanent
-              </div>
-            </fieldset>
-
-            {/* Customer Status Msg */}
-            {msg && (
-              <div className={`text-center py-1 px-2 border font-bold text-xs ${
-                msg.isError 
-                  ? 'bg-red-100 text-red-900 border-red-300' 
-                  : 'bg-emerald-100 text-emerald-900 border-emerald-400'
-              }`}>
-                {msg.text}
-              </div>
+            ) : (
+              <span className="text-slate-400 italic">
+                ग्राहक का चयन करने पर पता एवं चालू अखबार यहाँ दिखाई देंगे (Address & active papers will appear here)
+              </span>
             )}
           </div>
-        )}
+
+          {/* Temporary / Permanent Group Box matching screenshot_10.jpg */}
+          <fieldset className="border border-[#808080] p-3 mx-1 my-1 relative">
+            <legend className="px-1.5 font-bold text-[#800000] text-xs">
+              Temporary/Permanent
+            </legend>
+
+            {/* Checkboxes Row */}
+            <div className="flex items-center justify-center gap-10 pb-2">
+              <label className="flex items-center gap-1.5 font-bold text-black cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={holdType === 'Temporary'}
+                  onChange={() => setHoldType('Temporary')}
+                  className="cursor-pointer"
+                />
+                <span>Temporary (अस्थाई छुट्टी)</span>
+              </label>
+
+              <label className="flex items-center gap-1.5 font-bold text-black cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={holdType === 'Permanent'}
+                  onChange={() => setHoldType('Permanent')}
+                  className="cursor-pointer"
+                />
+                <span>Permanent (स्थाई बंद)</span>
+              </label>
+            </div>
+
+            {/* From & To Dates */}
+            <div className="flex items-center justify-center gap-8 pt-1">
+              <div className="flex items-center gap-2">
+                <label className="font-bold text-[#800000]">From</label>
+                <div className="border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white px-1.5 py-0.5 shadow-inner">
+                  <input 
+                    type="text" 
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    onBlur={() => setFromDate(formatDateDisplay(fromDate))}
+                    placeholder="DD/MM/YYYY"
+                    className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="font-bold text-[#800000]">To</label>
+                <div className={`border border-t-[#808080] border-l-[#808080] border-r-white border-b-white px-1.5 py-0.5 shadow-inner ${holdType === 'Permanent' ? 'bg-slate-200 opacity-60' : 'bg-white'}`}>
+                  <input 
+                    type="text" 
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    onBlur={() => setToDate(formatDateDisplay(toDate))}
+                    disabled={holdType === 'Permanent'}
+                    placeholder={holdType === 'Permanent' ? '---' : 'DD/MM/YYYY'}
+                    className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent disabled:cursor-not-allowed"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Hotkeys Hint matching screenshot_10.jpg */}
+            <div className="text-center pt-2.5 font-bold text-[#800000] text-[11px]">
+              F1 - Temporary &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; F2 - Permanent
+            </div>
+          </fieldset>
+
+          {/* Customer Status Msg */}
+          {msg && (
+            <div className={`text-center py-1 px-2 border font-bold text-xs ${
+              msg.isError 
+                ? 'bg-red-100 text-red-900 border-red-300' 
+                : 'bg-emerald-100 text-emerald-900 border-emerald-400'
+            }`}>
+              {msg.text}
+            </div>
+          )}
+        </div>
 
         {/* Action Buttons matching VB6 (Save, Update, Delete, Find, Cancel, Exit) */}
         <div className="flex items-center justify-between gap-1 pt-2 border-t border-[#808080]">
           <button 
             type="button"
-            onClick={activeTab === 'publication' ? handlePubSave : handleSave}
-            disabled={activeTab === 'publication' ? isPubSaving : isSaving}
+            onClick={handleSave}
+            disabled={isSaving}
             className="flex-1 py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
           >
             <u>S</u>ave
@@ -1076,8 +675,8 @@ export default function DiscontinueForm({
 
           <button 
             type="button"
-            onClick={activeTab === 'publication' ? handlePubSave : handleSave}
-            disabled={activeTab === 'publication' ? isPubSaving : isSaving}
+            onClick={handleSave}
+            disabled={isSaving}
             className="flex-1 py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
           >
             <u>U</u>pdate
@@ -1118,16 +717,14 @@ export default function DiscontinueForm({
 
       </div>
 
-      {/* Find Modal Dialog (Search / Delete Discontinue Entries for Current Tab) */}
+      {/* Find Modal Dialog (Search / Delete Discontinue Entries for Customer Discontinue) */}
       {showFindModal && (
         <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-3 z-50">
           <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-full h-[450px] flex flex-col font-tahoma text-xs">
             
             {/* Modal Title Bar */}
             <div className="bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold">
-              <span>
-                {activeTab === 'publication' ? 'Find Publication Discontinues (अखबार रोक सूची)' : 'Find Customer Discontinues (ग्राहक रोक सूची)'}
-              </span>
+              <span>Find Customer Discontinues (ग्राहक रोक सूची)</span>
               <button 
                 onClick={() => setShowFindModal(false)}
                 className="w-4 h-4 bg-[#ECE9D8] text-black text-[10px] font-bold flex items-center justify-center hover:bg-red-600 hover:text-white cursor-pointer"
@@ -1144,7 +741,7 @@ export default function DiscontinueForm({
                   type="text" 
                   value={findSearch}
                   onChange={(e) => setFindSearch(e.target.value)}
-                  placeholder={activeTab === 'publication' ? 'Filter by publication name or ID...' : 'Filter by Customer ID or Name...'}
+                  placeholder="Filter by Customer ID or Name..."
                   className="flex-1 px-2 py-0.5 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold outline-none"
                 />
               </div>
@@ -1155,9 +752,7 @@ export default function DiscontinueForm({
                   <thead className="sticky top-0 bg-[#ECE9D8] border-b border-[#808080]">
                     <tr>
                       <th className="p-1 border-r text-center">#ID</th>
-                      <th className="p-1 border-r text-left">
-                        {activeTab === 'publication' ? 'Publication' : 'Cust ID'}
-                      </th>
+                      <th className="p-1 border-r text-left">Cust ID</th>
                       <th className="p-1 border-r text-left">Type</th>
                       <th className="p-1 border-r text-left">From</th>
                       <th className="p-1 border-r text-left">To</th>
@@ -1165,99 +760,43 @@ export default function DiscontinueForm({
                     </tr>
                   </thead>
                   <tbody>
-                    {activeTab === 'publication' ? (
-                      allPubDiscontinues.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="p-4 text-center text-slate-500 font-bold">
-                            {isLoadingDiscs ? 'Loading publication discontinue records...' : 'No publication discontinue records found.'}
-                          </td>
-                        </tr>
-                      ) : (
-                        allPubDiscontinues
-                          .filter(d => {
-                            if (!findSearch.trim()) return true;
-                            const s = findSearch.toLowerCase();
-                            const pId = d.publica_id !== undefined ? d.publica_id : d.Publica_id;
-                            const isHoli = pId === 0 || pId === '0';
-                            const pubName = isHoli ? 'holiday all newspapers' : (pubDisList.find(p => p.publica_id === pId)?.public_name || '').toLowerCase();
-                            const remark = (d.remark || '').toLowerCase();
-                            return String(pId).includes(s) || pubName.includes(s) || remark.includes(s) || String(d.id).includes(s);
-                          })
-                          .slice(0, 100)
-                          .map((d) => {
-                            const pId = d.publica_id !== undefined ? d.publica_id : d.Publica_id;
-                            const isHolidayRec = pId === 0 || pId === '0';
-                            const pubName = isHolidayRec 
-                              ? `🏖️ [HOLIDAY] All Newspapers ${d.remark ? `(${d.remark})` : ''}` 
-                              : (pubDisList.find(p => p.publica_id === pId)?.public_name || `Pub #${pId}`);
-                            const isPerm = String(d.dis_type).toUpperCase().startsWith('P');
-                            return (
-                              <tr key={d.id} className={`border-b hover:bg-blue-50 ${isHolidayRec ? 'bg-emerald-50/50' : ''}`}>
-                                <td className="p-1 border-r text-center font-mono font-bold">#{d.id}</td>
-                                <td className={`p-1 border-r font-bold ${isHolidayRec ? 'text-emerald-900' : 'text-blue-900'}`}>
-                                  {pubName}
-                                </td>
-                                <td className="p-1 border-r font-bold">
-                                  {isHolidayRec ? (
-                                    <span className="text-emerald-800 bg-emerald-100 px-1 py-0.5 rounded text-[10px]">Holiday</span>
-                                  ) : (
-                                    isPerm ? 'Permanent' : 'Temporary'
-                                  )}
-                                </td>
-                                <td className="p-1 border-r font-mono">{d.from_date || d.entry_date || '-'}</td>
-                                <td className="p-1 border-r font-mono">{d.to_date || d.oc_date || 'Permanent'}</td>
-                                <td className="p-1 text-center">
-                                  <button 
-                                    onClick={() => handleDeleteRecord(d.id, true)}
-                                    className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold cursor-pointer shadow-xs"
-                                    title="Delete this entry"
-                                  >
-                                    Del
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })
-                      )
+                    {allDiscontinues.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-4 text-center text-slate-500 font-bold">
+                          {isLoadingDiscs ? 'Loading customer discontinue records...' : 'No customer discontinue records found.'}
+                        </td>
+                      </tr>
                     ) : (
-                      allDiscontinues.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="p-4 text-center text-slate-500 font-bold">
-                            {isLoadingDiscs ? 'Loading customer discontinue records...' : 'No customer discontinue records found.'}
-                          </td>
-                        </tr>
-                      ) : (
-                        allDiscontinues
-                          .filter(d => {
-                            if (!findSearch.trim()) return true;
-                            const s = findSearch.toLowerCase();
-                            return String(d.customer_id).includes(s) || String(d.discontinue_id).includes(s);
-                          })
-                          .slice(0, 100)
-                          .map((d) => {
-                            const isPerm = String(d.temp_perma).toUpperCase().startsWith('P');
-                            return (
-                              <tr key={d.discontinue_id} className="border-b hover:bg-blue-50">
-                                <td className="p-1 border-r text-center font-mono font-bold">#{d.discontinue_id}</td>
-                                <td className="p-1 border-r text-blue-900 font-mono font-bold">#{d.customer_id}</td>
-                                <td className="p-1 border-r font-bold">
-                                  {isPerm ? 'Permanent' : 'Temporary'}
-                                </td>
-                                <td className="p-1 border-r font-mono">{d.temp_from || d.entry_date || '-'}</td>
-                                <td className="p-1 border-r font-mono">{d.temp_to || 'Permanent'}</td>
-                                <td className="p-1 text-center">
-                                  <button 
-                                    onClick={() => handleDeleteRecord(d.discontinue_id, false)}
-                                    className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold cursor-pointer shadow-xs"
-                                    title="Delete this entry"
-                                  >
-                                    Del
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })
-                      )
+                      allDiscontinues
+                        .filter(d => {
+                          if (!findSearch.trim()) return true;
+                          const s = findSearch.toLowerCase();
+                          return String(d.customer_id).includes(s) || String(d.discontinue_id).includes(s);
+                        })
+                        .slice(0, 100)
+                        .map((d) => {
+                          const isPerm = String(d.temp_perma).toUpperCase().startsWith('P');
+                          return (
+                            <tr key={d.discontinue_id} className="border-b hover:bg-blue-50">
+                              <td className="p-1 border-r text-center font-mono font-bold">#{d.discontinue_id}</td>
+                              <td className="p-1 border-r text-blue-900 font-mono font-bold">#{d.customer_id}</td>
+                              <td className="p-1 border-r font-bold">
+                                {isPerm ? 'Permanent' : 'Temporary'}
+                              </td>
+                              <td className="p-1 border-r font-mono">{d.temp_from || d.entry_date || '-'}</td>
+                              <td className="p-1 border-r font-mono">{d.temp_to || 'Permanent'}</td>
+                              <td className="p-1 text-center">
+                                <button 
+                                  onClick={() => handleDeleteRecord(d.discontinue_id)}
+                                  className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold cursor-pointer shadow-xs"
+                                  title="Delete this entry"
+                                >
+                                  Del
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
                     )}
                   </tbody>
                 </table>
@@ -1266,7 +805,7 @@ export default function DiscontinueForm({
               {/* Modal Footer */}
               <div className="flex justify-between items-center pt-2">
                 <span className="font-bold text-slate-600 text-[11px]">
-                  Total Records: {activeTab === 'publication' ? allPubDiscontinues.length : allDiscontinues.length}
+                  Total Records: {allDiscontinues.length}
                 </span>
                 <button 
                   onClick={() => setShowFindModal(false)}
