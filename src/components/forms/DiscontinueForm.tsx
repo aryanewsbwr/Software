@@ -373,6 +373,18 @@ export default function DiscontinueForm({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to save publication discontinue');
 
+      const savedRec = data.record || {
+        id: data.id || Date.now(),
+        publica_id: pid,
+        from_date: fromIso,
+        to_date: toIso,
+        entry_date: fromIso,
+        oc_date: toIso,
+        dis_type: pubHoldType === 'Permanent' ? 'P' : 'T',
+        remark: pubRemark || 'Discontinued'
+      };
+      setAllPubDiscontinues(prev => [savedRec, ...prev.filter(d => d.id !== savedRec.id)]);
+
       const pubName = pubDisList.find(p => p.publica_id === pid)?.public_name || `Pub #${pid}`;
       setPubMsg({
         text: `✓ ${pubName} का ${pubHoldType === 'Permanent' ? 'स्थाई बंद (Permanent Stop)' : 'अस्थाई रोक (Temporary Hold)'} सफलतापूर्वक दर्ज हुआ!`,
@@ -400,16 +412,18 @@ export default function DiscontinueForm({
     setIsLoadingDiscs(true);
     try {
       const [cRes, pRes] = await Promise.all([
-        fetch('/api/discontinue'),
-        fetch('/api/publicationdis')
+        fetch('/api/discontinue', { cache: 'no-store' }),
+        fetch('/api/publicationdis', { cache: 'no-store' })
       ]);
       if (cRes.ok) {
         const data = await cRes.json();
-        setAllDiscontinues(data.discontinues || []);
+        const list = (data.discontinues || []).sort((a: any, b: any) => (b.discontinue_id || 0) - (a.discontinue_id || 0));
+        setAllDiscontinues(list);
       }
       if (pRes.ok) {
         const pData = await pRes.json();
-        setAllPubDiscontinues(pData.discontinues || []);
+        const pList = (pData.discontinues || []).sort((a: any, b: any) => (b.id || 0) - (a.id || 0));
+        setAllPubDiscontinues(pList);
       }
     } catch (err) {
       console.error(err);
@@ -434,7 +448,7 @@ export default function DiscontinueForm({
     }
   };
 
-  // Delete Discontinue Record from Find Modal
+  // Delete Discontinue Record (by ID)
   const handleDeleteRecord = async (discId: number, isPub: boolean = false) => {
     if (!confirm(`Are you sure you want to delete this discontinue record #${discId}?`)) return;
     try {
@@ -447,9 +461,70 @@ export default function DiscontinueForm({
           setAllDiscontinues(prev => prev.filter(d => (d.discontinue_id || d.Discontinue_id) !== discId));
         }
         alert(`Record #${discId} successfully deleted.`);
+      } else {
+        const d = await res.json();
+        alert(`Delete failed: ${d.error || 'Server error'}`);
       }
     } catch (err: any) {
       alert(`Delete error: ${err.message}`);
+    }
+  };
+
+  // Main Form Delete Button Action
+  const handleMainDelete = async () => {
+    if (activeTab === 'publication') {
+      if (!pubSelectedId) {
+        handleOpenFind();
+        return;
+      }
+      const pid = parseInt(pubSelectedId, 10);
+      const pubName = pubDisList.find(p => p.publica_id === pid)?.public_name || `Pub #${pid}`;
+      
+      try {
+        const res = await fetch(`/api/publicationdis?publica_id=${pid}`, { cache: 'no-store' });
+        const data = await res.json();
+        const existing = data.discontinues || [];
+        if (existing.length === 0) {
+          alert(`No active discontinue entry found for ${pubName}. Opening Find list.`);
+          handleOpenFind();
+          return;
+        }
+
+        const latest = existing[0];
+        const fDate = latest.from_date || latest.entry_date || '-';
+        const tDate = latest.to_date || latest.oc_date || 'Permanent';
+        if (!confirm(`Are you sure you want to delete discontinue record #${latest.id} for ${pubName} (${fDate} to ${tDate})?`)) return;
+
+        await handleDeleteRecord(latest.id, true);
+        setPubMsg({ text: `✓ Discontinue entry #${latest.id} for ${pubName} has been deleted.`, isError: false });
+        handlePubCancel();
+      } catch (err: any) {
+        alert(`Error: ${err.message}`);
+      }
+    } else {
+      if (!selectedCust) {
+        handleOpenFind();
+        return;
+      }
+      try {
+        const res = await fetch(`/api/discontinue?customer_id=${selectedCust.customer_id}`, { cache: 'no-store' });
+        const data = await res.json();
+        const existing = data.discontinues || [];
+        if (existing.length === 0) {
+          alert(`No active discontinue entry found for Customer #${selectedCust.customer_id} (${selectedCust.name_eng}). Opening Find list.`);
+          handleOpenFind();
+          return;
+        }
+
+        const latest = existing[0];
+        if (!confirm(`Are you sure you want to delete discontinue record #${latest.discontinue_id} for Customer #${selectedCust.customer_id} (${latest.temp_from} to ${latest.temp_to})?`)) return;
+
+        await handleDeleteRecord(latest.discontinue_id, false);
+        setMsg({ text: `✓ Discontinue entry #${latest.discontinue_id} deleted.`, isError: false });
+        handleCancel();
+      } catch (err: any) {
+        alert(`Error: ${err.message}`);
+      }
     }
   };
 
@@ -933,7 +1008,7 @@ export default function DiscontinueForm({
 
           <button 
             type="button"
-            onClick={() => handleOpenFind()}
+            onClick={handleMainDelete}
             className="flex-1 py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
           >
             <u>D</u>elete
@@ -1014,63 +1089,87 @@ export default function DiscontinueForm({
                   </thead>
                   <tbody>
                     {activeTab === 'publication' ? (
-                      allPubDiscontinues
-                        .filter(d => {
-                          if (!findSearch.trim()) return true;
-                          const s = findSearch.toLowerCase();
-                          const pubName = (pubDisList.find(p => p.publica_id === d.publica_id)?.public_name || '').toLowerCase();
-                          return String(d.publica_id).includes(s) || pubName.includes(s) || String(d.id).includes(s);
-                        })
-                        .slice(0, 100)
-                        .map((d) => {
-                          const pubName = pubDisList.find(p => p.publica_id === d.publica_id)?.public_name || `Pub #${d.publica_id}`;
-                          return (
-                            <tr key={d.id} className="border-b hover:bg-blue-50">
-                              <td className="p-1 border-r text-center font-mono font-bold">#{d.id}</td>
-                              <td className="p-1 border-r text-blue-900 font-bold">{pubName}</td>
-                              <td className="p-1 border-r font-bold">
-                                {d.dis_type === 'P' ? 'Permanent' : 'Temporary'}
-                              </td>
-                              <td className="p-1 border-r font-mono">{d.from_date || d.entry_date || '-'}</td>
-                              <td className="p-1 border-r font-mono">{d.to_date || d.oc_date || 'Permanent'}</td>
-                              <td className="p-1 text-center">
-                                <button 
-                                  onClick={() => handleDeleteRecord(d.id, true)}
-                                  className="px-1.5 py-0.5 bg-red-100 hover:bg-red-200 text-red-800 border border-red-300 text-[10px] font-bold cursor-pointer"
-                                >
-                                  Del
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })
+                      allPubDiscontinues.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-4 text-center text-slate-500 font-bold">
+                            {isLoadingDiscs ? 'Loading publication discontinue records...' : 'No publication discontinue records found.'}
+                          </td>
+                        </tr>
+                      ) : (
+                        allPubDiscontinues
+                          .filter(d => {
+                            if (!findSearch.trim()) return true;
+                            const s = findSearch.toLowerCase();
+                            const pId = d.publica_id || d.Publica_id;
+                            const pubName = (pubDisList.find(p => p.publica_id === pId)?.public_name || '').toLowerCase();
+                            return String(pId).includes(s) || pubName.includes(s) || String(d.id).includes(s);
+                          })
+                          .slice(0, 100)
+                          .map((d) => {
+                            const pId = d.publica_id || d.Publica_id;
+                            const pubName = pubDisList.find(p => p.publica_id === pId)?.public_name || `Pub #${pId}`;
+                            const isPerm = String(d.dis_type).toUpperCase().startsWith('P');
+                            return (
+                              <tr key={d.id} className="border-b hover:bg-blue-50">
+                                <td className="p-1 border-r text-center font-mono font-bold">#{d.id}</td>
+                                <td className="p-1 border-r text-blue-900 font-bold">{pubName}</td>
+                                <td className="p-1 border-r font-bold">
+                                  {isPerm ? 'Permanent' : 'Temporary'}
+                                </td>
+                                <td className="p-1 border-r font-mono">{d.from_date || d.entry_date || '-'}</td>
+                                <td className="p-1 border-r font-mono">{d.to_date || d.oc_date || 'Permanent'}</td>
+                                <td className="p-1 text-center">
+                                  <button 
+                                    onClick={() => handleDeleteRecord(d.id, true)}
+                                    className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold cursor-pointer shadow-xs"
+                                    title="Delete this entry"
+                                  >
+                                    Del
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                      )
                     ) : (
-                      allDiscontinues
-                        .filter(d => {
-                          if (!findSearch.trim()) return true;
-                          const s = findSearch.toLowerCase();
-                          return String(d.customer_id).includes(s) || String(d.discontinue_id).includes(s);
-                        })
-                        .slice(0, 100)
-                        .map((d) => (
-                          <tr key={d.discontinue_id} className="border-b hover:bg-blue-50">
-                            <td className="p-1 border-r text-center font-mono font-bold">#{d.discontinue_id}</td>
-                            <td className="p-1 border-r text-blue-900 font-mono font-bold">#{d.customer_id}</td>
-                            <td className="p-1 border-r font-bold">
-                              {d.temp_perma === 'P' ? 'Permanent' : 'Temporary'}
-                            </td>
-                            <td className="p-1 border-r font-mono">{d.temp_from || '-'}</td>
-                            <td className="p-1 border-r font-mono">{d.temp_to || 'Permanent'}</td>
-                            <td className="p-1 text-center">
-                              <button 
-                                onClick={() => handleDeleteRecord(d.discontinue_id, false)}
-                                className="px-1.5 py-0.5 bg-red-100 hover:bg-red-200 text-red-800 border border-red-300 text-[10px] font-bold cursor-pointer"
-                              >
-                                Del
-                              </button>
-                            </td>
-                          </tr>
-                        ))
+                      allDiscontinues.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-4 text-center text-slate-500 font-bold">
+                            {isLoadingDiscs ? 'Loading customer discontinue records...' : 'No customer discontinue records found.'}
+                          </td>
+                        </tr>
+                      ) : (
+                        allDiscontinues
+                          .filter(d => {
+                            if (!findSearch.trim()) return true;
+                            const s = findSearch.toLowerCase();
+                            return String(d.customer_id).includes(s) || String(d.discontinue_id).includes(s);
+                          })
+                          .slice(0, 100)
+                          .map((d) => {
+                            const isPerm = String(d.temp_perma).toUpperCase().startsWith('P');
+                            return (
+                              <tr key={d.discontinue_id} className="border-b hover:bg-blue-50">
+                                <td className="p-1 border-r text-center font-mono font-bold">#{d.discontinue_id}</td>
+                                <td className="p-1 border-r text-blue-900 font-mono font-bold">#{d.customer_id}</td>
+                                <td className="p-1 border-r font-bold">
+                                  {isPerm ? 'Permanent' : 'Temporary'}
+                                </td>
+                                <td className="p-1 border-r font-mono">{d.temp_from || d.entry_date || '-'}</td>
+                                <td className="p-1 border-r font-mono">{d.temp_to || 'Permanent'}</td>
+                                <td className="p-1 text-center">
+                                  <button 
+                                    onClick={() => handleDeleteRecord(d.discontinue_id, false)}
+                                    className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold cursor-pointer shadow-xs"
+                                    title="Delete this entry"
+                                  >
+                                    Del
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                      )
                     )}
                   </tbody>
                 </table>

@@ -22,14 +22,51 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const pubIdStr = searchParams.get('publica_id');
 
-    const list = loadJson('publicationdis.json');
+    let list: any[] = [];
+    try {
+      const { data: sbData, error } = await supabase
+        .from('publicationdis')
+        .select('*')
+        .order('id', { ascending: false });
+      if (!error && sbData && sbData.length > 0) {
+        list = sbData.map((r: any) => ({
+          ...r,
+          from_date: r.entry_date || r.from_date,
+          to_date: r.oc_date || r.to_date
+        }));
+      }
+    } catch (_) {}
+
+    const localList = loadJson('publicationdis.json');
+    if (list.length === 0) {
+      list = localList.map((r: any) => ({
+        ...r,
+        from_date: r.entry_date || r.from_date,
+        to_date: r.oc_date || r.to_date
+      }));
+    } else {
+      const sbIds = new Set(list.map((r: any) => r.id));
+      for (const loc of localList) {
+        if (!sbIds.has(loc.id)) {
+          list.push({
+            ...loc,
+            from_date: loc.entry_date || loc.from_date,
+            to_date: loc.oc_date || loc.to_date
+          });
+        }
+      }
+    }
+
+    // Sort newest first
+    list.sort((a: any, b: any) => (b.id || 0) - (a.id || 0));
+
     if (pubIdStr) {
       const pid = parseInt(pubIdStr, 10);
       const filtered = list.filter((p: any) => (p.publica_id || p.Publica_id) === pid);
       return NextResponse.json({ total: filtered.length, discontinues: filtered });
     }
 
-    return NextResponse.json({ total: list.length, discontinues: list.slice(0, 200) });
+    return NextResponse.json({ total: list.length, discontinues: list });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -73,13 +110,16 @@ export async function POST(request: NextRequest) {
 
     // 1. Save to Supabase publicationdis table if exists
     try {
-      await supabase.from('publicationdis').insert([{
+      const { data: inserted } = await supabase.from('publicationdis').insert([{
         publica_id: pid,
         entry_date: fromIso,
         oc_date: toIso,
         dis_type: record.dis_type,
         remark: record.remark
-      }]);
+      }]).select('*');
+      if (inserted && inserted[0]) {
+        record.id = inserted[0].id;
+      }
     } catch (dbErr) {
       console.warn('Supabase publicationdis warning:', dbErr);
     }

@@ -22,14 +22,39 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const customerIdStr = searchParams.get('customer_id');
 
-    const discs = loadJson('discontinues.json');
+    let discs: any[] = [];
+    try {
+      const { data: sbData, error } = await supabase
+        .from('discontinue')
+        .select('*')
+        .order('discontinue_id', { ascending: false });
+      if (!error && sbData && sbData.length > 0) {
+        discs = sbData;
+      }
+    } catch (_) {}
+
+    const localDiscs = loadJson('discontinues.json');
+    if (discs.length === 0) {
+      discs = localDiscs;
+    } else {
+      const sbIds = new Set(discs.map((r: any) => r.discontinue_id));
+      for (const loc of localDiscs) {
+        if (!sbIds.has(loc.discontinue_id)) {
+          discs.push(loc);
+        }
+      }
+    }
+
+    // Sort newest first
+    discs.sort((a: any, b: any) => (b.discontinue_id || 0) - (a.discontinue_id || 0));
+
     if (customerIdStr) {
       const cid = parseInt(customerIdStr, 10);
       const filtered = discs.filter((d: any) => (d.customer_id || d.Customer_id) === cid);
       return NextResponse.json({ total: filtered.length, discontinues: filtered });
     }
 
-    return NextResponse.json({ total: discs.length, discontinues: discs.slice(0, 200) });
+    return NextResponse.json({ total: discs.length, discontinues: discs });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

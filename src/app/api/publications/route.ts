@@ -29,9 +29,13 @@ export async function GET(request: NextRequest) {
     let pubs = loadJson('publications.json');
     const rates = loadJson('rates.json');
     const ratechanges = loadJson('ratechanges.json');
-    const pubdis = loadJson('publicationdis.json');
-
-    // Sync any missing publications from Supabase
+    let pubdis = loadJson('publicationdis.json');
+    try {
+      const { data: sbPubdis } = await supabase.from('publicationdis').select('*');
+      if (sbPubdis && sbPubdis.length > 0) {
+        pubdis = sbPubdis;
+      }
+    } catch (_) {}
     try {
       const { data: sbPubs } = await supabase.from('publication').select('*');
       if (sbPubs && sbPubs.length > 0) {
