@@ -25,6 +25,26 @@ const WEEKDAYS = [
   { id: 7, name: 'Saturday', hindi: 'शनिवार', defaultRate: 5.0 },
 ];
 
+const DAY_NAME_TO_ID: Record<string, number> = {
+  'Sunday': 1,
+  'Monday': 2,
+  'Tuesday': 3,
+  'Wednesday': 4,
+  'Thursday': 5,
+  'Friday': 6,
+  'Saturday': 7
+};
+
+const ID_TO_DAY_NAME: Record<number, string> = {
+  1: 'Sunday',
+  2: 'Monday',
+  3: 'Tuesday',
+  4: 'Wednesday',
+  5: 'Thursday',
+  6: 'Friday',
+  7: 'Saturday'
+};
+
 export default function PublicationForm({ 
   onClose, 
   publications = [], 
@@ -43,6 +63,7 @@ export default function PublicationForm({
     type_p: '',
     circulation: '',
     duration: '',
+    magzine_day: 0,
     chr_del: 0,
     is_closed: false,
     is_permanent: false,
@@ -89,6 +110,7 @@ export default function PublicationForm({
       type_p: '',
       circulation: '',
       duration: '',
+      magzine_day: 0,
       chr_del: 0,
       is_closed: false,
       is_permanent: false,
@@ -116,6 +138,12 @@ export default function PublicationForm({
     const isPerm = Boolean(p.is_permanent || p.closed_to === '2099-12-31' || (p.closed_to && p.closed_to >= '2090-01-01'));
     const isClsd = Boolean(p.is_closed || isPerm);
 
+    const magDay = p.magzine_day !== undefined && p.magzine_day !== null 
+      ? Number(p.magzine_day) 
+      : (p.publica_id === 513 || p.publica_id === 512 || p.publica_id === 9 ? 2 : (p.publica_id === 6 ? 1 : (p.publica_id === 7 || p.publica_id === 8 ? 7 : 0)));
+    const dayName = ID_TO_DAY_NAME[magDay] || '';
+    setPublishingDay(dayName);
+
     setSelectedPub({
       ...p,
       pub_hindi: hindiName,
@@ -123,6 +151,7 @@ export default function PublicationForm({
       circulation: p.circulation || '',
       duration: p.duration || '',
       publish_id: p.publish_id || 0,
+      magzine_day: magDay,
       is_closed: isClsd,
       is_permanent: isPerm
     });
@@ -132,9 +161,14 @@ export default function PublicationForm({
     setClosedFrom(p.closed_from || '');
     setClosedTo(p.closed_to || '');
 
-    // Load effective 7-day weekday rates with rate changes
-    const effectiveRates = getEffectiveWeekdayRates(p.publica_id, new Date().toISOString().split('T')[0], rates, ratechanges);
+    // Load effective 7-day weekday rates with rate changes aligned to publishing day
+    const effectiveRates = getEffectiveWeekdayRates(p.publica_id, new Date().toISOString().split('T')[0], rates, ratechanges, magDay);
     setWeekdayRates(effectiveRates);
+    if (magDay >= 1 && magDay <= 7) {
+      setSelectedDayRow(magDay);
+    } else {
+      setSelectedDayRow(1);
+    }
   };
 
   const handleNew = () => {
@@ -230,6 +264,31 @@ export default function PublicationForm({
     setTimeout(() => setMsg(''), 3000);
   };
 
+  const handlePublishingDayChange = (dayName: string) => {
+    setPublishingDay(dayName);
+    const dayId = DAY_NAME_TO_ID[dayName] || 0;
+    setSelectedPub(prev => ({
+      ...prev,
+      magzine_day: dayId || null
+    }));
+
+    if (dayId >= 1 && dayId <= 7) {
+      setSelectedDayRow(dayId);
+      setWeekdayRates(prev => {
+        // If the selected day already has a rate > 0, keep it
+        if (prev[dayId] && prev[dayId] > 0) return prev;
+        // Otherwise grab existing rate from previous day / day 1
+        const existingRate = prev[1] || Object.values(prev).find(v => v > 0) || 0;
+        if (existingRate > 0) {
+          const updated: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 };
+          updated[dayId] = existingRate;
+          return updated;
+        }
+        return prev;
+      });
+    }
+  };
+
   const handleSave = async () => {
     if (!selectedPub.public_name.trim()) {
       setMsg('Error: Publication Name cannot be empty');
@@ -238,8 +297,10 @@ export default function PublicationForm({
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
+    const pubMagDay = publishingDay ? (DAY_NAME_TO_ID[publishingDay] || null) : (selectedPub.magzine_day || null);
     const pubToSave = {
       ...selectedPub,
+      magzine_day: pubMagDay,
       is_new: isNewMode || selectedPub.publica_id === 0,
       chr_del: delChargesChecked ? 1 : 0,
       rates: weekdayRates,
@@ -474,17 +535,26 @@ export default function PublicationForm({
           {/* Rate & Duration */}
           <label className="col-span-4 text-right pr-2 text-[#800000]">Rate</label>
           <div className="col-span-8 flex items-center gap-2">
-            <input 
-              type="number"
-              step="0.05"
-              value={weekdayRates[1] ? weekdayRates[1] : (weekdayRates[1] === 0 ? '0' : '')} 
-              placeholder="0.00"
-              onChange={(e) => {
-                const val = parseFloat(e.target.value) || 0;
-                setWeekdayRates({ ...weekdayRates, 1: val });
-              }}
-              className="w-28 px-2 py-0.5 border border-[#7F9DB9] bg-white text-center font-bold text-black text-xs shadow-inner outline-none"
-            />
+            {(() => {
+              const activeRateDay = (publishingDay && DAY_NAME_TO_ID[publishingDay]) || selectedDayRow || 1;
+              const curRateVal = weekdayRates[activeRateDay] ?? (Object.values(weekdayRates).find(v => v > 0) ?? 0);
+              return (
+                <input 
+                  type="number"
+                  step="0.05"
+                  value={curRateVal ? curRateVal : (curRateVal === 0 ? '0' : '')} 
+                  placeholder="0.00"
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value) || 0;
+                    setWeekdayRates(prev => ({
+                      ...prev,
+                      [activeRateDay]: val
+                    }));
+                  }}
+                  className="w-28 px-2 py-0.5 border border-[#7F9DB9] bg-white text-center font-bold text-black text-xs shadow-inner outline-none"
+                />
+              );
+            })()}
             <label className="text-[#800000] font-bold text-xs pl-2">Duration</label>
             <select 
               value={selectedPub.duration || ''} 
@@ -503,7 +573,7 @@ export default function PublicationForm({
           <label className="col-span-4 text-right pr-2 text-[#800000]">Publishing Day</label>
           <select 
             value={publishingDay || ''}
-            onChange={(e) => setPublishingDay(e.target.value)}
+            onChange={(e) => handlePublishingDayChange(e.target.value)}
             className="col-span-8 px-2 py-0.5 border border-[#7F9DB9] bg-white font-bold text-black text-xs outline-none"
           >
             <option value="">-- Select Publishing Day --</option>

@@ -15,7 +15,8 @@ export function getEffectiveWeekdayRates(
   publicaId: number,
   targetDateIso: string = new Date().toISOString().split('T')[0],
   rates: Rate[] = [],
-  ratechanges: RateChange[] = []
+  ratechanges: RateChange[] = [],
+  magzineDay?: number | null
 ): Record<number, number> {
   const result: Record<number, number> = {
     1: 0, // Sunday
@@ -69,6 +70,18 @@ export function getEffectiveWeekdayRates(
       }
     }
   });
+
+  // 3. For magazines with specific publishing day (magzineDay 2..7)
+  // Legacy FoxPro stored single rate under Dayofweek 1 (Sunday).
+  // If the magazine's actual publishing day is Monday..Saturday and has 0 while Day 1 has rate,
+  // align rate to its actual publishing day.
+  const mDay = magzineDay ? Number(magzineDay) : (publicaId === 513 || publicaId === 512 || publicaId === 9 ? 2 : 0);
+  if (mDay >= 2 && mDay <= 7) {
+    if (result[mDay] === 0 && result[1] > 0) {
+      result[mDay] = result[1];
+      result[1] = 0;
+    }
+  }
 
   return result;
 }

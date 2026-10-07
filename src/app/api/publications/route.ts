@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
 
     const enriched = pubs.map((p: any) => {
       const decodedHindi = cleanOrTransliterateHindi(p.pub_hindi, p.public_name);
-      const effectiveRates = withRates ? getEffectiveWeekdayRates(p.publica_id, todayIso, rates, ratechanges) : null;
+      const effectiveRates = withRates ? getEffectiveWeekdayRates(p.publica_id, todayIso, rates, ratechanges, p.magzine_day) : null;
       
       const disc = pubdis.find((d: any) => (d.publica_id || d.Publica_id) === p.publica_id);
       const toDate = disc ? (disc.to_date || disc.ToDate) : null;

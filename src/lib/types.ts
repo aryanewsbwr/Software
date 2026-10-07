@@ -22,8 +22,8 @@ export interface Publication {
   abrv?: string;
   circulation?: string;
   duration?: string;
-  magzine_day?: number;
-  magzine_month?: number;
+  magzine_day?: number | null;
+  magzine_month?: number | null;
   chr_del?: number;
   pub_hindi?: string;
   is_closed?: boolean;
