@@ -48,6 +48,30 @@ export default function PeriodForm({ isOpen, onLogin, onExit }: PeriodFormProps)
     }
   }, [isOpen]);
 
+  // Handle Enter key and keyboard shortcuts when modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        onLogin(selectedMonth, startYear, endYear);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        if (onExit) onExit();
+      } else if (e.altKey && (e.key === 'l' || e.key === 'L')) {
+        e.preventDefault();
+        onLogin(selectedMonth, startYear, endYear);
+      } else if (e.altKey && (e.key === 'e' || e.key === 'E')) {
+        e.preventDefault();
+        if (onExit) onExit();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, selectedMonth, startYear, endYear, onLogin, onExit]);
+
   if (!isOpen) return null;
 
   // Calendar generation for the currently selected month and year
@@ -98,6 +122,7 @@ export default function PeriodForm({ isOpen, onLogin, onExit }: PeriodFormProps)
             <div className="flex items-center justify-between gap-2">
               <label className="font-bold text-[#000080] w-28">Month</label>
               <select 
+                autoFocus
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 className="flex-1 px-2 py-1 border border-[#808080] bg-white font-bold text-slate-900"
