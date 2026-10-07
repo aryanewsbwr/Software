@@ -226,7 +226,20 @@ export async function POST(request: NextRequest) {
 
     // 2. Save 7-day rates in Supabase and local cache
     if (customRates && typeof customRates === 'object') {
+      let nextRateId = 1000;
+      try {
+        const { data: maxRate } = await supabase
+          .from('rate')
+          .select('id')
+          .order('id', { ascending: false })
+          .limit(1);
+        if (maxRate && maxRate.length > 0 && maxRate[0].id) {
+          nextRateId = Number(maxRate[0].id) + 1;
+        }
+      } catch (_) {}
+
       const rateRows = Object.entries(customRates).map(([day, rate]) => ({
+        id: nextRateId++,
         publica_id: finalPubId,
         dayofweek: parseInt(day, 10),
         rate: Number(rate)
@@ -253,9 +266,22 @@ export async function POST(request: NextRequest) {
         }
       } catch (fErr) {}
 
-      // Log in Supabase ratechange table
+      // Log in Supabase ratechange table with explicit IDs
       try {
+        let nextRcId = 3000;
+        try {
+          const { data: maxRc } = await supabase
+            .from('ratechange')
+            .select('id')
+            .order('id', { ascending: false })
+            .limit(1);
+          if (maxRc && maxRc.length > 0 && maxRc[0].id) {
+            nextRcId = Number(maxRc[0].id) + 1;
+          }
+        } catch (_) {}
+
         const rateChangeRows = Object.entries(customRates).map(([day, rate]) => ({
+          id: nextRcId++,
           publica_id: finalPubId,
           oldrate: Number(rate),
           newrate: Number(rate),

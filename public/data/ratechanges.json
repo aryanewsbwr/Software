@@ -17428,5 +17428,61 @@
     "new_rate": 65,
     "effective_date": "2026-09-01",
     "dated": "2026-09-01"
+  },
+  {
+    "publica_id": 4,
+    "dayofweek": 1,
+    "oldrate": 5,
+    "new_rate": 7,
+    "dated": "2026-10-17",
+    "effective_date": "2026-10-17"
+  },
+  {
+    "publica_id": 4,
+    "dayofweek": 2,
+    "oldrate": 5,
+    "new_rate": 5,
+    "dated": "2026-10-17",
+    "effective_date": "2026-10-17"
+  },
+  {
+    "publica_id": 4,
+    "dayofweek": 3,
+    "oldrate": 5,
+    "new_rate": 5,
+    "dated": "2026-10-17",
+    "effective_date": "2026-10-17"
+  },
+  {
+    "publica_id": 4,
+    "dayofweek": 4,
+    "oldrate": 5,
+    "new_rate": 5,
+    "dated": "2026-10-17",
+    "effective_date": "2026-10-17"
+  },
+  {
+    "publica_id": 4,
+    "dayofweek": 5,
+    "oldrate": 5,
+    "new_rate": 5,
+    "dated": "2026-10-17",
+    "effective_date": "2026-10-17"
+  },
+  {
+    "publica_id": 4,
+    "dayofweek": 6,
+    "oldrate": 5,
+    "new_rate": 5,
+    "dated": "2026-10-17",
+    "effective_date": "2026-10-17"
+  },
+  {
+    "publica_id": 4,
+    "dayofweek": 7,
+    "oldrate": 5,
+    "new_rate": 5,
+    "dated": "2026-10-17",
+    "effective_date": "2026-10-17"
   }
 ]

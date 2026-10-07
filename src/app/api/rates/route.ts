@@ -85,7 +85,10 @@ export async function GET(request: NextRequest) {
       pubChanges.sort((a: any, b: any) => {
         const dA = (a.effective_date || a.dated || '').split('T')[0];
         const dB = (b.effective_date || b.dated || '').split('T')[0];
-        return dB.localeCompare(dA);
+        if (dB !== dA) return dB.localeCompare(dA);
+        const dayA = a.dayofweek ?? a.Dayofweek ?? 0;
+        const dayB = b.dayofweek ?? b.Dayofweek ?? 0;
+        return dayA - dayB;
       });
       return NextResponse.json({
         publica_id: pubId,
@@ -144,7 +147,20 @@ export async function POST(request: NextRequest) {
     const targetRates = (is_rate_change && new_rates) ? new_rates : day_rates;
 
     if (targetRates && typeof targetRates === 'object') {
-      // 1. Build rate changes records with lowercase PostgreSQL columns
+      // 1. Fetch max ID from Supabase to assign explicit IDs (prevent postgres sequence collision)
+      let nextRcId = 3000;
+      try {
+        const { data: maxRc } = await supabase
+          .from('ratechange')
+          .select('id')
+          .order('id', { ascending: false })
+          .limit(1);
+        if (maxRc && maxRc.length > 0 && maxRc[0].id) {
+          nextRcId = Number(maxRc[0].id) + 1;
+        }
+      } catch (_) {}
+
+      // Build rate changes records with lowercase PostgreSQL columns
       const rateChangeRows: any[] = [];
       const jsonRateChanges: any[] = [];
 
@@ -154,6 +170,7 @@ export async function POST(request: NextRequest) {
         if (rateVal > 0) {
           const oldVal = (old_rates && old_rates[dayNum]) ? Number(old_rates[dayNum]) : 0;
           rateChangeRows.push({
+            id: nextRcId++,
             publica_id: pubId,
             dayofweek: dayNum,
             oldrate: oldVal,
@@ -181,8 +198,21 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // 3. Update Supabase rate table with lowercase columns
+      // 3. Update Supabase rate table with explicit IDs
+      let nextRateId = 1000;
+      try {
+        const { data: maxRate } = await supabase
+          .from('rate')
+          .select('id')
+          .order('id', { ascending: false })
+          .limit(1);
+        if (maxRate && maxRate.length > 0 && maxRate[0].id) {
+          nextRateId = Number(maxRate[0].id) + 1;
+        }
+      } catch (_) {}
+
       const rateRows = Object.entries(targetRates).map(([day, rate]) => ({
+        id: nextRateId++,
         publica_id: pubId,
         dayofweek: parseInt(day, 10),
         rate: Number(rate)
