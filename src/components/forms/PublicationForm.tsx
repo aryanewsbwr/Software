@@ -132,6 +132,19 @@ export default function PublicationForm({
     }, 50);
   };
 
+  const [localRates, setLocalRates] = useState<Rate[]>(rates);
+  const [localRatechanges, setLocalRatechanges] = useState<RateChange[]>(ratechanges);
+
+  useEffect(() => {
+    if (rates && rates.length > 0) setLocalRates(rates);
+    else fetch('/data/rates.json').then(r => r.json()).then(setLocalRates).catch(() => {});
+  }, [rates]);
+
+  useEffect(() => {
+    if (ratechanges && ratechanges.length > 0) setLocalRatechanges(ratechanges);
+    else fetch('/data/ratechanges.json').then(r => r.json()).then(setLocalRatechanges).catch(() => {});
+  }, [ratechanges]);
+
   const loadPublication = (p: Publication) => {
     setIsNewMode(false);
     const hindiName = cleanOrTransliterateHindi(p.pub_hindi, p.public_name);
@@ -162,7 +175,12 @@ export default function PublicationForm({
     setClosedTo(p.closed_to || '');
 
     // Load effective 7-day weekday rates with rate changes aligned to publishing day
-    const effectiveRates = getEffectiveWeekdayRates(p.publica_id, new Date().toISOString().split('T')[0], rates, ratechanges, magDay);
+    const activeRates = (rates && rates.length > 0) ? rates : localRates;
+    const activeRateChanges = (ratechanges && ratechanges.length > 0) ? ratechanges : localRatechanges;
+    const effectiveRates = (p.current_rates && Object.values(p.current_rates).some(v => v > 0))
+      ? { ...p.current_rates }
+      : getEffectiveWeekdayRates(p.publica_id, new Date().toISOString().split('T')[0], activeRates, activeRateChanges, magDay);
+
     setWeekdayRates(effectiveRates);
     if (magDay >= 1 && magDay <= 7) {
       setSelectedDayRow(magDay);

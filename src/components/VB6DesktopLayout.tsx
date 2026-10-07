@@ -189,6 +189,7 @@ export default function VB6DesktopLayout() {
       });
 
     fetch('/data/rates.json').then(r => r.json()).then(setRates).catch(() => {});
+    fetch('/data/ratechanges.json').then(r => r.json()).then(setRatechanges).catch(() => {});
     fetch('/api/holidays')
       .then(r => r.json())
       .then(d => {
