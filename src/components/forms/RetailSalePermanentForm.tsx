@@ -18,13 +18,35 @@ interface SaleRow {
   publica_id: number;
   copies: number;
   rate: number;
-  amt: number; // Rec.Amt per copy
+  amt: number; // Rec.Amt
 }
 
 const MONTH_LIST = [
   'April', 'May', 'June', 'July', 'August', 'September', 
   'October', 'November', 'December', 'January', 'February', 'March'
 ];
+
+// Helper to normalize publication objects and sort alphabetically (A to Z)
+const normalizeAndSortPubs = (list: any[]) => {
+  const cleaned = (list || []).map((p: any) => {
+    const pid = Number(p.publica_id ?? p.publication_id ?? p.Publica_id ?? p.id ?? 0);
+    const name = String(p.public_name || p.name || p.Public_name || (pid > 0 ? `Publication #${pid}` : '')).trim();
+    const hindi = p.pub_hindi || p.Pub_Hindi || '';
+    return {
+      ...p,
+      publica_id: pid,
+      public_name: name,
+      pub_hindi: hindi ? cleanOrTransliterateHindi(hindi, name) : ''
+    };
+  }).filter((p: any) => {
+    const pid = Number(p.publica_id);
+    const name = String(p.public_name || '');
+    return pid > 0 && !isNaN(pid) && name.length > 0 && !name.toLowerCase().includes('nan');
+  });
+
+  cleaned.sort((a: any, b: any) => a.public_name.localeCompare(b.public_name, undefined, { sensitivity: 'base' }));
+  return cleaned;
+};
 
 export default function RetailSalePermanentForm({ 
   isOpen, 
@@ -39,6 +61,9 @@ export default function RetailSalePermanentForm({
   const defDateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
   const [vrDateStr, setVrDateStr] = useState<string>(defDateStr);
   const [periodStr, setPeriodStr] = useState<string>('2026-2027');
+
+  // Publications List (Normalized & Sorted)
+  const [pubList, setPubList] = useState<Publication[]>(() => normalizeAndSortPubs(publications));
 
   // Customer State & Dynamic Search
   const [custInput, setCustInput] = useState<string>('');
@@ -62,27 +87,35 @@ export default function RetailSalePermanentForm({
   const [allRecentSales, setAllRecentSales] = useState<any[]>([]);
 
   // Rows in the grid (Publication | Copies | Rate | Rec.Amt)
-  const [rows, setRows] = useState<SaleRow[]>([]);
+  const [rows, setRows] = useState<SaleRow[]>([
+    { publica_id: 1, copies: 1, rate: 5.0, amt: 5.0 }
+  ]);
 
   // Narration
   const [narration, setNarration] = useState<string>('');
   
-  // Proces Y/N Modal State (Image 3)
+  // Proces Y/N Modal State
   const [isProcessModalOpen, setIsProcessModalOpen] = useState<boolean>(false);
   const [processMonth, setProcessMonth] = useState<string>('April');
   const [processYear, setProcessYear] = useState<string>('2026');
-  const [isProcessYes, setIsProcessYes] = useState<boolean>(true);
 
-  // Caution Dialog State: Customer Publication is Closed (Image 4)
+  // Caution Dialog State: Customer Publication is Closed
   const [showCautionClosed, setShowCautionClosed] = useState<boolean>(false);
 
   // Status & Feedback
   const [statusMsg, setStatusMsg] = useState<{ text: string; isError?: boolean } | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
+  // Sync publications
+  useEffect(() => {
+    if (publications && publications.length > 0) {
+      setPubList(normalizeAndSortPubs(publications));
+    }
+  }, [publications]);
+
   // Helper to map publication name
   const getPubName = (pubId: number) => {
-    const pub = publications.find(p => p.publica_id === pubId);
+    const pub = pubList.find(p => p.publica_id === pubId);
     return pub ? (pub.public_name || (pub as any).name) : `Publication #${pubId}`;
   };
 
@@ -113,7 +146,7 @@ export default function RetailSalePermanentForm({
 
   // Rate Helper for a publication (uses dynamic rates from database)
   const getPubDefaultRate = (pubId: number) => {
-    const pub = publications.find(p => p.publica_id === pubId);
+    const pub = pubList.find(p => p.publica_id === pubId);
     if (!pub) return 5.0;
     const eff = getSingleEffectiveRate(pub.publica_id, dayOfWeekVb6, isoDate, rates, ratechanges);
     if (eff > 0) return eff;
@@ -140,7 +173,7 @@ export default function RetailSalePermanentForm({
         amt: recAmt > 0 ? recAmt : Number(s.Rate || s.rate || getPubDefaultRate(pId))
       };
     });
-    setRows(loadedRows);
+    setRows(loadedRows.length > 0 ? loadedRows : [{ publica_id: 1, copies: 1, rate: 5.0, amt: 5.0 }]);
     setStatusMsg({ 
       text: `Loaded existing retail sale for ${saleDateDdMm} (${loadedRows.length} item(s)).`, 
       isError: false 
@@ -156,8 +189,6 @@ export default function RetailSalePermanentForm({
       setSelectedCust(null);
       setCustomerSales([]);
       setSelectedSaleIdx(-1);
-      setRows([]);
-      setNarration('');
       return;
     }
 
@@ -182,11 +213,11 @@ export default function RetailSalePermanentForm({
   // Select a customer
   const handleSelectCustomer = async (c: Customer) => {
     setSelectedCust(c);
-    setCustInput(c.name_eng || `Customer #${c.customer_id}`);
+    setCustInput(`${c.name_eng || ''} (#${c.customer_id})`);
     setShowSuggestions(false);
     setStatusMsg(null);
 
-    // 1. Check if customer's publications/subscriptions are closed (Image 4)
+    // 1. Check if customer's subscriptions are closed
     try {
       const subRes = await fetch(`/api/subscriptions?customer_id=${c.customer_id}`);
       const subData = await subRes.json();
@@ -195,6 +226,18 @@ export default function RetailSalePermanentForm({
         const hasActive = subs.some((s: any) => s.is_active);
         if (!hasActive) {
           setShowCautionClosed(true);
+        }
+        // If customer has subscribed papers, initialize grid with customer's paper
+        const firstActive = subs.find((s: any) => s.is_active) || subs[0];
+        if (firstActive) {
+          const pId = Number(firstActive.publica_id || firstActive.publication_id || 1);
+          const r = getPubDefaultRate(pId);
+          setRows([{
+            publica_id: pId,
+            copies: Number(firstActive.qty || 1),
+            rate: r,
+            amt: r * Number(firstActive.qty || 1)
+          }]);
         }
       }
     } catch (_) {}
@@ -210,8 +253,6 @@ export default function RetailSalePermanentForm({
       } else {
         setCustomerSales([]);
         setSelectedSaleIdx(-1);
-        setRows([]);
-        setNarration('');
       }
     } catch (err) {
       console.error('Error fetching customer retail sales:', err);
@@ -274,14 +315,13 @@ export default function RetailSalePermanentForm({
       setSelectedCust(null);
       setCustomerSales([]);
       setSelectedSaleIdx(-1);
-      setRows([]);
+      setRows([{ publica_id: 1, copies: 1, rate: 5.0, amt: 5.0 }]);
       setNarration('');
       setStatusMsg(null);
       setShowSuggestions(false);
       setShowCautionClosed(false);
       setIsProcessModalOpen(false);
 
-      // Pre-fetch recent retail sales for Find modal vouchers tab
       fetch('/api/retail-sale?limit=100')
         .then(r => r.json())
         .then(d => {
@@ -315,11 +355,15 @@ export default function RetailSalePermanentForm({
         cur.publica_id = pId;
         const autoRate = getPubDefaultRate(pId);
         cur.rate = autoRate;
-        cur.amt = autoRate;
+        cur.amt = autoRate * cur.copies;
       } else if (field === 'copies') {
-        cur.copies = Math.max(1, parseInt(value, 10) || 1);
+        const c = Math.max(1, parseInt(value, 10) || 1);
+        cur.copies = c;
+        cur.amt = cur.rate * c;
       } else if (field === 'rate') {
-        cur.rate = parseFloat(value) || 0;
+        const r = parseFloat(value) || 0;
+        cur.rate = r;
+        cur.amt = r * cur.copies;
       } else if (field === 'amt') {
         cur.amt = parseFloat(value) || 0;
       }
@@ -328,8 +372,8 @@ export default function RetailSalePermanentForm({
     });
   };
 
-  const handleAddLine = () => {
-    const defaultPubId = publications[0]?.publica_id || 1;
+  const handleAddRow = () => {
+    const defaultPubId = pubList[0]?.publica_id || 1;
     const autoRate = getPubDefaultRate(defaultPubId);
     setRows(prev => [...prev, {
       publica_id: defaultPubId,
@@ -340,6 +384,10 @@ export default function RetailSalePermanentForm({
   };
 
   const handleRemoveRow = (index: number) => {
+    if (rows.length <= 1) {
+      setRows([{ publica_id: pubList[0]?.publica_id || 1, copies: 1, rate: 5.0, amt: 5.0 }]);
+      return;
+    }
     setRows(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -383,7 +431,7 @@ export default function RetailSalePermanentForm({
       }
 
       setStatusMsg({ 
-        text: `✓ Successfully saved ${successCount} retail sale item(s) for ${selectedCust.name_eng} on ${vrDateStr}!`, 
+        text: `✓ Successfully saved ${successCount} retail sale item(s) for #${selectedCust.customer_id} ${selectedCust.name_eng}!`, 
         isError: false 
       });
 
@@ -403,7 +451,7 @@ export default function RetailSalePermanentForm({
   // Delete Voucher
   const handleDelete = async () => {
     if (!selectedCust) return;
-    const confirmDel = window.confirm(`Are you sure you want to delete retail sales for ${selectedCust.name_eng} on ${vrDateStr}?`);
+    const confirmDel = window.confirm(`Are you sure you want to delete retail sales for #${selectedCust.customer_id} ${selectedCust.name_eng} on ${vrDateStr}?`);
     if (!confirmDel) return;
 
     try {
@@ -413,7 +461,7 @@ export default function RetailSalePermanentForm({
       });
       if (res.ok) {
         setStatusMsg({ text: `Deleted retail sale for ${vrDateStr}.`, isError: false });
-        setRows([]);
+        setRows([{ publica_id: 1, copies: 1, rate: 5.0, amt: 5.0 }]);
         setNarration('');
         const refRes = await fetch(`/api/retail-sale?customer_id=${selectedCust.customer_id}`);
         const refData = await refRes.json();
@@ -424,318 +472,287 @@ export default function RetailSalePermanentForm({
     }
   };
 
+  const handleCancel = () => {
+    setCustInput('');
+    setSelectedCust(null);
+    setCustomerSales([]);
+    setSelectedSaleIdx(-1);
+    setRows([{ publica_id: 1, copies: 1, rate: 5.0, amt: 5.0 }]);
+    setNarration('');
+    setStatusMsg(null);
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 backdrop-blur-xs select-none">
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 select-none">
       
-      {/* 3D Classic Windows / FoxPro Dialog Window matching Image 1 & 2 */}
-      <div className="w-full max-w-2xl bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl overflow-hidden font-sans text-xs">
+      {/* 3D Classic Windows Dialog Window matching screenshot_09.jpg */}
+      <div className="w-[560px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl overflow-hidden font-tahoma text-xs flex flex-col">
         
-        {/* Title Bar with gradient, icon, and classic Windows controls */}
-        <div className="bg-gradient-to-r from-[#0A246A] via-[#0A246A] to-[#A6CAF0] text-white px-2 py-1 flex justify-between items-center select-none">
-          <div className="flex items-center gap-1.5 font-bold text-xs tracking-wide">
-            <span className="text-sm">📰</span>
-            <span>Retail Sale to Permanent Customer</span>
+        {/* Title Bar matching screenshot_09.jpg */}
+        <div className="bg-[#0A246A] text-white px-2 py-1 flex justify-between items-center select-none font-bold">
+          <div className="flex items-center gap-1.5 text-xs">
+            <img 
+              src="/legacy_images/paper.ico" 
+              alt="ico" 
+              className="w-4 h-4" 
+              onError={(e) => (e.currentTarget.style.display = 'none')} 
+            />
+            <span className="tracking-wide">Retail Sale to Permanent Customer</span>
           </div>
           <div className="flex items-center gap-1">
-            <button className="w-4 h-4 bg-[#ECE9D8] border border-t-white border-l-white border-r-black border-b-black text-black font-bold text-[10px] flex items-center justify-center leading-none">_</button>
-            <button className="w-4 h-4 bg-[#ECE9D8] border border-t-white border-l-white border-r-black border-b-black text-black font-bold text-[10px] flex items-center justify-center leading-none">□</button>
+            <button className="w-5 h-4 bg-[#ECE9D8] border border-[#808080] text-black text-[10px] font-bold flex items-center justify-center hover:bg-white cursor-pointer">_</button>
+            <button className="w-5 h-4 bg-[#ECE9D8] border border-[#808080] text-black text-[10px] font-bold flex items-center justify-center hover:bg-white cursor-pointer">□</button>
             <button 
               onClick={onClose}
-              className="w-4 h-4 bg-[#ECE9D8] hover:bg-red-600 hover:text-white border border-t-white border-l-white border-r-black border-b-black text-black font-bold text-[10px] flex items-center justify-center leading-none cursor-pointer"
+              className="w-5 h-4 bg-[#ECE9D8] hover:bg-red-600 hover:text-white border border-[#808080] text-black text-[10px] font-bold flex items-center justify-center cursor-pointer"
             >
               ✕
             </button>
           </div>
         </div>
 
-        {/* Main Body matching Images 1, 2, 3 */}
-        <div className="p-4 space-y-3">
+        {/* Main Content matching screenshot_09.jpg */}
+        <div className="p-3.5 space-y-2 bg-[#ECE9D8]">
           
-          {/* Header Title: RETAIL SALE TO PERMANENT CUSTOMER (dark maroon centered bold) */}
+          {/* Header Title matching screenshot_09.jpg */}
           <div className="text-center pt-0.5 pb-1">
-            <h1 className="text-[#800000] font-black text-xl tracking-wider uppercase font-serif">
-              RETAIL SALE TO PERMANENT CUSTOMER
+            <h1 
+              className="text-2xl font-black text-[#800000] tracking-wider uppercase" 
+              style={{ fontFamily: 'Georgia, serif' }}
+            >
+              RETAIL SALE TO<br />PERMANENT CUSTOMER
             </h1>
           </div>
 
-          {/* Row 1: Date & Period :- 2026-2027 */}
-          <div className="flex items-center justify-start text-xs font-bold gap-4">
-            <div className="flex items-center">
-              <label className="text-[#800000] w-14 shrink-0 font-bold text-[13px]">Date</label>
-              <input 
-                type="text" 
-                value={vrDateStr}
-                onChange={(e) => setVrDateStr(e.target.value)}
-                className="w-28 px-2 py-0.5 bg-white border border-black font-mono font-bold text-xs text-center outline-none focus:bg-yellow-50"
-                title="Date in DD/MM/YYYY"
-              />
+          {/* Row 1: Date & Period */}
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <label className="font-bold text-[#800000] text-xs w-12">Date</label>
+              <div className="border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white px-1.5 py-0.5 shadow-inner">
+                <input 
+                  type="text" 
+                  value={vrDateStr}
+                  onChange={(e) => setVrDateStr(e.target.value)}
+                  className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent"
+                  placeholder="DD/MM/YYYY"
+                />
+              </div>
             </div>
-            <div className="text-xs font-bold text-black flex items-center gap-1">
-              <span>Period :-</span>
-              <input 
-                type="text" 
-                value={periodStr}
-                onChange={(e) => setPeriodStr(e.target.value)}
-                className="w-24 px-1 py-0.5 bg-transparent font-bold text-xs outline-none"
-              />
+
+            <div className="font-bold text-black text-xs">
+              Period :- <span className="text-[#000080] font-mono">{periodStr}</span>
             </div>
           </div>
 
           {/* Row 2: Customer Name Input */}
-          <div className="space-y-1">
-            <div className="flex items-center text-xs font-bold relative">
-              <label className="text-[#800000] w-14 shrink-0 font-bold text-[13px]">Name</label>
-              <div className="relative flex-1">
-                <input 
-                  type="text" 
-                  value={custInput}
-                  onChange={(e) => handleNameInputChange(e.target.value)}
-                  onKeyDown={handleNameInputKeyDown}
-                  onFocus={() => {
-                    if (custInput.trim() && suggestions.length > 0) setShowSuggestions(true);
-                  }}
-                  className="w-full px-2 py-0.5 bg-white border border-black text-black font-bold text-xs outline-none focus:bg-yellow-50"
-                  autoComplete="off"
-                  placeholder="Type Customer Name or ID..."
-                />
+          <div className="flex items-center gap-2 px-1 relative">
+            <label className="font-bold text-[#800000] text-xs w-12 shrink-0">Name</label>
+            <div className="flex-1 relative border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white shadow-inner">
+              <input 
+                type="text" 
+                value={custInput}
+                onChange={(e) => handleNameInputChange(e.target.value)}
+                onKeyDown={handleNameInputKeyDown}
+                onFocus={() => {
+                  if (custInput.trim() && suggestions.length > 0) setShowSuggestions(true);
+                }}
+                className="w-full px-2 py-0.5 bg-transparent text-black font-bold text-xs outline-none"
+                autoComplete="off"
+                placeholder="Type customer name or ID..."
+              />
 
-                {isSearchingCust && (
-                  <span className="absolute right-2 top-1 text-[10px] text-slate-400 italic">searching...</span>
-                )}
+              {isSearchingCust && (
+                <span className="absolute right-2 top-0.5 text-[10px] text-slate-400 italic">searching...</span>
+              )}
 
-                {/* Instant Suggestions Dropdown */}
-                {showSuggestions && suggestions.length > 0 && (
-                  <div className="absolute top-full left-0 w-full mt-0.5 bg-white border-2 border-black shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-slate-200 text-xs">
-                    {suggestions.map((c) => (
-                      <div 
-                        key={c.customer_id}
-                        onMouseDown={() => handleSelectCustomer(c)}
-                        className="p-1.5 hover:bg-blue-600 hover:text-white cursor-pointer flex justify-between items-center text-left"
-                      >
-                        <div>
-                          <span className="font-bold">#{c.customer_id} {c.name_eng}</span>
-                          {c.name_hindi && (
-                            <span className="ml-1 opacity-80 font-sans text-[11px]">
-                              ({cleanOrTransliterateHindi(c.name_hindi, c.name_eng)})
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[10px] opacity-75 font-mono ml-2 shrink-0">
-                          {c.add1 || c.phone || ''}
-                        </div>
+              {/* Instant Suggestions Dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-full left-0 w-full mt-0.5 bg-white border border-[#808080] shadow-xl z-50 max-h-44 overflow-y-auto divide-y divide-slate-100 text-xs">
+                  {suggestions.map((c) => (
+                    <div 
+                      key={c.customer_id}
+                      onMouseDown={() => handleSelectCustomer(c)}
+                      className="p-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer flex justify-between items-center text-left"
+                    >
+                      <div>
+                        <strong className="text-blue-900 group-hover:text-white font-mono">#{c.customer_id}</strong>
+                        <span className="ml-1 font-bold">{c.name_eng}</span>
+                        {c.name_hindi && (
+                          <span className="ml-1 text-slate-600 group-hover:text-slate-200">
+                            ({cleanOrTransliterateHindi(c.name_hindi, c.name_eng)})
+                          </span>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Sunken Box matching Image 2 exactly */}
-            <div className="w-full bg-white border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white p-1 text-xs font-sans text-black">
-              {selectedCust ? (
-                <div className="flex border border-slate-300 bg-white min-h-[95px] max-h-[120px] overflow-hidden">
-                  
-                  {/* Left blank inset area like Image 2 */}
-                  <div className="w-28 bg-[#E0DFE3] border-r border-slate-300 shrink-0 p-1.5 flex flex-col justify-between text-[11px] text-slate-700 font-mono select-none">
-                    <div className="font-bold text-blue-950">#{selectedCust.customer_id}</div>
-                    <div className="text-[9px] text-slate-500 truncate">{selectedCust.phone || selectedCust.add1 || 'Permanent'}</div>
-                    <div className="text-[10px] text-slate-600 font-bold">
-                      Bal: ₹{Number(selectedCust.cbal || selectedCust.dueamount || (selectedCust.customer_id === 24669 ? 3206 : (selectedCust.due_amount || 0))).toFixed(2)}
+                      <span className="text-[10px] text-slate-500 group-hover:text-slate-200">
+                        {c.phone || c.add1 || ''}
+                      </span>
                     </div>
-                  </div>
-
-                  {/* Right side: 2-column table of customer retail sales vouchers like Image 2 */}
-                  <div className="flex-1 overflow-y-auto">
-                    {customerSales.length > 0 ? (
-                      <table className="w-full text-left border-collapse text-xs select-none">
-                        <tbody>
-                          {customerSales.map((sale, sIdx) => {
-                            const pId = Number(sale.publica_id || sale.Publica_id);
-                            const pName = getPubName(pId);
-                            const sDateIso = sale.vr_date || sale.Vr_Date;
-                            const sDateDdMm = parseIsoToDdMmYyyy(sDateIso);
-                            const isSelected = selectedSaleIdx === sIdx || vrDateStr === sDateDdMm;
-
-                            return (
-                              <tr
-                                key={sIdx}
-                                onClick={() => {
-                                  setSelectedSaleIdx(sIdx);
-                                  loadSaleIntoForm(sale, customerSales);
-                                }}
-                                className={`cursor-pointer border-b border-slate-200 ${
-                                  isSelected 
-                                    ? 'bg-[#0A246A] text-white font-bold' 
-                                    : 'hover:bg-blue-50 text-black'
-                                }`}
-                              >
-                                <td className="px-2 py-0.5 whitespace-nowrap">{pName}</td>
-                                <td className="px-3 py-0.5 text-right font-mono whitespace-nowrap">{sDateDdMm}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    ) : (
-                      <div className="h-full flex items-center justify-center text-slate-400 italic text-[11px] p-2">
-                        No previous retail sales for this customer. (Ready for new entry)
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-slate-400 italic text-[11px] py-4 text-center">
-                  --- Type Customer Name or ID above to select customer ---
+                  ))}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Row 3: Grid / Table matching Image 1 & 2 */}
-          <div className="border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-[#808080] text-black text-xs overflow-hidden">
-            
-            {/* Header matching Image 2 */}
-            <div className="grid grid-cols-12 bg-[#ECE9D8] border-b border-black font-bold text-[11px] divide-x divide-black select-none">
-              <div className="col-span-6 p-1 text-left">Publication</div>
-              <div className="col-span-2 p-1 text-center">Copies</div>
-              <div className="col-span-2 p-1 text-right">Rate</div>
-              <div className="col-span-2 p-1 text-right">Rec.Amt</div>
-            </div>
+          {/* Row 3: Customer Details Sunken Box matching screenshot_09.jpg */}
+          <div className="mx-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white shadow-inner min-h-[48px] p-1.5 text-xs text-slate-800">
+            {selectedCust ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-[#0A246A]">
+                    #{selectedCust.customer_id} {selectedCust.name_eng}
+                    {selectedCust.name_hindi && <span className="ml-1 text-slate-600">({cleanOrTransliterateHindi(selectedCust.name_hindi, selectedCust.name_eng)})</span>}
+                  </div>
+                  <div className="text-[11px] text-slate-600">
+                    {[selectedCust.add1, selectedCust.add2, selectedCust.phone].filter(Boolean).join(', ') || 'No address details'}
+                  </div>
+                </div>
+                <div className="text-right font-mono font-bold text-xs text-emerald-900">
+                  Balance: ₹{Number(selectedCust.cbal || selectedCust.dueamount || selectedCust.due_amount || 0).toFixed(2)}
+                </div>
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-400 italic text-[11px]">
+                (Customer address and details will appear here upon selection)
+              </div>
+            )}
+          </div>
 
-            {/* Grid Active Rows */}
-            <div className="divide-y divide-slate-400 bg-white min-h-[90px]">
-              {rows.length > 0 ? (
-                rows.map((row, idx) => (
-                  <div key={idx} className="grid grid-cols-12 divide-x divide-slate-300 text-xs items-center bg-white hover:bg-yellow-50">
-                    
+          {/* Row 4: The Main Grid Table matching screenshot_09.jpg */}
+          <div className="mx-1 border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-[#808080] shadow-inner">
+            
+            {/* Grid Header matching screenshot_09.jpg */}
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-[#ECE9D8] border-b border-[#808080] text-black font-bold select-none">
+                  <th className="p-1 border-r border-[#808080] text-left w-[50%]">Publication</th>
+                  <th className="p-1 border-r border-[#808080] text-center w-[16%]">Copies</th>
+                  <th className="p-1 border-r border-[#808080] text-right w-[17%]">Rate</th>
+                  <th className="p-1 text-right w-[17%]">Rec.Amt</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                {rows.map((row, idx) => (
+                  <tr key={idx} className="border-b border-slate-300 hover:bg-yellow-50 text-xs">
                     {/* Publication Dropdown */}
-                    <div className="col-span-6 p-1">
+                    <td className="p-0.5 border-r border-slate-300">
                       <select
                         value={row.publica_id}
                         onChange={(e) => handleUpdateRow(idx, 'publica_id', e.target.value)}
-                        className="w-full bg-transparent text-black font-bold text-xs outline-none"
+                        className="w-full bg-transparent text-black font-bold text-xs outline-none cursor-pointer"
                       >
-                        {publications.map(p => (
+                        {pubList.map(p => (
                           <option key={p.publica_id} value={p.publica_id}>
-                            {p.public_name || (p as any).name}
+                            {p.public_name} {p.pub_hindi ? `(${p.pub_hindi})` : ''}
                           </option>
                         ))}
                       </select>
-                    </div>
+                    </td>
 
                     {/* Copies */}
-                    <div className="col-span-2 p-1 text-center">
+                    <td className="p-0.5 border-r border-slate-300 text-center">
                       <input 
                         type="number" 
                         min="1"
                         value={row.copies}
                         onChange={(e) => handleUpdateRow(idx, 'copies', e.target.value)}
-                        className="w-full text-center font-mono font-bold bg-transparent outline-none focus:bg-yellow-100"
+                        className="w-full text-center font-mono font-bold bg-transparent outline-none"
                       />
-                    </div>
+                    </td>
 
-                    {/* Rate (Cover/Printed Rate) */}
-                    <div className="col-span-2 p-1 text-right">
+                    {/* Rate */}
+                    <td className="p-0.5 border-r border-slate-300 text-right">
                       <input 
                         type="number" 
-                        step="0.5"
+                        step="0.25"
                         value={row.rate}
                         onChange={(e) => handleUpdateRow(idx, 'rate', e.target.value)}
-                        className="w-full text-right font-mono font-bold bg-transparent outline-none focus:bg-yellow-100"
-                        title="Rate (Printed Cover Rate)"
+                        className="w-full text-right font-mono font-bold bg-transparent outline-none pr-1"
                       />
-                    </div>
+                    </td>
 
-                    {/* Rec.Amt (Actual Billed Rate Per Copy) */}
-                    <div className="col-span-2 p-1 text-right flex items-center justify-end gap-1">
-                      <input 
-                        type="number" 
-                        step="0.5"
-                        value={row.amt}
-                        onChange={(e) => handleUpdateRow(idx, 'amt', e.target.value)}
-                        className="w-full text-right font-mono font-bold bg-transparent outline-none focus:bg-yellow-100 text-[#000080]"
-                        title="Rec.Amt (Actual Rate Used in Ledger Billing)"
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => handleRemoveRow(idx)}
-                        className="text-red-600 hover:text-red-900 font-bold text-xs px-1 cursor-pointer leading-none"
-                        title="Delete this line"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div 
-                  onDoubleClick={handleAddLine}
-                  className="p-6 text-center text-slate-300 italic text-[11px] cursor-pointer hover:bg-slate-700 select-none"
-                  title="Double-click to add a new line"
-                >
-                  (Double-click empty area or click Add Line to add item)
-                </div>
-              )}
-            </div>
-          </div>
+                    {/* Rec.Amt */}
+                    <td className="p-0.5 text-right">
+                      <div className="flex items-center justify-end">
+                        <input 
+                          type="number" 
+                          step="0.25"
+                          value={row.amt}
+                          onChange={(e) => handleUpdateRow(idx, 'amt', e.target.value)}
+                          className="w-full text-right font-mono font-bold text-blue-900 bg-transparent outline-none pr-1"
+                        />
+                        {rows.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveRow(idx)}
+                            className="text-red-600 hover:text-red-900 font-bold px-1 cursor-pointer text-xs"
+                            title="Remove row"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-          {/* Add Line & Total Bar */}
-          <div className="flex justify-between items-center pt-0.5">
-            <button 
-              type="button"
-              onClick={handleAddLine}
-              className="px-2 py-0.5 bg-white hover:bg-slate-100 border border-black text-[11px] font-bold cursor-pointer"
+            {/* Empty gray grid canvas area matching screenshot_09.jpg */}
+            <div 
+              onClick={handleAddRow}
+              className="bg-[#808080] h-14 flex items-center justify-center text-slate-200 text-[11px] font-bold cursor-pointer hover:bg-[#737373] select-none"
+              title="Click here to add another newspaper row"
             >
-              + Add Line
-            </button>
-            <div className="text-right text-[11px] font-bold text-slate-800">
-              Total: ₹{rows.reduce((s, r) => s + (Number(r.copies || 1) * Number(r.amt || 0)), 0).toFixed(2)}
+              + Click to add another publication row (or edit above)
             </div>
           </div>
 
-          {/* Row 4: Narration */}
-          <div className="flex items-start text-xs font-bold">
-            <label className="text-[#000080] w-18 shrink-0 font-bold text-[13px] pt-1">Narration</label>
-            <textarea 
-              rows={2}
-              value={narration}
-              onChange={(e) => setNarration(e.target.value)}
-              className="w-full px-2 py-1 bg-white border border-black text-xs font-sans outline-none resize-none"
-            />
+          {/* Row 5: Narration matching screenshot_09.jpg */}
+          <div className="flex items-start gap-2 px-1 text-xs">
+            <label className="font-bold text-[#000080] w-14 pt-1 shrink-0">Narration</label>
+            <div className="flex-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white shadow-inner">
+              <textarea 
+                rows={2}
+                value={narration}
+                onChange={(e) => setNarration(e.target.value)}
+                className="w-full px-2 py-1 bg-transparent text-xs font-bold text-black outline-none resize-none"
+                placeholder="Optional remark / narration..."
+              />
+            </div>
           </div>
 
           {/* Status Message */}
           {statusMsg && (
-            <div className={`text-xs font-bold p-1 text-center border ${statusMsg.isError ? 'bg-red-50 text-red-900 border-red-300' : 'bg-emerald-50 text-emerald-900 border-emerald-300'}`}>
+            <div className={`text-xs font-bold p-1 text-center border mx-1 ${statusMsg.isError ? 'bg-red-50 text-red-900 border-red-300' : 'bg-emerald-50 text-emerald-900 border-emerald-300'}`}>
               {statusMsg.text}
             </div>
           )}
 
-          {/* Row 5: Action Buttons matching Images 2 & 3 */}
-          <div className="flex items-center justify-between pt-1 select-none">
+          {/* Row 6: Action Buttons matching screenshot_09.jpg exactly */}
+          <div className="flex items-end justify-between px-1 pt-1 pb-1 select-none">
             
-            {/* Bottom-Left: Proces Y/N Button (opens Image 3 modal) */}
+            {/* Bottom-Left: Proces Y/N Button matching screenshot_09.jpg */}
             <button 
               type="button"
               onClick={() => setIsProcessModalOpen(true)}
-              className="px-3 py-1 bg-[#ECE9D8] hover:bg-slate-200 border border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-xs active:translate-y-0.5 text-xs font-bold text-[#006666] cursor-pointer"
+              className="px-3 py-1 bg-[#ECE9D8] hover:bg-white active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white shadow-xs text-xs font-bold text-[#006666] cursor-pointer"
               title="Process During the Month and Year"
             >
               <u>P</u>roces Y/N
             </button>
 
-            {/* Parallelogram Beveled Cyan Gradient Buttons (Row 1 & Row 2) */}
-            <div className="flex flex-col items-end gap-2">
+            {/* Bottom-Right: 2 Rows of Parallelogram Cyan Gradient Buttons matching screenshot_09.jpg */}
+            <div className="flex flex-col items-end gap-1.5">
               
-              {/* Top Row: Save, Update, Del */}
-              <div className="flex items-center gap-3">
+              {/* Row 1: Save, Update, Del */}
+              <div className="flex items-center gap-2">
                 <button 
                   type="button"
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="px-4 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer text-xs font-bold text-black"
+                  className="px-3.5 py-0.5 bg-gradient-to-b from-[#E0F7FA] via-[#C8E8FA] to-[#B2EBF2] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#80DEEA] border border-[#00838F] shadow-xs transform -skew-x-12 cursor-pointer text-xs font-bold text-black"
                 >
                   <span className="transform skew-x-12 flex items-center gap-1">
                     💾 <u>S</u>ave
@@ -746,7 +763,7 @@ export default function RetailSalePermanentForm({
                   type="button"
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="px-4 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer text-xs font-bold text-black"
+                  className="px-3.5 py-0.5 bg-gradient-to-b from-[#E0F7FA] via-[#C8E8FA] to-[#B2EBF2] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#80DEEA] border border-[#00838F] shadow-xs transform -skew-x-12 cursor-pointer text-xs font-bold text-black"
                 >
                   <span className="transform skew-x-12 flex items-center gap-1">
                     ↩ <u>U</u>pdate
@@ -756,7 +773,7 @@ export default function RetailSalePermanentForm({
                 <button 
                   type="button"
                   onClick={handleDelete}
-                  className="px-4 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer text-xs font-bold text-black"
+                  className="px-3.5 py-0.5 bg-gradient-to-b from-[#E0F7FA] via-[#C8E8FA] to-[#B2EBF2] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#80DEEA] border border-[#00838F] shadow-xs transform -skew-x-12 cursor-pointer text-xs font-bold text-black"
                 >
                   <span className="transform skew-x-12 flex items-center gap-1">
                     🗑 <u>D</u>el
@@ -764,8 +781,8 @@ export default function RetailSalePermanentForm({
                 </button>
               </div>
 
-              {/* Bottom Row: Find, Cancel, Exit */}
-              <div className="flex items-center gap-3">
+              {/* Row 2: Find, Cancel, Exit */}
+              <div className="flex items-center gap-2">
                 <button 
                   type="button"
                   onClick={() => {
@@ -773,7 +790,7 @@ export default function RetailSalePermanentForm({
                     setFindTab('customer');
                     setFindSearch('');
                   }}
-                  className="px-4 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer text-xs font-bold text-black"
+                  className="px-3.5 py-0.5 bg-gradient-to-b from-[#E0F7FA] via-[#C8E8FA] to-[#B2EBF2] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#80DEEA] border border-[#00838F] shadow-xs transform -skew-x-12 cursor-pointer text-xs font-bold text-black"
                 >
                   <span className="transform skew-x-12 flex items-center gap-1">
                     🔍 <u>F</u>ind
@@ -782,12 +799,8 @@ export default function RetailSalePermanentForm({
 
                 <button 
                   type="button"
-                  onClick={() => {
-                    setRows([]);
-                    setNarration('');
-                    setStatusMsg({ text: 'Operation cancelled. Ready for new input.', isError: false });
-                  }}
-                  className="px-4 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer text-xs font-bold text-black"
+                  onClick={handleCancel}
+                  className="px-3.5 py-0.5 bg-gradient-to-b from-[#E0F7FA] via-[#C8E8FA] to-[#B2EBF2] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#80DEEA] border border-[#00838F] shadow-xs transform -skew-x-12 cursor-pointer text-xs font-bold text-black"
                 >
                   <span className="transform skew-x-12 flex items-center gap-1">
                     ✕ <u>C</u>ancel
@@ -797,7 +810,7 @@ export default function RetailSalePermanentForm({
                 <button 
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer text-xs font-bold text-black"
+                  className="px-3.5 py-0.5 bg-gradient-to-b from-[#E0F7FA] via-[#C8E8FA] to-[#B2EBF2] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#80DEEA] border border-[#00838F] shadow-xs transform -skew-x-12 cursor-pointer text-xs font-bold text-red-800"
                 >
                   <span className="transform skew-x-12 flex items-center gap-1">
                     🛑 <u>E</u>xit
@@ -811,25 +824,23 @@ export default function RetailSalePermanentForm({
         </div>
       </div>
 
-      {/* Process During the Month and Year Modal (Image 3) */}
+      {/* Process During the Month and Year Modal */}
       {isProcessModalOpen && (
         <div className="fixed inset-0 z-60 bg-black/40 flex items-center justify-center select-none p-4">
-          <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-[440px] p-3 font-sans">
+          <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-[440px] p-3 font-tahoma">
             <div className="border border-[#808080] p-4 relative pt-6 bg-[#ECE9D8]">
-              {/* Fieldset Title matching Image 3 */}
               <span className="absolute -top-2.5 left-3 bg-[#ECE9D8] px-1 text-xs font-bold text-[#800000]">
                 Process During the Month and Year
               </span>
 
               <div className="flex justify-between items-start gap-4">
-                <div className="space-y-4 flex-1">
-                  {/* Month */}
+                <div className="space-y-3 flex-1">
                   <div className="flex items-center gap-4">
                     <label className="text-xs font-bold text-[#800000] w-14">Month</label>
                     <select
                       value={processMonth}
                       onChange={(e) => setProcessMonth(e.target.value)}
-                      className="w-32 px-1 py-0.5 bg-white border border-black text-xs font-bold outline-none"
+                      className="w-32 px-1 py-0.5 bg-white border border-[#808080] text-xs font-bold outline-none shadow-inner"
                     >
                       {MONTH_LIST.map(m => (
                         <option key={m} value={m}>{m}</option>
@@ -837,35 +848,32 @@ export default function RetailSalePermanentForm({
                     </select>
                   </div>
 
-                  {/* Year */}
                   <div className="flex items-center gap-4">
                     <label className="text-xs font-bold text-[#800000] w-14">Year</label>
                     <input
                       type="text"
                       value={processYear}
                       onChange={(e) => setProcessYear(e.target.value)}
-                      className="w-32 px-2 py-0.5 bg-white border border-black text-xs font-bold outline-none font-mono"
+                      className="w-32 px-2 py-0.5 bg-white border border-[#808080] text-xs font-bold outline-none font-mono shadow-inner"
                     />
                   </div>
                 </div>
 
-                {/* Right side buttons matching Image 3 */}
                 <div className="flex flex-col gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={() => {
-                      setIsProcessYes(true);
                       setIsProcessModalOpen(false);
                       setStatusMsg({ text: `Process set for ${processMonth} ${processYear}.`, isError: false });
                     }}
-                    className="px-6 py-1 bg-[#ECE9D8] hover:bg-slate-200 border border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-xs active:translate-y-0.5 text-xs font-bold text-black cursor-pointer"
+                    className="px-6 py-1 bg-[#ECE9D8] hover:bg-white active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-xs text-xs font-bold text-black cursor-pointer"
                   >
                     <u>S</u>ave
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsProcessModalOpen(false)}
-                    className="px-6 py-1 bg-[#ECE9D8] hover:bg-slate-200 border border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-xs active:translate-y-0.5 text-xs font-bold text-black cursor-pointer"
+                    className="px-6 py-1 bg-[#ECE9D8] hover:bg-white active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-xs text-xs font-bold text-black cursor-pointer"
                   >
                     <u>C</u>lose
                   </button>
@@ -876,12 +884,11 @@ export default function RetailSalePermanentForm({
         </div>
       )}
 
-      {/* Caution Dialog: Customer Publication is Closed (Image 4) */}
+      {/* Caution Dialog: Customer Publication is Closed */}
       {showCautionClosed && (
         <div className="fixed inset-0 z-70 bg-black/40 flex items-center justify-center select-none p-4">
-          <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-[380px] p-1 font-sans">
-            {/* Title Bar */}
-            <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-0.5 flex justify-between items-center font-bold text-xs select-none">
+          <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-[380px] p-1 font-tahoma">
+            <div className="bg-[#0A246A] text-white px-2 py-0.5 flex justify-between items-center font-bold text-xs select-none">
               <span>Caution</span>
               <button 
                 type="button"
@@ -892,7 +899,6 @@ export default function RetailSalePermanentForm({
               </button>
             </div>
 
-            {/* Content matching Image 4 */}
             <div className="p-4 flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center shrink-0 shadow-inner">
                 <span className="text-white text-2xl font-black leading-none">✕</span>
@@ -902,13 +908,12 @@ export default function RetailSalePermanentForm({
               </div>
             </div>
 
-            {/* OK Button */}
             <div className="flex justify-center pb-2">
               <button
                 type="button"
                 autoFocus
                 onClick={() => setShowCautionClosed(false)}
-                className="px-6 py-1 bg-[#ECE9D8] hover:bg-slate-200 border border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-xs active:translate-y-0.5 text-xs font-bold text-black outline-dotted outline-1 outline-black cursor-pointer"
+                className="px-6 py-1 bg-[#ECE9D8] hover:bg-white active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-xs text-xs font-bold text-black cursor-pointer"
               >
                 OK
               </button>
@@ -917,11 +922,11 @@ export default function RetailSalePermanentForm({
         </div>
       )}
 
-      {/* Customer / Voucher Find Search Modal across all 24,626 customers */}
+      {/* Customer / Voucher Find Search Modal */}
       {isFindOpen && (
         <div className="fixed inset-0 z-60 bg-black/60 flex items-center justify-center p-4 select-none">
-          <div className="w-full max-w-lg bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-black border-b-black p-3 space-y-2 text-xs">
-            <div className="bg-[#0055EA] text-white px-2 py-1 font-bold flex justify-between items-center">
+          <div className="w-full max-w-lg bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl p-3 space-y-2 text-xs font-tahoma">
+            <div className="bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
               <span>Find Retail Sale / Permanent Customer</span>
               <button 
                 type="button" 
@@ -933,13 +938,13 @@ export default function RetailSalePermanentForm({
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-black gap-1 pt-1">
+            <div className="flex border-b border-[#808080] gap-1 pt-1">
               <button
                 type="button"
                 onClick={() => setFindTab('customer')}
                 className={`px-3 py-1 font-bold cursor-pointer ${
                   findTab === 'customer'
-                    ? 'bg-white border-t border-l border-r border-black -mb-[1px]'
+                    ? 'bg-white border-t border-l border-r border-[#808080] -mb-[1px]'
                     : 'bg-[#D4D0C8] hover:bg-slate-200 text-black'
                 }`}
               >
@@ -950,7 +955,7 @@ export default function RetailSalePermanentForm({
                 onClick={() => setFindTab('voucher')}
                 className={`px-3 py-1 font-bold cursor-pointer ${
                   findTab === 'voucher'
-                    ? 'bg-white border-t border-l border-r border-black -mb-[1px]'
+                    ? 'bg-white border-t border-l border-r border-[#808080] -mb-[1px]'
                     : 'bg-[#D4D0C8] hover:bg-slate-200 text-black'
                 }`}
               >
@@ -963,12 +968,12 @@ export default function RetailSalePermanentForm({
               placeholder={findTab === 'customer' ? "Search all 24,626 customers by ID, Name, Phone..." : "Search voucher by Customer, Date, Publication..."}
               value={findSearch}
               onChange={(e) => setFindSearch(e.target.value)}
-              className="w-full px-2 py-1 bg-white border border-black font-bold outline-none"
+              className="w-full px-2 py-1 bg-white border border-[#808080] font-bold outline-none shadow-inner"
               autoFocus
             />
 
             {findTab === 'customer' ? (
-              <div className="bg-white border border-black max-h-60 overflow-auto divide-y divide-slate-200">
+              <div className="bg-white border border-[#808080] max-h-60 overflow-auto divide-y divide-slate-200 shadow-inner">
                 {isFindLoading && (
                   <div className="p-3 text-center text-slate-500 italic">Searching database...</div>
                 )}
@@ -982,18 +987,18 @@ export default function RetailSalePermanentForm({
                       handleSelectCustomer(c);
                       setIsFindOpen(false);
                     }}
-                    className="p-1.5 hover:bg-blue-100 cursor-pointer flex justify-between items-center"
+                    className="p-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer flex justify-between items-center"
                   >
                     <div>
-                      <strong className="text-blue-900 font-mono">#{c.customer_id}</strong> - {c.name_eng}
-                      {c.name_hindi && <span className="text-slate-600 block text-[10px]">({cleanOrTransliterateHindi(c.name_hindi, c.name_eng)})</span>}
+                      <strong className="text-blue-900 group-hover:text-white font-mono">#{c.customer_id}</strong> - {c.name_eng}
+                      {c.name_hindi && <span className="text-slate-600 group-hover:text-slate-200 block text-[10px]">({cleanOrTransliterateHindi(c.name_hindi, c.name_eng)})</span>}
                     </div>
-                    <span className="text-[10px] text-slate-500 font-mono">{c.phone || c.add1 || 'Beawar'}</span>
+                    <span className="text-[10px] text-slate-500 group-hover:text-slate-200 font-mono">{c.phone || c.add1 || 'Beawar'}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="bg-white border border-black max-h-60 overflow-auto divide-y divide-slate-200">
+              <div className="bg-white border border-[#808080] max-h-60 overflow-auto divide-y divide-slate-200 shadow-inner">
                 {filteredSales.map((s, idx) => {
                   const sCustId = Number(s.Customer_id || s.customer_id);
                   const sDate = parseIsoToDdMmYyyy(s.Vr_Date || s.vr_date);
@@ -1016,22 +1021,22 @@ export default function RetailSalePermanentForm({
                         handleSelectCustomer(targetCust);
                         setIsFindOpen(false);
                       }}
-                      className="p-1.5 hover:bg-blue-100 cursor-pointer flex justify-between items-center"
+                      className="p-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer flex justify-between items-center"
                     >
                       <div>
-                        <div className="font-bold text-blue-900">
+                        <div className="font-bold text-blue-900 group-hover:text-white">
                           #{sCustId} {s.Customer_Name || s.customer_name || 'Customer'}
                         </div>
-                        <div className="text-[10px] text-slate-600">
+                        <div className="text-[10px] text-slate-600 group-hover:text-slate-200">
                           {s.Publica_Name || s.publica_name || `Pub #${s.Publica_id || s.publica_id}`} • {s.Copies || s.copies || 1} copy @ ₹{Number(s.Rate || s.rate || 0).toFixed(2)}
                           {s.Narr || s.narr ? ` • ${s.Narr || s.narr}` : ''}
                         </div>
                       </div>
                       <div className="text-right shrink-0 ml-2">
-                        <span className="font-bold text-[#800000] font-mono block">
+                        <span className="font-bold text-[#800000] group-hover:text-yellow-300 font-mono block">
                           ₹{Number(s.Amt !== undefined ? s.Amt : (s.amt || 0)).toFixed(2)}
                         </span>
-                        <span className="text-[10px] text-slate-500 font-mono">📅 {sDate}</span>
+                        <span className="text-[10px] text-slate-500 group-hover:text-slate-200 font-mono">📅 {sDate}</span>
                       </div>
                     </div>
                   );
@@ -1043,7 +1048,7 @@ export default function RetailSalePermanentForm({
               <button 
                 type="button"
                 onClick={() => setIsFindOpen(false)}
-                className="px-3 py-1 bg-white border border-black font-bold cursor-pointer"
+                className="px-4 py-1 bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] font-bold cursor-pointer hover:bg-white"
               >
                 Close
               </button>
