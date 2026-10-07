@@ -392,7 +392,7 @@ export default function DiscontinueForm({
       setAllPubDiscontinues(prev => [savedRec, ...prev.filter(d => d.id !== savedRec.id)]);
 
       const label = isHoliday 
-        ? `[Holiday] सभी अखबार (All Newspapers - ${descText})` 
+        ? `[Holiday] सभी समाचार पत्र (All Daily Newspapers - ${descText})` 
         : (pubDisList.find(p => p.publica_id === pid)?.public_name || `Pub #${pid}`);
       setPubMsg({
         text: `✓ ${label} का ${pubHoldType === 'Permanent' ? 'स्थाई बंद (Permanent Stop)' : 'अस्थाई रोक / अवकाश (Hold / Holiday)'} सफलतापूर्वक दर्ज हुआ!`,
@@ -653,7 +653,7 @@ export default function DiscontinueForm({
                   }}
                   className="cursor-pointer"
                 />
-                <span>🏖️ Holiday (अवकाश - सभी अखबार)</span>
+                <span>🏖️ Holiday (अवकाश - सभी समाचार पत्र)</span>
               </label>
             </div>
 
@@ -691,7 +691,7 @@ export default function DiscontinueForm({
                       type="text" 
                       value={pubRemark}
                       onChange={(e) => setPubRemark(e.target.value)}
-                      placeholder="e.g. Strike / Holiday / Discontinued"
+                      placeholder="e.g. Strike / Discontinued"
                       className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
                     />
                   </div>
@@ -704,9 +704,9 @@ export default function DiscontinueForm({
                   <label className="w-28 font-bold text-[#006600] text-right shrink-0">
                     Target
                   </label>
-                  <div className="flex-1 px-3 py-1.5 bg-[#E8F5E9] border border-[#81C784] font-bold text-[#1B5E20] text-sm rounded-xs flex items-center gap-2 shadow-inner">
+                  <div className="flex-1 px-3 py-1.5 bg-[#E8F5E9] border border-[#81C784] font-bold text-[#1B5E20] text-xs rounded-xs flex items-center gap-2 shadow-inner">
                     <span>🏖️</span>
-                    <span>All Newspapers & Publications (सभी अखबार/पत्रिका अवकाश)</span>
+                    <span>All Daily Newspapers (सभी दैनिक समाचार पत्र - पत्रिकाएं शामिल नहीं)</span>
                   </div>
                 </div>
 

@@ -95,8 +95,10 @@ export function buildPublicationDiscontinueIndex(
   const map = new Map<number, IndexedPubDiscontinue[]>();
 
   for (const pd of records) {
-    const pId = Number(pd.publica_id || pd.Publica_id || pd.publication_id);
-    if (!pId) continue;
+    const rawPid = pd.publica_id !== undefined ? pd.publica_id : (pd.Publica_id !== undefined ? pd.Publica_id : pd.publication_id);
+    if (rawPid === undefined || rawPid === null || rawPid === '') continue;
+    const pId = Number(rawPid);
+    if (isNaN(pId)) continue;
 
     const fromIso = parseDateToIso(pd.from_date || pd.FromDate || pd.fromdate || pd.entry_date);
     const toIso = parseDateToIso(pd.to_date || pd.ToDate || pd.todate || pd.oc_date);
@@ -116,16 +118,20 @@ export function buildPublicationDiscontinueIndex(
 
 /**
  * Checks whether a publication is discontinued/suspended globally on targetDateIso.
+ * publica_id: 0 ONLY applies to daily newspapers, NOT magazines/periodicals.
  */
 export function checkPublicationDiscontinued(
   pubIndex: Map<number, IndexedPubDiscontinue[]>,
   publicaId: number,
-  targetDateIso: string
+  targetDateIso: string,
+  isDaily: boolean = true
 ): boolean {
-  const list = pubIndex.get(publicaId);
-  if (!list || list.length === 0) return false;
+  const specificList = pubIndex.get(publicaId) || [];
+  const globalList = isDaily ? (pubIndex.get(0) || []) : [];
+  const allMatching = [...specificList, ...globalList];
+  if (allMatching.length === 0) return false;
 
-  return list.some(item => {
+  return allMatching.some(item => {
     if (item.fromIso && targetDateIso < item.fromIso) return false;
     if (item.toIso && targetDateIso > item.toIso) return false;
     return true;

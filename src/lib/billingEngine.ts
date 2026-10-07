@@ -294,9 +294,10 @@ export function calculateBilling({
   }
 
   // Check if publication is discontinued globally or specifically
-  const isPubDiscontinued = (publicaId: number, targetDateIso: string): boolean => {
+  // Global holiday (publica_id === 0) ONLY applies to daily newspapers, NOT magazines/periodicals
+  const isPubDiscontinued = (publicaId: number, targetDateIso: string, isDaily: boolean = true): boolean => {
     const specificList = pubDisMap.get(publicaId) || [];
-    const globalList = pubDisMap.get(0) || [];
+    const globalList = isDaily ? (pubDisMap.get(0) || []) : [];
     const allMatching = [...specificList, ...globalList];
     if (allMatching.length === 0) return false;
     return allMatching.some(item => {
@@ -626,7 +627,7 @@ export function calculateBilling({
           if (cDateIso && targetDateIso >= cDateIso) continue;
 
           // Holiday, Global Publication Discontinue & Customer Discontinue checks
-          if (isPubDiscontinued(pubId, targetDateIso)) continue;
+          if (isPubDiscontinued(pubId, targetDateIso, true)) continue;
           if (isHoliday(pubId, targetDateIso)) continue;
           if (isDiscontinued(custId, pubId, targetDateIso, sDateIso)) continue;
 
@@ -651,7 +652,7 @@ export function calculateBilling({
           if (legacyDayOfWeek !== magzineDay) continue;
           if (targetDateIso < sDateIso) continue;
           if (cDateIso && targetDateIso >= cDateIso) continue;
-          if (isPubDiscontinued(pubId, targetDateIso)) continue;
+          if (isPubDiscontinued(pubId, targetDateIso, false)) continue;
           if (isHoliday(pubId, targetDateIso, false)) continue;
           if (isDiscontinued(custId, pubId, targetDateIso, sDateIso)) continue;
 
@@ -673,7 +674,7 @@ export function calculateBilling({
         for (const pDateIso of periodDates) {
           if (pDateIso < sDateIso) continue;
           if (cDateIso && pDateIso >= cDateIso) continue;
-          if (isPubDiscontinued(pubId, pDateIso)) continue;
+          if (isPubDiscontinued(pubId, pDateIso, false)) continue;
           if (isHoliday(pubId, pDateIso, false)) continue;
           if (isDiscontinued(custId, pubId, pDateIso, sDateIso)) continue;
 
@@ -702,7 +703,7 @@ export function calculateBilling({
         const isQuarterlyAllowed = pubId !== 75 || [1, 4, 7, 10].includes(monthNum);
 
         if (isQuarterlyAllowed && sDateIso <= monthStartIso && (!cDateIso || cDateIso > monthStartIso)) {
-          if (!isPubDiscontinued(pubId, pDateIso) && !isHoliday(pubId, pDateIso, false) && !isDiscontinued(custId, pubId, pDateIso, sDateIso)) {
+          if (!isPubDiscontinued(pubId, pDateIso, false) && !isHoliday(pubId, pDateIso, false) && !isDiscontinued(custId, pubId, pDateIso, sDateIso)) {
 
             let rate = getEffectiveRate(pubId, 1, pDateIso) || getEffectiveRate(pubId, 0, pDateIso);
             if (!rate || rate === 0) {
