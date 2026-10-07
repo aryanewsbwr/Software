@@ -208,6 +208,9 @@ export default function PublicationForm({
     }
   };
 
+  const [isPubDisFindOpen, setIsPubDisFindOpen] = useState(false);
+  const [pubDisFindSearch, setPubDisFindSearch] = useState('');
+
   const handlePubDisCancel = () => {
     setPubDisMode('single');
     setPubDisHolidayDesc('');
@@ -217,6 +220,38 @@ export default function PublicationForm({
     setPubDisToDate('');
     setPubDisRemark('Discontinued');
     setPubDisMsg(null);
+  };
+
+  const handlePubDisMainDelete = async () => {
+    const isHoliday = pubDisMode === 'holiday' || pubDisSelectedId === '0';
+    if (!isHoliday && !pubDisSelectedId) {
+      setIsPubDisFindOpen(true);
+      return;
+    }
+    const pid = isHoliday ? 0 : parseInt(pubDisSelectedId, 10);
+    const pubName = isHoliday ? `[Holiday] All Daily Newspapers` : (pubList.find(p => p.publica_id === pid)?.public_name || `Pub #${pid}`);
+    
+    try {
+      const res = await fetch(`/api/publicationdis?publica_id=${pid}`, { cache: 'no-store' });
+      const data = await res.json();
+      const existing = data.discontinues || [];
+      if (existing.length === 0) {
+        alert(`No active discontinue entry found for ${pubName}. Opening Find list.`);
+        setIsPubDisFindOpen(true);
+        return;
+      }
+
+      const latest = existing[0];
+      const fDate = (latest.from_date || latest.entry_date || '-').split('T')[0];
+      const tDate = (latest.to_date || latest.oc_date || 'Permanent').split('T')[0];
+      if (!confirm(`Are you sure you want to delete discontinue record #${latest.id} for ${pubName} (${fDate} to ${tDate})?`)) return;
+
+      await handlePubDisDelete(latest.id);
+      setPubDisMsg({ text: `✓ Discontinue entry #${latest.id} for ${pubName} has been deleted.`, isError: false });
+      handlePubDisCancel();
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    }
   };
 
   const formatDateDisplay = (val: string): string => {
@@ -723,10 +758,7 @@ export default function PublicationForm({
 
       {/* Tab 1: Publication Master & Rates */}
       {activeMainTab === 'master' && (
-      <div 
-        className="p-4 flex flex-col justify-between bg-cover bg-center min-h-[520px]"
-        style={{ backgroundImage: "url('/legacy_images/Publication.jpg'), linear-gradient(135deg, #F0F4F8 0%, #FFFFFF 100%)" }}
-      >
+      <div className="p-4 flex flex-col justify-between bg-[#ECE9D8] min-h-[520px]">
         {/* Header with Title and Active/Closed Status */}
         <div className="flex items-center justify-between pb-2 border-b border-[#CCA000]/40">
           <div className="flex items-center gap-2">
@@ -1251,273 +1283,386 @@ export default function PublicationForm({
 
       {/* Tab 2: Publication Discontinue */}
       {activeMainTab === 'discontinue' && (
-        <div 
-          className="p-4 flex flex-col justify-between bg-cover bg-center min-h-[520px]"
-          style={{ backgroundImage: "url('/legacy_images/Publication.jpg'), linear-gradient(135deg, #F0F4F8 0%, #FFFFFF 100%)" }}
-        >
-          <div className="space-y-2.5 max-w-[680px] mx-auto w-full">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-1.5 border-b border-[#CCA000]/40">
-              <h1 className="text-xl font-black text-[#800000] tracking-wider uppercase font-sans">
-                PUBLICATIONS DISCONTINUE (प्रकाशन अवकाश / बंद)
+        <div className="p-4 flex flex-col justify-between space-y-3 bg-[#ECE9D8] min-h-[420px]">
+          <div className="space-y-3">
+            <div className="text-center">
+              <h1 
+                className="text-2xl font-black text-[#800000] tracking-wider uppercase" 
+                style={{ fontFamily: 'Georgia, serif' }}
+              >
+                PUBLICATIONS DISCONTINUE
               </h1>
-              <span className="font-mono text-xs font-bold text-blue-900 bg-blue-50 px-2 py-0.5 border border-blue-200">
-                {pubDisMode === 'holiday' ? 'ALL DAILY PAPERS' : pubDisSelectedId ? `PUB ID: #${pubDisSelectedId}` : 'SELECT PUBLICATION'}
-              </span>
             </div>
 
-            {/* Mode Selection */}
-            <div className="flex items-center justify-center gap-6 py-1 px-3 bg-[#E3DFCA] border border-[#BFBAA0] rounded-xs shadow-xs text-xs font-bold">
-              <label className="flex items-center gap-1.5 cursor-pointer text-[#800000]">
+            {/* Date & Period Row */}
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <label className="font-bold text-[#800000] text-xs">Date</label>
+                <div className="border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white px-1 py-0.5 shadow-inner">
+                  <input 
+                    type="text" 
+                    value={pubDisFromDate}
+                    onChange={(e) => setPubDisFromDate(e.target.value)}
+                    onBlur={() => setPubDisFromDate(formatDateDisplay(pubDisFromDate))}
+                    className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent"
+                    placeholder="DD/MM/YYYY"
+                  />
+                </div>
+              </div>
+
+              <div className="font-bold text-black text-xs">
+                Period :- <span className="text-[#000080] font-mono">2026-2027</span>
+              </div>
+            </div>
+
+            {/* Mode Selection: Single Publication vs Holiday */}
+            <div className="flex items-center justify-center gap-8 py-1 px-2 bg-[#E3DFCA] border border-[#BFBAA0] rounded-xs">
+              <label className="flex items-center gap-2 font-bold text-[#800000] cursor-pointer text-xs">
                 <input 
                   type="radio" 
-                  name="pubDisMode" 
-                  value="single" 
-                  checked={pubDisMode === 'single'} 
-                  onChange={() => setPubDisMode('single')} 
+                  name="pubDisMode"
+                  value="single"
+                  checked={pubDisMode === 'single'}
+                  onChange={() => {
+                    setPubDisMode('single');
+                  }}
                   className="cursor-pointer"
                 />
-                <span>Single Publication (विशिष्ट पत्रिका/अखबार)</span>
+                <span>Single Publication (विशिष्ट अखबार)</span>
               </label>
 
-              <label className="flex items-center gap-1.5 cursor-pointer text-[#006600] bg-white px-2.5 py-0.5 border border-green-600/40 rounded-xs shadow-xs">
+              <label className="flex items-center gap-2 font-bold text-[#006600] cursor-pointer text-xs bg-white px-2 py-0.5 border border-[#006600]/40 rounded-xs shadow-xs">
                 <input 
                   type="radio" 
-                  name="pubDisMode" 
-                  value="holiday" 
-                  checked={pubDisMode === 'holiday'} 
+                  name="pubDisMode"
+                  value="holiday"
+                  checked={pubDisMode === 'holiday'}
                   onChange={() => {
                     setPubDisMode('holiday');
                     setPubDisHoldType('Temporary');
-                  }} 
+                  }}
                   className="cursor-pointer"
                 />
                 <span>🏖️ Holiday (अवकाश - सभी दैनिक समाचार पत्र)</span>
               </label>
             </div>
 
-            {/* Publication Selector or Holiday Description */}
+            {/* If Single Publication: Show Publication Dropdown */}
             {pubDisMode === 'single' ? (
-              <div className="bg-white/95 border border-[#800000]/30 p-2.5 rounded-xs shadow-xs space-y-1.5 text-xs font-bold">
+              <>
+                {/* Publication Select */}
                 <div className="flex items-center gap-2">
-                  <label className="w-28 text-right pr-2 text-[#800000]">Publication</label>
-                  <select
-                    value={pubDisSelectedId}
-                    onChange={(e) => setPubDisSelectedId(e.target.value)}
-                    className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white font-bold text-black text-xs outline-none shadow-inner"
-                  >
-                    <option value="">-- Select Publication (पत्रिका/अखबार चुनें) --</option>
-                    {pubList.map(p => (
-                      <option key={p.publica_id} value={p.publica_id}>
-                        #{p.publica_id} - {p.public_name} {p.pub_hindi ? `(${p.pub_hindi})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="w-28 font-bold text-[#800000] text-right shrink-0">
+                    Publication
+                  </label>
+                  <div className="flex-1">
+                    <select 
+                      value={pubDisSelectedId}
+                      onChange={(e) => setPubDisSelectedId(e.target.value)}
+                      className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
+                    >
+                      <option value="">-- कृपया पत्रिका/अखबार चुनें (Select Publication) --</option>
+                      {pubList.map((p) => (
+                        <option key={p.publica_id} value={p.publica_id}>
+                          #{p.publica_id} - {p.public_name} {p.pub_hindi ? `(${p.pub_hindi})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
+                {/* Remark / Reason */}
                 <div className="flex items-center gap-2">
-                  <label className="w-28 text-right pr-2 text-[#800000]">Remark / कारण</label>
-                  <input
-                    type="text"
-                    value={pubDisRemark}
-                    onChange={(e) => setPubDisRemark(e.target.value)}
-                    placeholder="e.g. Press Holiday, Strike, Discontinued..."
-                    className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white font-bold text-black text-xs outline-none shadow-inner"
-                  />
+                  <label className="w-28 font-bold text-[#800000] text-right shrink-0">
+                    Remark / कारण
+                  </label>
+                  <div className="flex-1">
+                    <input 
+                      type="text" 
+                      value={pubDisRemark}
+                      onChange={(e) => setPubDisRemark(e.target.value)}
+                      placeholder="e.g. Strike / Discontinued"
+                      className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
+                    />
+                  </div>
                 </div>
-              </div>
+              </>
             ) : (
-              <div className="bg-white/95 border border-green-600/40 p-2.5 rounded-xs shadow-xs space-y-1.5 text-xs font-bold">
+              <>
+                {/* Holiday Mode: All Newspapers Banner */}
                 <div className="flex items-center gap-2">
-                  <label className="w-28 text-right pr-2 text-green-900">Target</label>
-                  <div className="flex-1 px-2 py-1 bg-emerald-50 border border-emerald-300 text-emerald-950 font-bold rounded-xs flex items-center gap-1.5">
+                  <label className="w-28 font-bold text-[#006600] text-right shrink-0">
+                    Target
+                  </label>
+                  <div className="flex-1 px-3 py-1.5 bg-[#E8F5E9] border border-[#81C784] font-bold text-[#1B5E20] text-xs rounded-xs flex items-center gap-2 shadow-inner">
                     <span>🏖️</span>
                     <span>All Daily Newspapers (सभी दैनिक समाचार पत्र - पत्रिकाएं शामिल नहीं)</span>
                   </div>
                 </div>
 
+                {/* Holiday Description Input Box */}
                 <div className="flex items-center gap-2">
-                  <label className="w-28 text-right pr-2 text-green-900">Holiday Desc</label>
-                  <input
-                    type="text"
-                    value={pubDisHolidayDesc}
-                    onChange={(e) => setPubDisHolidayDesc(e.target.value)}
-                    placeholder="e.g. Diwali, Holi, Press Holiday, New Year..."
-                    className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white font-bold text-blue-900 text-xs outline-none shadow-inner"
-                  />
+                  <label className="w-28 font-bold text-[#006600] text-right shrink-0">
+                    Description / विवरण
+                  </label>
+                  <div className="flex-1">
+                    <input 
+                      type="text" 
+                      value={pubDisHolidayDesc}
+                      onChange={(e) => setPubDisHolidayDesc(e.target.value)}
+                      placeholder="e.g. Diwali Holiday, Holi, Press Closed, Strike, etc."
+                      className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner focus:border-green-600"
+                    />
+                  </div>
                 </div>
-              </div>
+              </>
             )}
 
-            {/* Temporary / Permanent & Dates Box */}
-            <div className="bg-white/95 border border-[#800000]/30 p-2.5 rounded-xs shadow-xs space-y-2 text-xs font-bold">
-              <div className="flex items-center justify-center gap-8 border-b border-slate-200 pb-1.5">
-                <label className="flex items-center gap-1.5 cursor-pointer text-amber-900">
-                  <input
-                    type="radio"
-                    name="pubHoldType"
+            {/* Temporary / Permanent Group Box */}
+            <fieldset className="border border-[#808080] p-3 mx-1 my-1 relative">
+              <legend className="px-1.5 font-bold text-[#800000] text-xs">
+                Temporary/Permanent (अस्थाई / स्थाई रोक)
+              </legend>
+
+              {/* Checkboxes Row */}
+              <div className="flex items-center justify-center gap-10 pb-2">
+                <label className="flex items-center gap-1.5 font-bold text-black cursor-pointer">
+                  <input 
+                    type="checkbox" 
                     checked={pubDisHoldType === 'Temporary'}
                     onChange={() => setPubDisHoldType('Temporary')}
                     className="cursor-pointer"
                   />
-                  <span>🟠 Temporary Hold / Holiday (अस्थाई अवकाश/रोक)</span>
+                  <span>Temporary (अस्थाई रोक)</span>
                 </label>
 
-                <label className="flex items-center gap-1.5 cursor-pointer text-red-700">
-                  <input
-                    type="radio"
-                    name="pubHoldType"
+                <label className="flex items-center gap-1.5 font-bold text-black cursor-pointer">
+                  <input 
+                    type="checkbox" 
                     checked={pubDisHoldType === 'Permanent'}
-                    onChange={() => {
-                      setPubDisHoldType('Permanent');
-                      setPubDisToDate('Permanent');
-                    }}
+                    onChange={() => setPubDisHoldType('Permanent')}
                     className="cursor-pointer"
                   />
-                  <span>🔴 Permanent Stop (स्थाई बंद)</span>
+                  <span>Permanent (स्थाई बंद)</span>
                 </label>
               </div>
 
-              <div className="flex items-center justify-center gap-6 pt-0.5">
+              {/* From & To Dates */}
+              <div className="flex items-center justify-center gap-8 pt-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-[#800000]">📅 From Date:</span>
-                  <input
-                    type="text"
-                    value={pubDisFromDate}
-                    onChange={(e) => setPubDisFromDate(e.target.value)}
-                    onBlur={() => setPubDisFromDate(formatDateDisplay(pubDisFromDate))}
-                    placeholder="DD/MM/YYYY"
-                    className="w-28 px-2 py-0.5 border border-[#7F9DB9] bg-white text-center font-mono font-bold text-blue-900 outline-none shadow-inner"
-                  />
+                  <label className="font-bold text-[#800000]">From</label>
+                  <div className="border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white px-1.5 py-0.5 shadow-inner">
+                    <input 
+                      type="text" 
+                      value={pubDisFromDate}
+                      onChange={(e) => setPubDisFromDate(e.target.value)}
+                      onBlur={() => setPubDisFromDate(formatDateDisplay(pubDisFromDate))}
+                      placeholder="DD/MM/YYYY"
+                      className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-[#800000]">📅 To Date:</span>
-                  {pubDisHoldType === 'Permanent' ? (
-                    <span className="w-28 px-2 py-0.5 bg-red-100 border border-red-300 text-red-900 text-center font-bold">
-                      Permanent
-                    </span>
-                  ) : (
-                    <input
-                      type="text"
+                  <label className="font-bold text-[#800000]">To</label>
+                  <div className={`border border-t-[#808080] border-l-[#808080] border-r-white border-b-white px-1.5 py-0.5 shadow-inner ${pubDisHoldType === 'Permanent' ? 'bg-slate-200 opacity-60' : 'bg-white'}`}>
+                    <input 
+                      type="text" 
                       value={pubDisToDate}
                       onChange={(e) => setPubDisToDate(e.target.value)}
                       onBlur={() => setPubDisToDate(formatDateDisplay(pubDisToDate))}
-                      placeholder="DD/MM/YYYY"
-                      className="w-28 px-2 py-0.5 border border-[#7F9DB9] bg-white text-center font-mono font-bold text-blue-900 outline-none shadow-inner"
+                      disabled={pubDisHoldType === 'Permanent'}
+                      placeholder={pubDisHoldType === 'Permanent' ? '---' : 'DD/MM/YYYY'}
+                      className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent disabled:cursor-not-allowed"
                     />
-                  )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Status Message */}
+              {/* Hotkeys Hint */}
+              <div className="text-center pt-2.5 font-bold text-[#800000] text-[11px]">
+                F1 - Temporary &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; F2 - Permanent
+              </div>
+            </fieldset>
+
+            {/* Publication Status Msg */}
             {pubDisMsg && (
-              <div className={`py-1 px-2 text-center text-xs font-bold rounded-xs ${pubDisMsg.isError ? 'bg-red-50 text-red-700 border border-red-300' : 'bg-emerald-50 text-emerald-800 border border-emerald-300'}`}>
+              <div className={`text-center py-1 px-2 border font-bold text-xs ${
+                pubDisMsg.isError 
+                  ? 'bg-red-100 text-red-900 border-red-300' 
+                  : 'bg-emerald-100 text-emerald-900 border-emerald-400'
+              }`}>
                 {pubDisMsg.text}
               </div>
             )}
+          </div>
 
-            {/* Active Publication Discontinues List Table */}
-            <div className="bg-white border border-[#808080] shadow-sm rounded-xs overflow-hidden">
-              <div className="bg-[#ECE9D8] px-2 py-1 font-bold text-xs text-[#000080] border-b border-[#808080] flex justify-between items-center">
-                <span>📜 Active & Recorded Publication Discontinues ({pubDisHistoryList.length})</span>
-                <button
-                  type="button"
-                  onClick={fetchPubDisHistory}
-                  className="text-[10px] text-blue-800 underline hover:text-blue-950 font-normal cursor-pointer"
-                >
-                  Refresh
-                </button>
+          {/* Action Buttons matching VB6 */}
+          <div className="flex items-center justify-between gap-1 pt-2 border-t border-[#808080]">
+            <button 
+              type="button"
+              onClick={handlePubDisSave}
+              disabled={isPubDisSaving}
+              className="flex-1 py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
+            >
+              <u>S</u>ave
+            </button>
+
+            <button 
+              type="button"
+              onClick={handlePubDisSave}
+              disabled={isPubDisSaving}
+              className="flex-1 py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
+            >
+              <u>U</u>pdate
+            </button>
+
+            <button 
+              type="button"
+              onClick={handlePubDisMainDelete}
+              className="flex-1 py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
+            >
+              <u>D</u>elete
+            </button>
+
+            <button 
+              type="button"
+              onClick={() => {
+                fetchPubDisHistory();
+                setIsPubDisFindOpen(true);
+              }}
+              className="flex-1 py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
+            >
+              <u>F</u>ind
+            </button>
+
+            <button 
+              type="button"
+              onClick={handlePubDisCancel}
+              className="flex-1 py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
+            >
+              <u>C</u>ancel
+            </button>
+
+            <button 
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-red-800 shadow-xs cursor-pointer text-center"
+            >
+              <u>E</u>xit
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Publication Discontinue Find Modal */}
+      {isPubDisFindOpen && (
+        <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-3 z-50">
+          <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl w-full h-[450px] flex flex-col font-tahoma text-xs">
+            {/* Modal Title Bar */}
+            <div className="bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold">
+              <span>Find Publication Discontinues (अखबार रोक सूची)</span>
+              <button 
+                onClick={() => setIsPubDisFindOpen(false)}
+                className="w-4 h-4 bg-[#ECE9D8] text-black text-[10px] font-bold flex items-center justify-center hover:bg-red-600 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-2 flex-1 flex flex-col justify-between overflow-hidden">
+              <div className="flex items-center gap-2 mb-2">
+                <label className="font-bold text-[#800000]">Search:</label>
+                <input 
+                  type="text" 
+                  value={pubDisFindSearch}
+                  onChange={(e) => setPubDisFindSearch(e.target.value)}
+                  placeholder="Filter by publication name or ID..."
+                  className="flex-1 px-2 py-0.5 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold outline-none"
+                />
               </div>
-              <div className="max-h-[140px] overflow-auto">
-                <table className="w-full text-xs border-collapse">
-                  <thead className="bg-[#F0EDE0] border-b border-slate-300 sticky top-0 font-bold text-slate-800">
+
+              {/* Table */}
+              <div className="flex-1 bg-white border border-[#808080] overflow-auto">
+                <table className="w-full text-[11px] border-collapse">
+                  <thead className="sticky top-0 bg-[#ECE9D8] border-b border-[#808080]">
                     <tr>
-                      <th className="p-1 border-r text-left w-10">ID</th>
+                      <th className="p-1 border-r text-center">#ID</th>
                       <th className="p-1 border-r text-left">Publication</th>
-                      <th className="p-1 border-r text-center w-24">From Date</th>
-                      <th className="p-1 border-r text-center w-24">To Date</th>
-                      <th className="p-1 border-r text-left">Remark / Holiday</th>
-                      <th className="p-1 text-center w-14">Action</th>
+                      <th className="p-1 border-r text-left">Type</th>
+                      <th className="p-1 border-r text-left">From</th>
+                      <th className="p-1 border-r text-left">To</th>
+                      <th className="p-1 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {isLoadingPubDisHistory ? (
+                    {pubDisHistoryList.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="p-3 text-center text-slate-500 font-bold">Loading discontinue records...</td>
-                      </tr>
-                    ) : pubDisHistoryList.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="p-3 text-center text-slate-500 font-bold">No publication discontinue records found.</td>
+                        <td colSpan={6} className="p-4 text-center text-slate-500 font-bold">
+                          {isLoadingPubDisHistory ? 'Loading publication discontinue records...' : 'No publication discontinue records found.'}
+                        </td>
                       </tr>
                     ) : (
-                      pubDisHistoryList.map((d, idx) => {
-                        const pubObj = pubList.find(p => p.publica_id === (d.publica_id || d.Publica_id));
-                        const isAll = (d.publica_id || d.Publica_id) === 0;
-                        const name = isAll ? '🏖️ [All Daily Newspapers]' : (pubObj?.public_name || `Publication #${d.publica_id || d.Publica_id}`);
-                        const fromD = (d.from_date || d.entry_date || '-').split('T')[0];
-                        const toD = (d.to_date || d.oc_date || 'Permanent').split('T')[0];
-                        const recId = d.id || d.discontinue_id || idx;
-
-                        return (
-                          <tr key={recId} className="border-b border-slate-200 hover:bg-blue-50 text-[11px]">
-                            <td className="p-1 border-r font-mono text-slate-600 text-center">#{recId}</td>
-                            <td className="p-1 border-r font-bold text-slate-900">{name}</td>
-                            <td className="p-1 border-r text-center font-mono text-blue-900">{fromD}</td>
-                            <td className="p-1 border-r text-center font-mono text-blue-900">{toD}</td>
-                            <td className="p-1 border-r text-slate-700">{d.remark || 'Discontinued'}</td>
-                            <td className="p-1 text-center">
-                              <button
-                                type="button"
-                                onClick={() => handlePubDisDelete(d.id)}
-                                className="px-1.5 py-0.5 bg-red-100 hover:bg-red-200 text-red-800 border border-red-300 font-bold text-[10px] rounded-xs cursor-pointer"
-                                title="Delete / Reopen"
-                              >
-                                🗑
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
+                      pubDisHistoryList
+                        .filter(d => {
+                          if (!pubDisFindSearch.trim()) return true;
+                          const s = pubDisFindSearch.toLowerCase();
+                          const pId = d.publica_id !== undefined ? d.publica_id : d.Publica_id;
+                          const isHoli = pId === 0 || pId === '0';
+                          const pubName = isHoli ? 'holiday all newspapers' : (pubList.find(p => p.publica_id === pId)?.public_name || '').toLowerCase();
+                          const remark = (d.remark || '').toLowerCase();
+                          return String(pId).includes(s) || pubName.includes(s) || remark.includes(s) || String(d.id).includes(s);
+                        })
+                        .map((d) => {
+                          const pId = d.publica_id !== undefined ? d.publica_id : d.Publica_id;
+                          const isHolidayRec = pId === 0 || pId === '0';
+                          const pubName = isHolidayRec 
+                            ? `🏖️ [HOLIDAY] All Newspapers ${d.remark ? `(${d.remark})` : ''}` 
+                            : (pubList.find(p => p.publica_id === pId)?.public_name || `Pub #${pId}`);
+                          const isPerm = String(d.dis_type).toUpperCase().startsWith('P');
+                          return (
+                            <tr key={d.id} className={`border-b hover:bg-blue-50 ${isHolidayRec ? 'bg-emerald-50/50' : ''}`}>
+                              <td className="p-1 border-r text-center font-mono font-bold">#{d.id}</td>
+                              <td className={`p-1 border-r font-bold ${isHolidayRec ? 'text-emerald-900' : 'text-blue-900'}`}>
+                                {pubName}
+                              </td>
+                              <td className="p-1 border-r font-bold">
+                                {isHolidayRec ? (
+                                  <span className="text-emerald-800 bg-emerald-100 px-1 py-0.5 rounded text-[10px]">Holiday</span>
+                                ) : (
+                                  isPerm ? 'Permanent' : 'Temporary'
+                                )}
+                              </td>
+                              <td className="p-1 border-r font-mono">{(d.from_date || d.entry_date || '-').split('T')[0]}</td>
+                              <td className="p-1 border-r font-mono">{(d.to_date || d.oc_date || 'Permanent').split('T')[0]}</td>
+                              <td className="p-1 text-center">
+                                <button 
+                                  onClick={() => handlePubDisDelete(d.id)}
+                                  className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold cursor-pointer shadow-xs"
+                                  title="Delete this entry"
+                                >
+                                  Del
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
                     )}
                   </tbody>
                 </table>
               </div>
             </div>
-          </div>
 
-          {/* Publication Discontinue Action Buttons */}
-          <div className="flex items-center justify-center gap-2 pt-2 border-t border-[#808080]">
-            <button 
-              onClick={handlePubDisSave}
-              disabled={isPubDisSaving}
-              title="Save publication discontinue"
-              className="px-4 py-1 bg-gradient-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] border border-[#006699] shadow-xs transform -skew-x-12 cursor-pointer font-bold text-black text-xs"
-            >
-              <span className="transform skew-x-12 flex items-center gap-1">
-                💾 {isPubDisSaving ? 'Saving...' : 'Save Discontinue'}
-              </span>
-            </button>
-
-            <button 
-              onClick={handlePubDisCancel}
-              title="Clear discontinue fields"
-              className="px-4 py-1 bg-gradient-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] border border-[#006699] shadow-xs transform -skew-x-12 cursor-pointer font-bold text-black text-xs"
-            >
-              <span className="transform skew-x-12 flex items-center gap-1">
-                ✖ Cancel
-              </span>
-            </button>
-
-            <button 
-              onClick={onClose}
-              className="px-4 py-1 bg-gradient-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] border border-[#006699] shadow-xs transform -skew-x-12 cursor-pointer font-bold text-red-800 text-xs"
-            >
-              <span className="transform skew-x-12 flex items-center gap-1">
-                🛑 Exit
-              </span>
-            </button>
+            {/* Modal Bottom Close */}
+            <div className="p-2 border-t bg-[#ECE9D8] flex justify-end">
+              <button 
+                onClick={() => setIsPubDisFindOpen(false)}
+                className="px-4 py-1 bg-white border border-[#808080] font-bold text-xs cursor-pointer hover:bg-slate-100"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
