@@ -109,7 +109,13 @@ export default function VB6DesktopLayout() {
 
   // New Modal States for Full 2008 Master Set
   const [isPeriodOpen, setIsPeriodOpen] = useState(true);
-  const [currentPeriod, setCurrentPeriod] = useState({ month: 'August', startYear: 2026, endYear: 2027 });
+  const [currentPeriod, setCurrentPeriod] = useState(() => {
+    const today = new Date();
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const mIdx = today.getMonth();
+    const sY = mIdx < 3 ? today.getFullYear() - 1 : today.getFullYear();
+    return { month: months[mIdx] || 'October', startYear: sY, endYear: sY + 1 };
+  });
   const [isRateMatrixOpen, setIsRateMatrixOpen] = useState(false);
   const [isCollectionAgentsOpen, setIsCollectionAgentsOpen] = useState(false);
   const [isUserPermOpen, setIsUserPermOpen] = useState(false);
@@ -121,25 +127,45 @@ export default function VB6DesktopLayout() {
 
   // New Vacation Hold Form State
   const [vacationCustId, setVacationCustId] = useState<string>('1');
-  const [vacationFrom, setVacationFrom] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [vacationFrom, setVacationFrom] = useState<string>(() => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  });
   const [vacationTo, setVacationTo] = useState<string>('');
   const [vacationType, setVacationType] = useState<'Temporary' | 'Permanent'>('Temporary');
 
   // Status Notification
   const [statusMessage, setStatusMessage] = useState('System Ready. Complete 24,581 legacy customer records and 39,681 subscriptions loaded.');
 
+  // Helper to normalize and sort publications
+  const normalizeAndSortPubList = (list: any[]) => {
+    return (list || []).map((p: any) => {
+      const pid = Number(p.publica_id ?? p.publication_id ?? p.id ?? 0);
+      const name = String(p.public_name || p.name || (pid > 0 ? `Publication #${pid}` : '')).trim();
+      return {
+        ...p,
+        publica_id: pid,
+        public_name: name
+      };
+    }).filter((p: any) => p.publica_id > 0 && !isNaN(p.publica_id) && p.public_name && !p.public_name.includes('NaN'))
+      .sort((a: any, b: any) => a.public_name.localeCompare(b.public_name, undefined, { sensitivity: 'base' }));
+  };
+
   // Load Initial Metadata
   useEffect(() => {
     fetch('/data/publishers.json').then(r => r.json()).then(setPublishers).catch(() => {});
-    fetch('/api/publications?with_rates=true').then(r => r.json()).then(data => {
+    fetch('/api/publications?with_rates=true&order=alpha').then(r => r.json()).then(data => {
       if (data.publications) {
-        setPublications(data.publications);
-        if (data.publications.length > 0) setSelectedPub(data.publications[0]);
+        const cleaned = normalizeAndSortPubList(data.publications);
+        setPublications(cleaned);
+        if (cleaned.length > 0) setSelectedPub(cleaned[0]);
       }
     }).catch(() => {
       fetch('/data/publications.json').then(r => r.json()).then(data => {
-        setPublications(data);
-        if (data.length > 0) setSelectedPub(data[0]);
+        const cleaned = normalizeAndSortPubList(data);
+        setPublications(cleaned);
+        if (cleaned.length > 0) setSelectedPub(cleaned[0]);
       }).catch(() => {});
     });
     fetch('/api/regions')
@@ -773,12 +799,13 @@ export default function VB6DesktopLayout() {
           />
         )}
 
-        {/* 9e. Publication Discontinue & Supplement (screenshot_11.jpg) */}
+        {/* 9e. Publication Discontinue (Dual-Tab: Tab 1 Publication, Tab 2 Customer) */}
         {activeWindow === 'pubdiscontinue' && (
-          <PubDiscontinueForm 
+          <DiscontinueForm 
             onClose={() => setActiveWindow(null)} 
             publications={publications}
-            mode="discontinue"
+            hawkers={hawkers}
+            initialTab="publication"
           />
         )}
         {activeWindow === 'pubsupplement' && (

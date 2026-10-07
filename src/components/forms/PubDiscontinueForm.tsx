@@ -12,25 +12,51 @@ interface PubDiscontinueFormProps {
 
 export default function PubDiscontinueForm({ onClose, publications = [], mode = 'discontinue' }: PubDiscontinueFormProps) {
   const isSupplement = mode === 'supplement';
-  const [pubList, setPubList] = useState<Publication[]>([]);
+  const cleanAndSortPubs = (list: any[]) => {
+    return (list || []).map((p: any) => {
+      const pid = Number(p.publica_id ?? p.publication_id ?? p.id ?? 0);
+      const name = String(p.public_name || p.name || (pid > 0 ? `Publication #${pid}` : '')).trim();
+      return {
+        ...p,
+        publica_id: pid,
+        public_name: name
+      };
+    }).filter((p: any) => p.publica_id > 0 && !isNaN(p.publica_id) && p.public_name && !p.public_name.includes('NaN'))
+      .sort((a: any, b: any) => a.public_name.localeCompare(b.public_name, undefined, { sensitivity: 'base' }));
+  };
+
+  const [pubList, setPubList] = useState<Publication[]>(() => cleanAndSortPubs(publications));
   const [selectedPub, setSelectedPub] = useState('');
   const [supplementName, setSupplementName] = useState('');
-  const [fromDate, setFromDate] = useState('');
+  const [fromDate, setFromDate] = useState(() => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+  });
   const [toDate, setToDate] = useState('');
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
     if (publications && publications.length > 0) {
-      setPubList(publications);
+      setPubList(cleanAndSortPubs(publications));
       setSelectedPub('');
     } else {
-      fetch('/data/publications.json')
+      fetch('/api/publications?with_rates=false')
         .then(r => r.json())
         .then(d => {
-          setPubList(d || []);
+          const list = d.publications || (Array.isArray(d) ? d : []);
+          setPubList(cleanAndSortPubs(list));
           setSelectedPub('');
         })
-        .catch(() => {});
+        .catch(() => {
+          fetch('/data/publications.json')
+            .then(r => r.json())
+            .then(d => {
+              setPubList(cleanAndSortPubs(d || []));
+              setSelectedPub('');
+            })
+            .catch(() => {});
+        });
     }
   }, [publications]);
 

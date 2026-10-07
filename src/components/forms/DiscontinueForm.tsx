@@ -11,6 +11,29 @@ interface DiscontinueFormProps {
   initialTab?: 'publication' | 'customer';
 }
 
+// Helper to normalize publication objects and sort alphabetically (A to Z)
+const normalizeAndSortPubs = (list: any[]) => {
+  const cleaned = (list || []).map((p: any) => {
+    const pid = Number(p.publica_id ?? p.publication_id ?? p.Publica_id ?? p.id ?? 0);
+    const name = String(p.public_name || p.name || p.Public_name || (pid > 0 ? `Publication #${pid}` : '')).trim();
+    const hindi = p.pub_hindi || p.Pub_Hindi || '';
+    return {
+      ...p,
+      publica_id: pid,
+      public_name: name,
+      pub_hindi: hindi ? cleanOrTransliterateHindi(hindi, name) : ''
+    };
+  }).filter((p: any) => {
+    const pid = Number(p.publica_id);
+    const name = String(p.public_name || '');
+    return pid > 0 && !isNaN(pid) && name.length > 0 && !name.toLowerCase().includes('nan');
+  });
+
+  // Alphabetical sort by Publication Name (A to Z)
+  cleaned.sort((a: any, b: any) => a.public_name.localeCompare(b.public_name, undefined, { sensitivity: 'base' }));
+  return cleaned;
+};
+
 export default function DiscontinueForm({ 
   onClose, 
   publications = [], 
@@ -29,7 +52,7 @@ export default function DiscontinueForm({
   // ==========================================
   // TAB 1: PUBLICATION DISCONTINUE STATE
   // ==========================================
-  const [pubDisList, setPubDisList] = useState<Publication[]>(publications);
+  const [pubDisList, setPubDisList] = useState<Publication[]>(() => normalizeAndSortPubs(publications));
   const [pubSelectedId, setPubSelectedId] = useState<string>('');
   const [pubHoldType, setPubHoldType] = useState<'Temporary' | 'Permanent'>('Temporary');
   const [pubFromDate, setPubFromDate] = useState<string>(todayDdmmyyyy);
@@ -78,24 +101,14 @@ export default function DiscontinueForm({
 
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Helper to normalize publication objects
-  const normalizeAndSortPubs = (list: any[]) => {
-    const cleaned = (list || []).map((p: any) => {
-      const pid = Number(p.publica_id ?? p.publication_id ?? p.Publica_id ?? p.id ?? 0);
-      const name = String(p.public_name || p.name || p.Public_name || (pid > 0 ? `Publication #${pid}` : '')).trim();
-      const hindi = p.pub_hindi || p.Pub_Hindi || '';
-      return {
-        ...p,
-        publica_id: pid,
-        public_name: name,
-        pub_hindi: hindi ? cleanOrTransliterateHindi(hindi, name) : ''
-      };
-    }).filter((p: any) => p.publica_id > 0 && p.public_name && !p.public_name.includes('NaN'));
-
-    // Alphabetical sort by Publication Name (A to Z)
-    cleaned.sort((a: any, b: any) => a.public_name.localeCompare(b.public_name, undefined, { sensitivity: 'base' }));
-    return cleaned;
-  };
+  // Ensure client dates are synced to current system day
+  useEffect(() => {
+    const cur = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    const dStr = `${p(cur.getDate())}/${p(cur.getMonth() + 1)}/${cur.getFullYear()}`;
+    setEntryDate(dStr);
+    setPubFromDate(dStr);
+  }, []);
 
   // Sync publications (sorted alphabetically, no NaN)
   useEffect(() => {
@@ -737,34 +750,37 @@ export default function DiscontinueForm({
                 <select 
                   value={selectedPubId}
                   onChange={(e) => setSelectedPubId(e.target.value)}
-                  disabled={!selectedCust}
-                  className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none disabled:bg-slate-100 shadow-inner"
+                  className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
                 >
-                  {!selectedCust ? (
-                    <option value="">-- कृपया पहले ऊपर ग्राहक का नाम चुनें (Select Customer First) --</option>
-                  ) : (
-                    <>
-                      <option value="0">All Papers (सभी अखबार/पत्रिका)</option>
-                      {(() => {
-                        const sortedSubs = [...customerSubs].sort((a: any, b: any) => {
-                          const aName = a.publication_name || (pubDisList.find(p => p.publica_id === (a.publica_id || a.publication_id))?.public_name) || '';
-                          const bName = b.publication_name || (pubDisList.find(p => p.publica_id === (b.publica_id || b.publication_id))?.public_name) || '';
-                          return aName.localeCompare(bName, undefined, { sensitivity: 'base' });
-                        });
-                        return sortedSubs.map((sub: any) => {
-                          const pId = sub.publica_id || sub.publication_id;
+                  <option value="0">All Papers (सभी अखबार/पत्रिका)</option>
+                  {customerSubs && customerSubs.length > 0 && (
+                    <optgroup label="-- Customer's Subscribed Papers --">
+                      {customerSubs
+                        .map((sub: any) => {
+                          const pId = Number(sub.publica_id || sub.publication_id);
                           const matched = pubDisList.find(p => p.publica_id === pId);
                           const pName = sub.publication_name || matched?.public_name || `Paper #${pId}`;
                           const isClosed = sub.is_active === false || (sub.c_date && sub.c_date !== '' && sub.c_date !== '-');
-                          return (
-                            <option key={sub.sno || pId} value={pId}>
-                              {pName} {sub.qty ? `(Qty: ${sub.qty})` : ''} {isClosed ? '[ALREADY CLOSED]' : '[ACTIVE]'}
-                            </option>
-                          );
-                        });
-                      })()}
-                    </>
+                          return { pId, pName, qty: sub.qty, isClosed, sno: sub.sno };
+                        })
+                        .filter(s => s.pId > 0 && !isNaN(s.pId) && !s.pName.includes('NaN'))
+                        .sort((a, b) => a.pName.localeCompare(b.pName, undefined, { sensitivity: 'base' }))
+                        .map(sub => (
+                          <option key={`sub-${sub.sno || sub.pId}`} value={sub.pId}>
+                            #{sub.pId} - {sub.pName} {sub.qty ? `(Qty: ${sub.qty})` : ''} {sub.isClosed ? '[ALREADY CLOSED]' : '[ACTIVE]'}
+                          </option>
+                        ))}
+                    </optgroup>
                   )}
+                  <optgroup label="-- All Publications (A to Z) --">
+                    {pubDisList
+                      .filter(p => !customerSubs.some((s: any) => Number(s.publica_id || s.publication_id) === p.publica_id))
+                      .map(p => (
+                        <option key={`pub-${p.publica_id}`} value={p.publica_id}>
+                          #{p.publica_id} - {p.public_name} {p.pub_hindi ? `(${p.pub_hindi})` : ''}
+                        </option>
+                      ))}
+                  </optgroup>
                 </select>
               </div>
             </div>

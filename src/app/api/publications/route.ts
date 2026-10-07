@@ -35,25 +35,29 @@ export async function GET(request: NextRequest) {
     try {
       const { data: sbPubs } = await supabase.from('publication').select('*');
       if (sbPubs && sbPubs.length > 0) {
-        const localPubIds = new Set(pubs.map((p: any) => p.publica_id));
+        const localPubIds = new Set(pubs.map((p: any) => Number(p.publica_id)).filter((id: number) => id && !isNaN(id)));
         let added = false;
         for (const sp of sbPubs) {
-          const pid = Number(sp.publication_id);
-          if (!localPubIds.has(pid)) {
-            pubs.unshift({
-              publica_id: pid,
-              public_name: sp.name || `Publication #${pid}`,
-              pub_hindi: '',
-              type_p: sp.frequency || 'Daily',
-              publish_id: 1,
-              abrv: (sp.name || '').slice(0, 4).toUpperCase(),
-              circulation: 'Morning',
-              duration: 'Daily',
-              magzine_day: null,
-              magzine_month: null,
-              chr_del: 0
-            });
-            added = true;
+          const pid = Number(sp.publica_id ?? sp.publication_id ?? sp.id);
+          if (pid && !isNaN(pid) && pid > 0 && !localPubIds.has(pid)) {
+            const pubName = String(sp.public_name || sp.name || `Publication #${pid}`).trim();
+            if (!pubName.includes('NaN')) {
+              pubs.push({
+                publica_id: pid,
+                public_name: pubName,
+                pub_hindi: sp.pub_hindi || '',
+                type_p: sp.type_p || sp.frequency || 'Daily',
+                publish_id: Number(sp.publish_id) || 1,
+                abrv: sp.abrv || pubName.slice(0, 4).toUpperCase(),
+                circulation: sp.circulation || 'Morning',
+                duration: sp.duration || 'Daily',
+                magzine_day: sp.magzine_day ?? null,
+                magzine_month: sp.magzine_month ?? null,
+                chr_del: sp.chr_del ?? 0
+              });
+              localPubIds.add(pid);
+              added = true;
+            }
           }
         }
         if (added) {
@@ -61,6 +65,13 @@ export async function GET(request: NextRequest) {
         }
       }
     } catch (_) {}
+
+    // Strictly purge any corrupt or NaN publications
+    pubs = pubs.filter((p: any) => {
+      const pid = Number(p.publica_id ?? p.publication_id);
+      const name = String(p.public_name || p.name || '');
+      return pid && !isNaN(pid) && pid > 0 && name.length > 0 && !name.toLowerCase().includes('nan');
+    });
 
     const todayIso = new Date().toISOString().split('T')[0];
 
@@ -108,6 +119,8 @@ export async function GET(request: NextRequest) {
       filtered.sort((a: any, b: any) => b.publica_id - a.publica_id);
     } else if (order === 'asc') {
       filtered.sort((a: any, b: any) => a.publica_id - b.publica_id);
+    } else if (order === 'alpha' || order === 'name') {
+      filtered.sort((a: any, b: any) => (a.public_name || '').localeCompare(b.public_name || '', undefined, { sensitivity: 'base' }));
     }
 
     return NextResponse.json({

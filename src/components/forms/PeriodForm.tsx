@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Check, LogIn, X } from 'lucide-react';
 
 interface PeriodFormProps {
@@ -15,24 +15,45 @@ const MONTHS = [
 ];
 
 export default function PeriodForm({ isOpen, onLogin, onExit }: PeriodFormProps) {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonthIdx = now.getMonth();
-  
-  // Indian Financial Year calculation (starts April 1st)
-  const defaultStartYear = currentMonthIdx < 3 ? currentYear - 1 : currentYear;
-  const defaultEndYear = defaultStartYear + 1;
-  
-  const [selectedMonth, setSelectedMonth] = useState<string>(MONTHS[currentMonthIdx] || 'August');
-  const [startYear, setStartYear] = useState<number>(defaultStartYear);
-  const [endYear, setEndYear] = useState<number>(defaultEndYear);
-  const [selectedDate, setSelectedDate] = useState<number>(now.getDate());
+  // Helper to get local date values
+  const getTodayInfo = () => {
+    const today = new Date();
+    const curYear = today.getFullYear();
+    const mIdx = today.getMonth();
+    const sYear = mIdx < 3 ? curYear - 1 : curYear;
+    return {
+      date: today.getDate(),
+      month: MONTHS[mIdx] || 'October',
+      startYear: sYear,
+      endYear: sYear + 1
+    };
+  };
+
+  const initial = getTodayInfo();
+  const [selectedMonth, setSelectedMonth] = useState<string>(initial.month);
+  const [startYear, setStartYear] = useState<number>(initial.startYear);
+  const [endYear, setEndYear] = useState<number>(initial.endYear);
+  const [selectedDate, setSelectedDate] = useState<number>(initial.date);
+
+  // Sync to today's local date when component mounts or dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      const today = new Date();
+      const mIdx = today.getMonth();
+      const sY = mIdx < 3 ? today.getFullYear() - 1 : today.getFullYear();
+      setSelectedDate(today.getDate());
+      setSelectedMonth(MONTHS[mIdx] || 'October');
+      setStartYear(sY);
+      setEndYear(sY + 1);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  // Calendar generation for current month
-  const daysInMonth = new Date(startYear, currentMonthIdx + 1, 0).getDate();
-  const firstDay = new Date(startYear, currentMonthIdx, 1).getDay();
+  // Calendar generation for the currently selected month and year
+  const selectedMonthIdx = Math.max(0, MONTHS.indexOf(selectedMonth));
+  const daysInMonth = new Date(startYear, selectedMonthIdx + 1, 0).getDate();
+  const firstDay = new Date(startYear, selectedMonthIdx, 1).getDay();
 
   const handleYearChange = (start: number) => {
     setStartYear(start);
@@ -129,14 +150,21 @@ export default function PeriodForm({ isOpen, onLogin, onExit }: PeriodFormProps)
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const day = i + 1;
                 const isSel = day === selectedDate;
+                const todayObj = new Date();
+                const isToday = day === todayObj.getDate() && selectedMonthIdx === todayObj.getMonth();
                 return (
                   <button
                     type="button"
                     key={day}
                     onClick={() => setSelectedDate(day)}
                     className={`py-0.5 rounded text-center cursor-pointer transition-colors ${
-                      isSel ? 'bg-blue-800 text-white font-bold' : 'hover:bg-blue-100 text-slate-800'
+                      isSel 
+                        ? 'bg-blue-800 text-white font-bold ring-1 ring-blue-900 shadow-sm' 
+                        : isToday 
+                        ? 'bg-amber-100 text-blue-900 font-extrabold border border-amber-500' 
+                        : 'hover:bg-blue-100 text-slate-800'
                     }`}
+                    title={isToday ? 'Today' : undefined}
                   >
                     {day}
                   </button>
