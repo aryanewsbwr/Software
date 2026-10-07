@@ -33,6 +33,7 @@ import {
 import { Customer, Publication, Hawker, Publisher, Region, Rate, RateChange, Holiday, Discontinue, PaymentReceipt, CustomerDetail } from '@/lib/types';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { getEffectiveWeekdayRates } from '@/lib/rateEngine';
+import { AppUser } from '@/lib/auth';
 
 import PublisherForm from './forms/PublisherForm';
 import PublicationForm from './forms/PublicationForm';
@@ -72,7 +73,13 @@ const LEGACY_DAYS = [
   { id: 7, name: 'Saturday', hindi: 'शनिवार', short: 'Sat' },
 ];
 
-export default function VB6DesktopLayout() {
+interface VB6DesktopLayoutProps {
+  user?: AppUser | null;
+  onLogout?: () => void;
+  onSwitchToMobile?: () => void;
+}
+
+export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: VB6DesktopLayoutProps = {}) {
   // Active Form Window (starts null on clean MDI desktop)
   const [activeWindow, setActiveWindow] = useState<string | null>(null);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -347,6 +354,10 @@ export default function VB6DesktopLayout() {
               </button>
               <button onClick={() => { setIsMessageOpen(true); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 Message
+              </button>
+              <button onClick={() => { setIsUserPermOpen(true); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer flex justify-between items-center border-t border-slate-300 mt-1 pt-1">
+                <span>User Permissions & Roles</span>
+                <span className="text-slate-600 font-mono text-[11px] ml-4">Admin</span>
               </button>
             </div>
           )}
@@ -635,6 +646,34 @@ export default function VB6DesktopLayout() {
           >
             <u>E</u>xit
           </button>
+        </div>
+
+        {/* Right side user info & mobile switch */}
+        <div className="ml-auto flex items-center gap-1.5 pr-1">
+          {user && (
+            <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 bg-white border border-[#808080] text-[11px] font-bold text-[#800000] shadow-inner">
+              <span>👤 {user.username}</span>
+              <span className="text-[10px] text-slate-500 font-normal">({user.role})</span>
+            </div>
+          )}
+          {onSwitchToMobile && (
+            <button 
+              onClick={onSwitchToMobile}
+              title="Switch to Touch Mobile View"
+              className="px-2 py-0.5 bg-[#006699] text-white hover:bg-[#004466] border border-black text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+            >
+              <span>📱 Mobile View</span>
+            </button>
+          )}
+          {onLogout && (
+            <button 
+              onClick={onLogout}
+              title="Logout session"
+              className="px-2 py-0.5 bg-[#800000] text-white hover:bg-[#A00000] border border-black text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+            >
+              <span>🔒 Logout</span>
+            </button>
+          )}
         </div>
 
       </div>
