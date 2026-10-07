@@ -428,9 +428,21 @@ export default function PublicationForm({
         if (data.error) throw new Error(data.error);
 
         if (effIso <= todayStr) {
-          setWeekdayRates(newWeekdayRates);
+          setWeekdayRates({ ...newWeekdayRates });
         }
         setIsRateChangeMode(false);
+
+        // Fetch refreshed rates & ratechanges
+        fetch('/data/rates.json').then(r => r.json()).then(setLocalRates).catch(() => {});
+        fetch('/data/ratechanges.json').then(r => r.json()).then(setLocalRatechanges).catch(() => {});
+
+        const updatedPub: Publication = {
+          ...selectedPub,
+          current_rates: effIso <= todayStr ? { ...newWeekdayRates } : selectedPub.current_rates
+        };
+        if (onSave) {
+          onSave(updatedPub);
+        }
         setMsg(`✓ Rate Change for Publication #${selectedPub.publica_id} "${selectedPub.public_name}" effective ${effIso} saved successfully!`);
       } catch (err: any) {
         setMsg(`Error saving rate change: ${err.message}`);

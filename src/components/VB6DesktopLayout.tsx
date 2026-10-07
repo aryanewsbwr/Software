@@ -699,16 +699,20 @@ export default function VB6DesktopLayout() {
               setPublications(prev => [savedPub, ...prev.filter(p => p.publica_id !== savedPub.publica_id)]);
               fetch('/api/publications?with_rates=true')
                 .then(r => r.json())
-                .then(data => { if (data.publications) setPublications(data.publications); })
+                .then(data => { if (data.publications) setPublications(normalizeAndSortPubList(data.publications)); })
                 .catch(() => {});
+              fetch('/data/rates.json').then(r => r.json()).then(setRates).catch(() => {});
+              fetch('/data/ratechanges.json').then(r => r.json()).then(setRatechanges).catch(() => {});
               setStatusMessage(`Publication #${savedPub.publica_id} "${savedPub.public_name}" saved.`);
             }}
             onDelete={(pubId) => {
               setPublications(prev => prev.filter(p => p.publica_id !== pubId));
               fetch('/api/publications?with_rates=true')
                 .then(r => r.json())
-                .then(data => { if (data.publications) setPublications(data.publications); })
+                .then(data => { if (data.publications) setPublications(normalizeAndSortPubList(data.publications)); })
                 .catch(() => {});
+              fetch('/data/rates.json').then(r => r.json()).then(setRates).catch(() => {});
+              fetch('/data/ratechanges.json').then(r => r.json()).then(setRatechanges).catch(() => {});
               setStatusMessage(`Publication #${pubId} deleted.`);
             }}
           />

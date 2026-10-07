@@ -19,28 +19,62 @@ export async function GET(request: NextRequest) {
     const dateStr = searchParams.get('date') || new Date().toISOString().split('T')[0];
     const isHistory = searchParams.get('history') === 'true';
 
-    const rates = loadJson('rates.json');
-    let ratechanges = loadJson('ratechanges.json');
+    let rates = loadJson('rates.json');
+    let ratechanges = loadJson('ratechanges.json').map((r: any) => ({
+      publica_id: r.publica_id ?? r.Publica_id,
+      dayofweek: r.dayofweek ?? r.Dayofweek,
+      oldrate: r.oldrate ?? r.old_rate ?? r.OldRate ?? 0,
+      new_rate: r.new_rate ?? r.newrate ?? r.NewRate ?? 0,
+      dated: (r.dated || r.Dated || r.effective_date || '').split('T')[0],
+      effective_date: (r.effective_date || r.dated || r.Dated || '').split('T')[0]
+    }));
 
-    // Try fetching newest from Supabase
+    // Fetch latest rate changes from Supabase
     try {
-      const { data: sbRc } = await supabase.from('ratechange').select('*').order('Dated', { ascending: false });
+      const { data: sbRc } = await supabase
+        .from('ratechange')
+        .select('*')
+        .order('effective_date', { ascending: false });
+
       if (sbRc && sbRc.length > 0) {
-        const localIds = new Set(ratechanges.map((r: any) => `${r.publica_id || r.Publica_id}-${r.dayofweek || r.Dayofweek}-${(r.dated || r.Dated || '').split('T')[0]}`));
+        const seenKeys = new Set(
+          ratechanges.map((r: any) => `${r.publica_id}-${r.dayofweek}-${r.effective_date}-${r.new_rate}`)
+        );
+
         sbRc.forEach((r: any) => {
-          const key = `${r.Publica_id || r.publica_id}-${r.Dayofweek || r.dayofweek}-${(r.Dated || r.dated || '').split('T')[0]}`;
-          if (!localIds.has(key)) {
+          const pid = r.publica_id ?? r.Publica_id;
+          const dow = r.dayofweek ?? r.Dayofweek;
+          const effD = (r.effective_date || r.Dated || r.dated || '').split('T')[0];
+          const newR = Number(r.newrate ?? r.new_rate ?? r.NewRate ?? 0);
+          const oldR = Number(r.oldrate ?? r.old_rate ?? r.OldRate ?? 0);
+          const key = `${pid}-${dow}-${effD}-${newR}`;
+
+          if (!seenKeys.has(key)) {
             ratechanges.push({
-              publica_id: r.Publica_id || r.publica_id,
-              dayofweek: r.Dayofweek !== undefined ? r.Dayofweek : r.dayofweek,
-              oldrate: r.OldRate ?? r.oldrate ?? 0,
-              new_rate: r.NewRate ?? r.new_rate ?? 0,
-              dated: (r.Dated || r.dated || '').split('T')[0],
-              effective_date: (r.Dated || r.dated || '').split('T')[0]
+              publica_id: pid,
+              dayofweek: dow,
+              oldrate: oldR,
+              new_rate: newR,
+              dated: effD,
+              effective_date: effD
             });
-            localIds.add(key);
+            seenKeys.add(key);
           }
         });
+      }
+    } catch (sbErr) {
+      console.warn('Supabase ratechange fetch notice:', sbErr);
+    }
+
+    // Try fetching latest rates from Supabase
+    try {
+      const { data: sbRates } = await supabase.from('rate').select('*');
+      if (sbRates && sbRates.length > 0) {
+        rates = sbRates.map((r: any) => ({
+          publica_id: r.publica_id,
+          dayofweek: r.dayofweek,
+          rate: Number(r.rate)
+        }));
       }
     } catch (_) {}
 
@@ -49,8 +83,8 @@ export async function GET(request: NextRequest) {
       const pubId = parseInt(pubIdStr, 10);
       const pubChanges = ratechanges.filter((rc: any) => (rc.publica_id || rc.Publica_id) === pubId);
       pubChanges.sort((a: any, b: any) => {
-        const dA = (a.dated || a.effective_date || '').split('T')[0];
-        const dB = (b.dated || b.effective_date || '').split('T')[0];
+        const dA = (a.effective_date || a.dated || '').split('T')[0];
+        const dB = (b.effective_date || b.dated || '').split('T')[0];
         return dB.localeCompare(dA);
       });
       return NextResponse.json({
@@ -110,19 +144,29 @@ export async function POST(request: NextRequest) {
     const targetRates = (is_rate_change && new_rates) ? new_rates : day_rates;
 
     if (targetRates && typeof targetRates === 'object') {
-      // 1. Build rate changes records
+      // 1. Build rate changes records with lowercase PostgreSQL columns
       const rateChangeRows: any[] = [];
+      const jsonRateChanges: any[] = [];
+
       Object.entries(targetRates).forEach(([day, rate]) => {
         const dayNum = parseInt(day, 10);
         const rateVal = Number(rate);
         if (rateVal > 0) {
           const oldVal = (old_rates && old_rates[dayNum]) ? Number(old_rates[dayNum]) : 0;
           rateChangeRows.push({
-            Publica_id: pubId,
-            Dayofweek: dayNum,
-            OldRate: oldVal,
-            NewRate: rateVal,
-            Dated: effDateIso
+            publica_id: pubId,
+            dayofweek: dayNum,
+            oldrate: oldVal,
+            newrate: rateVal,
+            effective_date: effDateIso
+          });
+          jsonRateChanges.push({
+            publica_id: pubId,
+            dayofweek: dayNum,
+            oldrate: oldVal,
+            new_rate: rateVal,
+            dated: effDateIso,
+            effective_date: effDateIso
           });
         }
       });
@@ -130,54 +174,48 @@ export async function POST(request: NextRequest) {
       // 2. Insert into Supabase ratechange table
       if (rateChangeRows.length > 0) {
         try {
-          await supabase.from('ratechange').insert(rateChangeRows);
+          const { error: rcErr } = await supabase.from('ratechange').insert(rateChangeRows);
+          if (rcErr) console.warn('Supabase ratechange insert error:', rcErr);
         } catch (rcErr) {
           console.warn('Supabase ratechange insert warning:', rcErr);
         }
       }
 
-      // 3. If effective immediately (effDateIso <= todayIso) or direct rate update, update rate table
+      // 3. Update Supabase rate table with lowercase columns
       const rateRows = Object.entries(targetRates).map(([day, rate]) => ({
-        Publica_id: pubId,
-        Dayofweek: parseInt(day, 10),
-        Rate: Number(rate)
+        publica_id: pubId,
+        dayofweek: parseInt(day, 10),
+        rate: Number(rate)
       }));
 
       if (effDateIso <= todayIso) {
         try {
-          await supabase
-            .from('rate')
-            .upsert(rateRows, { onConflict: 'Publica_id,Dayofweek' });
+          await supabase.from('rate').delete().eq('publica_id', pubId);
+          const { error: rErr } = await supabase.from('rate').insert(rateRows);
+          if (rErr) console.warn('Supabase rate insert error:', rErr);
         } catch (dbErr) {
-          console.warn('Supabase rate upsert warning:', dbErr);
+          console.warn('Supabase rate update warning:', dbErr);
         }
       }
 
-      // 4. Update local JSON files for immediate offline reflection
+      // 4. Update local JSON files for immediate offline & cache reflection
       try {
         const ratesFile = path.join(process.cwd(), 'public', 'data', 'rates.json');
         const rcsFile = path.join(process.cwd(), 'public', 'data', 'ratechanges.json');
 
         if (fs.existsSync(rcsFile)) {
           const currentRcs = JSON.parse(fs.readFileSync(rcsFile, 'utf-8'));
-          rateChangeRows.forEach(rc => {
-            currentRcs.push({
-              publica_id: rc.Publica_id,
-              dayofweek: rc.Dayofweek,
-              oldrate: rc.OldRate,
-              new_rate: rc.NewRate,
-              dated: rc.Dated,
-              effective_date: rc.Dated
-            });
+          jsonRateChanges.forEach(rc => {
+            currentRcs.push(rc);
           });
           fs.writeFileSync(rcsFile, JSON.stringify(currentRcs, null, 2), 'utf-8');
         }
 
         if (effDateIso <= todayIso && fs.existsSync(ratesFile)) {
           let currentRates = JSON.parse(fs.readFileSync(ratesFile, 'utf-8'));
-          currentRates = currentRates.filter((r: any) => r.publica_id !== pubId);
+          currentRates = currentRates.filter((r: any) => (r.publica_id || r.Publica_id) !== pubId);
           rateRows.forEach(r => {
-            currentRates.push({ publica_id: r.Publica_id, dayofweek: r.Dayofweek, rate: r.Rate });
+            currentRates.push({ publica_id: r.publica_id, dayofweek: r.dayofweek, rate: r.rate });
           });
           fs.writeFileSync(ratesFile, JSON.stringify(currentRates, null, 2), 'utf-8');
         }
@@ -201,3 +239,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

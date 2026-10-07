@@ -44,14 +44,14 @@ export function getEffectiveWeekdayRates(
   const matchingChanges = ratechanges.filter(rc => {
     const rcPub = rc.publica_id || (rc as any).Publica_id;
     if (rcPub !== publicaId) return false;
-    const rcDated = (rc.dated || (rc as any).Dated || '').split('T')[0];
+    const rcDated = (rc.dated || (rc as any).Dated || (rc as any).effective_date || '').split('T')[0];
     return rcDated && rcDated <= targetDateIso;
   });
 
   // Sort ascending by date so newest rate changes overwrite older ones
   matchingChanges.sort((a, b) => {
-    const dA = (a.dated || (a as any).Dated || '').split('T')[0];
-    const dB = (b.dated || (b as any).Dated || '').split('T')[0];
+    const dA = (a.dated || (a as any).Dated || (a as any).effective_date || '').split('T')[0];
+    const dB = (b.dated || (b as any).Dated || (b as any).effective_date || '').split('T')[0];
     return dA.localeCompare(dB);
   });
 

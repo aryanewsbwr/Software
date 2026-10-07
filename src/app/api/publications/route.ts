@@ -227,17 +227,17 @@ export async function POST(request: NextRequest) {
     // 2. Save 7-day rates in Supabase and local cache
     if (customRates && typeof customRates === 'object') {
       const rateRows = Object.entries(customRates).map(([day, rate]) => ({
-        Publica_id: finalPubId,
-        Dayofweek: parseInt(day, 10),
-        Rate: Number(rate)
+        publica_id: finalPubId,
+        dayofweek: parseInt(day, 10),
+        rate: Number(rate)
       }));
 
       try {
-        await supabase.from('rate').delete().eq('Publica_id', finalPubId);
+        await supabase.from('rate').delete().eq('publica_id', finalPubId);
         const { error: sbRateErr } = await supabase.from('rate').insert(rateRows);
         if (sbRateErr) console.error('Supabase rate insert error:', sbRateErr);
       } catch (rErr) {
-        console.warn('Supabase rate upsert warning:', rErr);
+        console.warn('Supabase rate update warning:', rErr);
       }
 
       // Update local rates.json
@@ -245,9 +245,9 @@ export async function POST(request: NextRequest) {
         const ratesFile = path.join(process.cwd(), 'public', 'data', 'rates.json');
         if (fs.existsSync(ratesFile)) {
           let curRates = JSON.parse(fs.readFileSync(ratesFile, 'utf-8'));
-          curRates = curRates.filter((r: any) => r.publica_id !== finalPubId);
+          curRates = curRates.filter((r: any) => (r.publica_id || r.Publica_id) !== finalPubId);
           rateRows.forEach(r => {
-            curRates.push({ publica_id: r.Publica_id, dayofweek: r.Dayofweek, rate: r.Rate });
+            curRates.push({ publica_id: r.publica_id, dayofweek: r.dayofweek, rate: r.rate });
           });
           saveJson('rates.json', curRates);
         }
@@ -256,20 +256,22 @@ export async function POST(request: NextRequest) {
       // Log in Supabase ratechange table
       try {
         const rateChangeRows = Object.entries(customRates).map(([day, rate]) => ({
-          Publica_id: finalPubId,
-          OldRate: Number(rate),
-          NewRate: Number(rate),
-          Dated: todayIso,
-          Dayofweek: parseInt(day, 10)
+          publica_id: finalPubId,
+          oldrate: Number(rate),
+          newrate: Number(rate),
+          effective_date: todayIso,
+          dayofweek: parseInt(day, 10)
         }));
         await supabase.from('ratechange').insert(rateChangeRows);
 
         let curRateChanges = loadJson('ratechanges.json');
         rateChangeRows.forEach(rc => curRateChanges.push({
-          publica_id: rc.Publica_id,
-          dated: rc.Dated,
-          dayofweek: rc.Dayofweek,
-          new_rate: rc.NewRate
+          publica_id: rc.publica_id,
+          dated: rc.effective_date,
+          effective_date: rc.effective_date,
+          dayofweek: rc.dayofweek,
+          oldrate: rc.oldrate,
+          new_rate: rc.newrate
         }));
         saveJson('ratechanges.json', curRateChanges);
       } catch (rcErr) {

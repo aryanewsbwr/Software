@@ -48,25 +48,67 @@ async function fetchAllFromSupabase(table: string): Promise<any[]> {
   return all;
 }
 
-function getRates(): any[] {
-  if (cachedRates && cachedRates.length > 0) return cachedRates;
-  cachedRates = loadJson('rates.json');
-  return cachedRates || [];
+async function getRates(): Promise<any[]> {
+  let localRates = loadJson('rates.json');
+  try {
+    const { data: sbRates } = await supabase.from('rate').select('*');
+    if (sbRates && sbRates.length > 0) {
+      localRates = sbRates.map((r: any) => ({
+        publica_id: r.publica_id ?? r.Publica_id,
+        dayofweek: r.dayofweek ?? r.Dayofweek,
+        rate: Number(r.rate ?? r.Rate)
+      }));
+    }
+  } catch (_) {}
+  return localRates || [];
 }
 
-function getRateChanges(): any[] {
-  if (cachedRateChanges && cachedRateChanges.length > 0) return cachedRateChanges;
-  cachedRateChanges = loadJson('ratechanges.json').map((rc: any) => ({
-    ...rc,
-    dated: rc.effective_date || rc.dated
+async function getRateChanges(): Promise<any[]> {
+  let localRcs = loadJson('ratechanges.json').map((rc: any) => ({
+    publica_id: rc.publica_id ?? rc.Publica_id,
+    dayofweek: rc.dayofweek ?? rc.Dayofweek,
+    oldrate: rc.oldrate ?? rc.old_rate ?? rc.OldRate ?? 0,
+    new_rate: rc.new_rate ?? rc.newrate ?? rc.NewRate ?? 0,
+    dated: (rc.effective_date || rc.dated || rc.Dated || '').split('T')[0],
+    effective_date: (rc.effective_date || rc.dated || rc.Dated || '').split('T')[0]
   }));
-  return cachedRateChanges || [];
+
+  try {
+    const { data: sbRcs } = await supabase
+      .from('ratechange')
+      .select('*')
+      .order('effective_date', { ascending: false });
+
+    if (sbRcs && sbRcs.length > 0) {
+      const seen = new Set(
+        localRcs.map((r: any) => `${r.publica_id}-${r.dayofweek}-${r.effective_date}-${r.new_rate}`)
+      );
+      sbRcs.forEach((r: any) => {
+        const pid = r.publica_id ?? r.Publica_id;
+        const dow = r.dayofweek ?? r.Dayofweek;
+        const effD = (r.effective_date || r.Dated || r.dated || '').split('T')[0];
+        const newR = Number(r.newrate ?? r.new_rate ?? r.NewRate ?? 0);
+        const oldR = Number(r.oldrate ?? r.old_rate ?? r.OldRate ?? 0);
+        const key = `${pid}-${dow}-${effD}-${newR}`;
+        if (!seen.has(key)) {
+          localRcs.push({
+            publica_id: pid,
+            dayofweek: dow,
+            oldrate: oldR,
+            new_rate: newR,
+            dated: effD,
+            effective_date: effD
+          });
+          seen.add(key);
+        }
+      });
+    }
+  } catch (_) {}
+  return localRcs || [];
 }
 
 function getPublications(): any[] {
-  if (cachedPubs && cachedPubs.length > 0) return cachedPubs;
-  cachedPubs = loadJson('publications.json');
-  return cachedPubs || [];
+  return loadJson('publications.json') || [];
 }
 
 async function getDiscontinues(): Promise<any[]> {
