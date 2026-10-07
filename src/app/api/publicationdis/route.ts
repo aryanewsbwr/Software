@@ -83,11 +83,11 @@ export async function POST(request: NextRequest) {
       remark = 'Discontinued'
     } = body;
 
-    if (!publica_id) {
+    if (publica_id === undefined || publica_id === null || publica_id === '') {
       return NextResponse.json({ error: 'publica_id is required' }, { status: 400 });
     }
 
-    const pid = parseInt(publica_id, 10);
+    const pid = parseInt(String(publica_id), 10) || 0;
     const fromIso = parseDateToIso(from_date) || new Date().toISOString().split('T')[0];
     const isPerm = String(dis_type).trim().toUpperCase().startsWith('P');
     const toIso = isPerm ? (parseDateToIso(to_date) || '2050-03-31') : (parseDateToIso(to_date) || fromIso);

@@ -52,6 +52,8 @@ export default function DiscontinueForm({
   // ==========================================
   // TAB 1: PUBLICATION DISCONTINUE STATE
   // ==========================================
+  const [pubDisMode, setPubDisMode] = useState<'single' | 'holiday'>('single');
+  const [pubHolidayDesc, setPubHolidayDesc] = useState<string>('');
   const [pubDisList, setPubDisList] = useState<Publication[]>(() => normalizeAndSortPubs(publications));
   const [pubSelectedId, setPubSelectedId] = useState<string>('');
   const [pubHoldType, setPubHoldType] = useState<'Temporary' | 'Permanent'>('Temporary');
@@ -339,7 +341,8 @@ export default function DiscontinueForm({
 
   // Save Publication Discontinue (Tab 1)
   const handlePubSave = async () => {
-    if (!pubSelectedId) {
+    const isHoliday = pubDisMode === 'holiday' || pubSelectedId === '0';
+    if (!isHoliday && !pubSelectedId) {
       setPubMsg({ text: 'कृपया पहले पत्रिका/अखबार (Publication) चुनें.', isError: true });
       return;
     }
@@ -357,7 +360,10 @@ export default function DiscontinueForm({
     try {
       const fromIso = toIsoDate(pubFromDate);
       const toIso = pubHoldType === 'Permanent' ? '2050-03-31' : toIsoDate(pubToDate);
-      const pid = parseInt(pubSelectedId, 10);
+      const pid = isHoliday ? 0 : parseInt(pubSelectedId, 10);
+      const descText = isHoliday 
+        ? (pubHolidayDesc.trim() || pubRemark.trim() || 'General Holiday')
+        : (pubRemark.trim() || 'Discontinued');
 
       const res = await fetch('/api/publicationdis', {
         method: 'POST',
@@ -367,7 +373,7 @@ export default function DiscontinueForm({
           from_date: fromIso,
           to_date: toIso,
           dis_type: pubHoldType === 'Permanent' ? 'P' : 'T',
-          remark: pubRemark || 'Discontinued'
+          remark: descText
         })
       });
       const data = await res.json();
@@ -381,13 +387,15 @@ export default function DiscontinueForm({
         entry_date: fromIso,
         oc_date: toIso,
         dis_type: pubHoldType === 'Permanent' ? 'P' : 'T',
-        remark: pubRemark || 'Discontinued'
+        remark: descText
       };
       setAllPubDiscontinues(prev => [savedRec, ...prev.filter(d => d.id !== savedRec.id)]);
 
-      const pubName = pubDisList.find(p => p.publica_id === pid)?.public_name || `Pub #${pid}`;
+      const label = isHoliday 
+        ? `[Holiday] सभी अखबार (All Newspapers - ${descText})` 
+        : (pubDisList.find(p => p.publica_id === pid)?.public_name || `Pub #${pid}`);
       setPubMsg({
-        text: `✓ ${pubName} का ${pubHoldType === 'Permanent' ? 'स्थाई बंद (Permanent Stop)' : 'अस्थाई रोक (Temporary Hold)'} सफलतापूर्वक दर्ज हुआ!`,
+        text: `✓ ${label} का ${pubHoldType === 'Permanent' ? 'स्थाई बंद (Permanent Stop)' : 'अस्थाई रोक / अवकाश (Hold / Holiday)'} सफलतापूर्वक दर्ज हुआ!`,
         isError: false
       });
     } catch (err: any) {
@@ -398,6 +406,8 @@ export default function DiscontinueForm({
   };
 
   const handlePubCancel = () => {
+    setPubDisMode('single');
+    setPubHolidayDesc('');
     setPubSelectedId('');
     setPubHoldType('Temporary');
     setPubFromDate(todayDdmmyyyy);
@@ -473,12 +483,13 @@ export default function DiscontinueForm({
   // Main Form Delete Button Action
   const handleMainDelete = async () => {
     if (activeTab === 'publication') {
-      if (!pubSelectedId) {
+      const isHoliday = pubDisMode === 'holiday' || pubSelectedId === '0';
+      if (!isHoliday && !pubSelectedId) {
         handleOpenFind();
         return;
       }
-      const pid = parseInt(pubSelectedId, 10);
-      const pubName = pubDisList.find(p => p.publica_id === pid)?.public_name || `Pub #${pid}`;
+      const pid = isHoliday ? 0 : parseInt(pubSelectedId, 10);
+      const pubName = isHoliday ? `[Holiday] All Newspapers` : (pubDisList.find(p => p.publica_id === pid)?.public_name || `Pub #${pid}`);
       
       try {
         const res = await fetch(`/api/publicationdis?publica_id=${pid}`, { cache: 'no-store' });
@@ -614,42 +625,108 @@ export default function DiscontinueForm({
               </div>
             </div>
 
-            {/* Publication Select */}
-            <div className="flex items-center gap-2">
-              <label className="w-28 font-bold text-[#800000] text-right shrink-0">
-                Publication
+            {/* Mode Selection: Single Publication vs Holiday */}
+            <div className="flex items-center justify-center gap-8 py-1 px-2 bg-[#E3DFCA] border border-[#BFBAA0] rounded-xs">
+              <label className="flex items-center gap-2 font-bold text-[#800000] cursor-pointer text-xs">
+                <input 
+                  type="radio" 
+                  name="pubDisMode"
+                  value="single"
+                  checked={pubDisMode === 'single'}
+                  onChange={() => {
+                    setPubDisMode('single');
+                  }}
+                  className="cursor-pointer"
+                />
+                <span>Single Publication (विशिष्ट अखबार)</span>
               </label>
-              <div className="flex-1">
-                <select 
-                  value={pubSelectedId}
-                  onChange={(e) => setPubSelectedId(e.target.value)}
-                  className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
-                >
-                  <option value="">-- कृपया पत्रिका/अखबार चुनें (Select Publication) --</option>
-                  {pubDisList.map((p) => (
-                    <option key={p.publica_id} value={p.publica_id}>
-                      #{p.publica_id} - {p.public_name} {p.pub_hindi ? `(${p.pub_hindi})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
+
+              <label className="flex items-center gap-2 font-bold text-[#006600] cursor-pointer text-xs bg-white px-2 py-0.5 border border-[#006600]/40 rounded-xs shadow-xs">
+                <input 
+                  type="radio" 
+                  name="pubDisMode"
+                  value="holiday"
+                  checked={pubDisMode === 'holiday'}
+                  onChange={() => {
+                    setPubDisMode('holiday');
+                    setPubHoldType('Temporary');
+                  }}
+                  className="cursor-pointer"
+                />
+                <span>🏖️ Holiday (अवकाश - सभी अखबार)</span>
+              </label>
             </div>
 
-            {/* Remark / Reason */}
-            <div className="flex items-center gap-2">
-              <label className="w-28 font-bold text-[#800000] text-right shrink-0">
-                Remark / कारण
-              </label>
-              <div className="flex-1">
-                <input 
-                  type="text" 
-                  value={pubRemark}
-                  onChange={(e) => setPubRemark(e.target.value)}
-                  placeholder="e.g. Strike / Holiday / Discontinued"
-                  className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
-                />
-              </div>
-            </div>
+            {/* If Single Publication: Show Publication Dropdown */}
+            {pubDisMode === 'single' ? (
+              <>
+                {/* Publication Select */}
+                <div className="flex items-center gap-2">
+                  <label className="w-28 font-bold text-[#800000] text-right shrink-0">
+                    Publication
+                  </label>
+                  <div className="flex-1">
+                    <select 
+                      value={pubSelectedId}
+                      onChange={(e) => setPubSelectedId(e.target.value)}
+                      className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
+                    >
+                      <option value="">-- कृपया पत्रिका/अखबार चुनें (Select Publication) --</option>
+                      {pubDisList.map((p) => (
+                        <option key={p.publica_id} value={p.publica_id}>
+                          #{p.publica_id} - {p.public_name} {p.pub_hindi ? `(${p.pub_hindi})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Remark / Reason */}
+                <div className="flex items-center gap-2">
+                  <label className="w-28 font-bold text-[#800000] text-right shrink-0">
+                    Remark / कारण
+                  </label>
+                  <div className="flex-1">
+                    <input 
+                      type="text" 
+                      value={pubRemark}
+                      onChange={(e) => setPubRemark(e.target.value)}
+                      placeholder="e.g. Strike / Holiday / Discontinued"
+                      className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Holiday Mode: All Newspapers Banner */}
+                <div className="flex items-center gap-2">
+                  <label className="w-28 font-bold text-[#006600] text-right shrink-0">
+                    Target
+                  </label>
+                  <div className="flex-1 px-3 py-1.5 bg-[#E8F5E9] border border-[#81C784] font-bold text-[#1B5E20] text-sm rounded-xs flex items-center gap-2 shadow-inner">
+                    <span>🏖️</span>
+                    <span>All Newspapers & Publications (सभी अखबार/पत्रिका अवकाश)</span>
+                  </div>
+                </div>
+
+                {/* Holiday Description Input Box */}
+                <div className="flex items-center gap-2">
+                  <label className="w-28 font-bold text-[#006600] text-right shrink-0">
+                    Description / विवरण
+                  </label>
+                  <div className="flex-1">
+                    <input 
+                      type="text" 
+                      value={pubHolidayDesc}
+                      onChange={(e) => setPubHolidayDesc(e.target.value)}
+                      placeholder="e.g. Diwali Holiday, Holi, Press Closed, Strike, etc."
+                      className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner focus:border-green-600"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Temporary / Permanent Group Box */}
             <fieldset className="border border-[#808080] p-3 mx-1 my-1 relative">
@@ -1100,21 +1177,32 @@ export default function DiscontinueForm({
                           .filter(d => {
                             if (!findSearch.trim()) return true;
                             const s = findSearch.toLowerCase();
-                            const pId = d.publica_id || d.Publica_id;
-                            const pubName = (pubDisList.find(p => p.publica_id === pId)?.public_name || '').toLowerCase();
-                            return String(pId).includes(s) || pubName.includes(s) || String(d.id).includes(s);
+                            const pId = d.publica_id !== undefined ? d.publica_id : d.Publica_id;
+                            const isHoli = pId === 0 || pId === '0';
+                            const pubName = isHoli ? 'holiday all newspapers' : (pubDisList.find(p => p.publica_id === pId)?.public_name || '').toLowerCase();
+                            const remark = (d.remark || '').toLowerCase();
+                            return String(pId).includes(s) || pubName.includes(s) || remark.includes(s) || String(d.id).includes(s);
                           })
                           .slice(0, 100)
                           .map((d) => {
-                            const pId = d.publica_id || d.Publica_id;
-                            const pubName = pubDisList.find(p => p.publica_id === pId)?.public_name || `Pub #${pId}`;
+                            const pId = d.publica_id !== undefined ? d.publica_id : d.Publica_id;
+                            const isHolidayRec = pId === 0 || pId === '0';
+                            const pubName = isHolidayRec 
+                              ? `🏖️ [HOLIDAY] All Newspapers ${d.remark ? `(${d.remark})` : ''}` 
+                              : (pubDisList.find(p => p.publica_id === pId)?.public_name || `Pub #${pId}`);
                             const isPerm = String(d.dis_type).toUpperCase().startsWith('P');
                             return (
-                              <tr key={d.id} className="border-b hover:bg-blue-50">
+                              <tr key={d.id} className={`border-b hover:bg-blue-50 ${isHolidayRec ? 'bg-emerald-50/50' : ''}`}>
                                 <td className="p-1 border-r text-center font-mono font-bold">#{d.id}</td>
-                                <td className="p-1 border-r text-blue-900 font-bold">{pubName}</td>
+                                <td className={`p-1 border-r font-bold ${isHolidayRec ? 'text-emerald-900' : 'text-blue-900'}`}>
+                                  {pubName}
+                                </td>
                                 <td className="p-1 border-r font-bold">
-                                  {isPerm ? 'Permanent' : 'Temporary'}
+                                  {isHolidayRec ? (
+                                    <span className="text-emerald-800 bg-emerald-100 px-1 py-0.5 rounded text-[10px]">Holiday</span>
+                                  ) : (
+                                    isPerm ? 'Permanent' : 'Temporary'
+                                  )}
                                 </td>
                                 <td className="p-1 border-r font-mono">{d.from_date || d.entry_date || '-'}</td>
                                 <td className="p-1 border-r font-mono">{d.to_date || d.oc_date || 'Permanent'}</td>

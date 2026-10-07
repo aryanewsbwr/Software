@@ -281,11 +281,11 @@ export function calculateBilling({
     return 0.0;
   };
 
-  // Pre-index publicationDiscontinues by pubId
+  // Pre-index publicationDiscontinues by pubId (0 = All Newspapers / Holiday)
   const pubDisMap = new Map<number, { fromIso: string | null; toIso: string | null }[]>();
   for (const pd of publicationDiscontinues) {
-    const pId = Number(pd.Publica_id || pd.publica_id || pd.publication_id);
-    if (!pId) continue;
+    const pId = Number(pd.Publica_id !== undefined ? pd.Publica_id : (pd.publica_id !== undefined ? pd.publica_id : (pd.publication_id || 0)));
+    if (isNaN(pId)) continue;
     if (!pubDisMap.has(pId)) pubDisMap.set(pId, []);
     pubDisMap.get(pId)!.push({
       fromIso: parseLegacyDateToIso(pd.FromDate || pd.from_date || pd.fromdate || pd.entry_date),
@@ -293,11 +293,13 @@ export function calculateBilling({
     });
   }
 
-  // Check if publication is globally discontinued in publicationdis table
+  // Check if publication is discontinued globally or specifically
   const isPubDiscontinued = (publicaId: number, targetDateIso: string): boolean => {
-    const list = pubDisMap.get(publicaId);
-    if (!list) return false;
-    return list.some(item => {
+    const specificList = pubDisMap.get(publicaId) || [];
+    const globalList = pubDisMap.get(0) || [];
+    const allMatching = [...specificList, ...globalList];
+    if (allMatching.length === 0) return false;
+    return allMatching.some(item => {
       if (item.fromIso && targetDateIso < item.fromIso) return false;
       if (item.toIso && targetDateIso > item.toIso) return false;
       return true;
