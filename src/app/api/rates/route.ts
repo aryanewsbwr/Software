@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const pubIdStr = searchParams.get('publica_id') || searchParams.get('pub_id');
-    const dateStr = searchParams.get('date') || new Date().toISOString().split('T')[0];
+    const dateStr = searchParams.get('date') || '2099-12-31';
     const isHistory = searchParams.get('history') === 'true';
 
     let rates = loadJson('rates.json');
@@ -142,7 +142,6 @@ export async function POST(request: NextRequest) {
 
     const pubId = parseInt(publica_id, 10);
     const effDateIso = (effective_date || dated || new Date().toISOString().split('T')[0]).split('T')[0];
-    const todayIso = new Date().toISOString().split('T')[0];
 
     const targetRates = (is_rate_change && new_rates) ? new_rates : day_rates;
 
@@ -198,7 +197,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // 3. Update Supabase rate table with explicit IDs
+      // 3. Update Supabase rate table with explicit IDs (always update base rates)
       let nextRateId = 1000;
       try {
         const { data: maxRate } = await supabase
@@ -218,14 +217,12 @@ export async function POST(request: NextRequest) {
         rate: Number(rate)
       }));
 
-      if (effDateIso <= todayIso) {
-        try {
-          await supabase.from('rate').delete().eq('publica_id', pubId);
-          const { error: rErr } = await supabase.from('rate').insert(rateRows);
-          if (rErr) console.warn('Supabase rate insert error:', rErr);
-        } catch (dbErr) {
-          console.warn('Supabase rate update warning:', dbErr);
-        }
+      try {
+        await supabase.from('rate').delete().eq('publica_id', pubId);
+        const { error: rErr } = await supabase.from('rate').insert(rateRows);
+        if (rErr) console.warn('Supabase rate insert error:', rErr);
+      } catch (dbErr) {
+        console.warn('Supabase rate update warning:', dbErr);
       }
 
       // 4. Update local JSON files for immediate offline & cache reflection
@@ -241,7 +238,7 @@ export async function POST(request: NextRequest) {
           fs.writeFileSync(rcsFile, JSON.stringify(currentRcs, null, 2), 'utf-8');
         }
 
-        if (effDateIso <= todayIso && fs.existsSync(ratesFile)) {
+        if (fs.existsSync(ratesFile)) {
           let currentRates = JSON.parse(fs.readFileSync(ratesFile, 'utf-8'));
           currentRates = currentRates.filter((r: any) => (r.publica_id || r.Publica_id) !== pubId);
           rateRows.forEach(r => {

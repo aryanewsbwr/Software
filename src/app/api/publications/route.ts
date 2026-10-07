@@ -27,8 +27,62 @@ export async function GET(request: NextRequest) {
     const order = (searchParams.get('order') || 'desc').toLowerCase();
 
     let pubs = loadJson('publications.json');
-    const rates = loadJson('rates.json');
-    const ratechanges = loadJson('ratechanges.json');
+    let rates = loadJson('rates.json');
+    let ratechanges = loadJson('ratechanges.json').map((r: any) => ({
+      publica_id: r.publica_id ?? r.Publica_id,
+      dayofweek: r.dayofweek ?? r.Dayofweek,
+      oldrate: r.oldrate ?? r.old_rate ?? r.OldRate ?? 0,
+      new_rate: r.new_rate ?? r.newrate ?? r.NewRate ?? 0,
+      dated: (r.dated || r.Dated || r.effective_date || '').split('T')[0],
+      effective_date: (r.effective_date || r.dated || r.Dated || '').split('T')[0]
+    }));
+
+    // Fetch latest rate changes from Supabase
+    try {
+      const { data: sbRc } = await supabase
+        .from('ratechange')
+        .select('*')
+        .order('effective_date', { ascending: false });
+
+      if (sbRc && sbRc.length > 0) {
+        const seenKeys = new Set(
+          ratechanges.map((r: any) => `${r.publica_id}-${r.dayofweek}-${r.effective_date}-${r.new_rate}`)
+        );
+
+        sbRc.forEach((r: any) => {
+          const pid = r.publica_id ?? r.Publica_id;
+          const dow = r.dayofweek ?? r.Dayofweek;
+          const effD = (r.effective_date || r.Dated || r.dated || '').split('T')[0];
+          const newR = Number(r.newrate ?? r.new_rate ?? r.NewRate ?? 0);
+          const oldR = Number(r.oldrate ?? r.old_rate ?? r.OldRate ?? 0);
+          const key = `${pid}-${dow}-${effD}-${newR}`;
+
+          if (!seenKeys.has(key)) {
+            ratechanges.push({
+              publica_id: pid,
+              dayofweek: dow,
+              oldrate: oldR,
+              new_rate: newR,
+              dated: effD,
+              effective_date: effD
+            });
+            seenKeys.add(key);
+          }
+        });
+      }
+    } catch (_) {}
+
+    try {
+      const { data: sbRates } = await supabase.from('rate').select('*');
+      if (sbRates && sbRates.length > 0) {
+        rates = sbRates.map((r: any) => ({
+          publica_id: r.publica_id ?? r.Publica_id,
+          dayofweek: r.dayofweek ?? r.Dayofweek,
+          rate: Number(r.rate ?? r.Rate)
+        }));
+      }
+    } catch (_) {}
+
     let pubdis = loadJson('publicationdis.json');
     try {
       const { data: sbPubdis } = await supabase.from('publicationdis').select('*');
@@ -81,7 +135,7 @@ export async function GET(request: NextRequest) {
 
     const enriched = pubs.map((p: any) => {
       const decodedHindi = cleanOrTransliterateHindi(p.pub_hindi, p.public_name);
-      const effectiveRates = withRates ? getEffectiveWeekdayRates(p.publica_id, todayIso, rates, ratechanges, p.magzine_day) : null;
+      const effectiveRates = withRates ? getEffectiveWeekdayRates(p.publica_id, '2099-12-31', rates, ratechanges, p.magzine_day) : null;
       
       const disc = pubdis.find((d: any) => (d.publica_id || d.Publica_id) === p.publica_id);
       const toDate = disc ? (disc.to_date || disc.ToDate) : null;

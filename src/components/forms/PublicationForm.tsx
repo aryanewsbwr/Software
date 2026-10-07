@@ -248,7 +248,7 @@ export default function PublicationForm({
     const activeRateChanges = (ratechanges && ratechanges.length > 0) ? ratechanges : localRatechanges;
     const effectiveRates = (p.current_rates && Object.values(p.current_rates).some(v => v > 0))
       ? { ...p.current_rates }
-      : getEffectiveWeekdayRates(p.publica_id, new Date().toISOString().split('T')[0], activeRates, activeRateChanges, magDay);
+      : getEffectiveWeekdayRates(p.publica_id, '2099-12-31', activeRates, activeRateChanges, magDay);
 
     setWeekdayRates(effectiveRates);
     setNewWeekdayRates({ ...effectiveRates });
