@@ -267,10 +267,30 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
     setEditingRates(effective);
   }, [selectedPub, rates, ratechanges]);
 
-  // Keyboard Shortcuts (F1 for Rates, Ctrl+C for Customer, Ctrl+D for Discontinue, Ctrl+R for Receipt)
+  // Keyboard Shortcuts (Esc to close, F1 for Rates, Ctrl+C for Customer, Ctrl+D for Discontinue, Ctrl+R for Receipt)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'F1') {
+      if (e.key === 'Escape') {
+        if (activeMenu !== null) {
+          e.preventDefault();
+          setActiveMenu(null);
+          return;
+        }
+        if (isSubsModalOpen) { e.preventDefault(); setIsSubsModalOpen(false); return; }
+        if (isRateMatrixOpen) { e.preventDefault(); setIsRateMatrixOpen(false); return; }
+        if (isCollectionAgentsOpen) { e.preventDefault(); setIsCollectionAgentsOpen(false); return; }
+        if (isUserPermOpen) { e.preventDefault(); setIsUserPermOpen(false); return; }
+        if (isCounterSaleOpen) { e.preventDefault(); setIsCounterSaleOpen(false); return; }
+        if (isRetailSalePermanentOpen) { e.preventDefault(); setIsRetailSalePermanentOpen(false); return; }
+        if (isMessageOpen) { e.preventDefault(); setIsMessageOpen(false); return; }
+        if (backupModalMode !== null) { e.preventDefault(); setBackupModalMode(null); return; }
+        if (isPeriodOpen) { e.preventDefault(); setIsPeriodOpen(false); return; }
+        if (activeWindow !== null) {
+          e.preventDefault();
+          setActiveWindow(null);
+          return;
+        }
+      } else if (e.key === 'F1') {
         if (activeWindow !== null) return;
         e.preventDefault();
         const sunRate = editingRates[1] || 5.0;
@@ -291,7 +311,7 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editingRates]);
+  }, [editingRates, activeMenu, isSubsModalOpen, isRateMatrixOpen, isCollectionAgentsOpen, isUserPermOpen, isCounterSaleOpen, isRetailSalePermanentOpen, isMessageOpen, backupModalMode, isPeriodOpen, activeWindow]);
 
   return (
     <div className="flex flex-col h-screen w-full select-none bg-[#3A6EA5] font-tahoma overflow-hidden">
@@ -346,7 +366,7 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
               <button onClick={() => { setActiveWindow('collectionagent'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 Collection Agent
               </button>
-              <button onClick={() => { setIsRateMatrixOpen(true); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+              <button onClick={() => { setActiveWindow('ratechanges'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
                 Rate Change
               </button>
               <button onClick={() => { setActiveWindow('holidays'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
@@ -727,13 +747,14 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
         )}
 
         {/* 3. Publication Master & Weekday Rates (screenshot_02.jpg) */}
-        {activeWindow === 'publications' && (
+        {(activeWindow === 'publications' || activeWindow === 'ratechanges' || activeWindow === 'ratechange') && (
           <PublicationForm 
             onClose={() => setActiveWindow(null)} 
             publications={publications}
             publishers={publishers}
             rates={rates}
             ratechanges={ratechanges}
+            initialRateChangeMode={activeWindow === 'ratechanges' || activeWindow === 'ratechange'}
             onSave={(savedPub) => {
               setPublications(prev => [savedPub, ...prev.filter(p => p.publica_id !== savedPub.publica_id)]);
               fetch('/api/publications?with_rates=true')
@@ -922,13 +943,10 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
         )}
 
         {/* 12. Modal: 7-Day Rates Matrix & Revisions */}
-        {(isRateMatrixOpen || activeWindow === 'ratechanges') && (
+        {isRateMatrixOpen && (
           <RateMatrixForm 
             isOpen={true}
-            onClose={() => {
-              setIsRateMatrixOpen(false);
-              if (activeWindow === 'ratechanges') setActiveWindow(null);
-            }}
+            onClose={() => setIsRateMatrixOpen(false)}
             publications={publications}
             rates={rates}
             ratechanges={ratechanges}

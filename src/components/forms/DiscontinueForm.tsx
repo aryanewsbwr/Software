@@ -385,6 +385,44 @@ export default function DiscontinueForm({
     }
   };
 
+  // Keyboard shortcut listener (Esc to close, Alt+S to save, Alt+F to find, Alt+C to cancel, Alt+E to exit)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (showFindModal) {
+          setShowFindModal(false);
+        } else if (showCustSuggestions) {
+          setShowCustSuggestions(false);
+        } else {
+          onClose();
+        }
+        return;
+      }
+      if (e.altKey) {
+        const k = e.key.toLowerCase();
+        if (k === 's') {
+          e.preventDefault();
+          handleSave();
+        } else if (k === 'f') {
+          e.preventDefault();
+          handleOpenFind();
+        } else if (k === 'c') {
+          e.preventDefault();
+          handleCancel();
+        } else if (k === 'd') {
+          e.preventDefault();
+          handleMainDelete();
+        } else if (k === 'e') {
+          e.preventDefault();
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showFindModal, showCustSuggestions, selectedCust, selectedPubId, fromDate, toDate, holdType]);
+
   return (
     <div className="relative w-full max-w-[590px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden text-xs my-auto shrink-0">
       

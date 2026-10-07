@@ -199,6 +199,29 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     }
   };
 
+  // Keyboard shortcut listener (Esc to close, Alt+S to save, Alt+E to exit)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.altKey) {
+        const k = e.key.toLowerCase();
+        if (k === 's') {
+          e.preventDefault();
+          handleApply();
+        } else if (k === 'e') {
+          e.preventDefault();
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [customerId, revAmt, lessAmt, totalDues]);
+
   const calculatedBalance = Math.round((totalDues - revAmt - lessAmt) * 100) / 100;
 
   return (

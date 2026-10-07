@@ -12,6 +12,7 @@ interface PublicationFormProps {
   rates?: Rate[];
   ratechanges?: RateChange[];
   initialTab?: 'master' | 'discontinue';
+  initialRateChangeMode?: boolean;
   onSave?: (pub: Publication) => void;
   onDelete?: (pubId: number) => void;
 }
@@ -53,6 +54,7 @@ export default function PublicationForm({
   rates = [],
   ratechanges = [],
   initialTab = 'master',
+  initialRateChangeMode = false,
   onSave,
   onDelete
 }: PublicationFormProps) {
@@ -86,7 +88,7 @@ export default function PublicationForm({
   });
 
   // Rate Change Revision Mode State
-  const [isRateChangeMode, setIsRateChangeMode] = useState(false);
+  const [isRateChangeMode, setIsRateChangeMode] = useState(Boolean(initialRateChangeMode));
   const pad = (n: number) => String(n).padStart(2, '0');
   const todayDateObj = new Date();
   const todayDdmmyyyy = `${pad(todayDateObj.getDate())}/${pad(todayDateObj.getMonth() + 1)}/${todayDateObj.getFullYear()}`;
@@ -471,10 +473,24 @@ export default function PublicationForm({
     }, 300);
   };
 
-  // Keyboard shortcut listener (F1 to copy Sunday rate, F10 to select Del Charges, F12 to unselect)
+  useEffect(() => {
+    if (initialRateChangeMode && pubList.length > 0 && selectedPub.publica_id === 0) {
+      loadPublication(pubList[0]);
+      setIsRateChangeMode(true);
+    }
+  }, [initialRateChangeMode, pubList]);
+
+  // Keyboard shortcut listener (F1 to copy Sunday rate, F10 to select Del Charges, F12 to unselect, Esc to close)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'F1') {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (isFindOpen) setIsFindOpen(false);
+        else if (isHistoryOpen) setIsHistoryOpen(false);
+        else if (isPubDisFindOpen) setIsPubDisFindOpen(false);
+        else onClose();
+        return;
+      } else if (e.key === 'F1') {
         e.preventDefault();
         copySundayRate();
       } else if (e.key === 'F10') {
@@ -499,11 +515,14 @@ export default function PublicationForm({
       } else if (e.altKey && (e.key === 'c' || e.key === 'C')) {
         e.preventDefault();
         handleCancel();
+      } else if (e.altKey && (e.key === 'e' || e.key === 'E')) {
+        e.preventDefault();
+        onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [weekdayRates, selectedPub, isNewMode, isClosed, isPermanent, closedFrom, closedTo]);
+  }, [weekdayRates, selectedPub, isNewMode, isClosed, isPermanent, closedFrom, closedTo, isFindOpen, isHistoryOpen, isPubDisFindOpen]);
 
   const copySundayRate = () => {
     if (isRateChangeMode) {

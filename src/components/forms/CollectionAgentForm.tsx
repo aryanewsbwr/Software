@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CollectionAgent } from '@/lib/types';
 
 interface Props {
@@ -17,34 +17,48 @@ export default function CollectionAgentForm({ isOpen = true, onClose, onSaveAgen
   const [city, setCity] = useState('');
   const [phone, setPhone] = useState('');
   const [mobile, setMobile] = useState('');
+  
   const [isFindOpen, setIsFindOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [status, setStatus] = useState('');
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Load collection agents from /data/collect.json
+  const loadAgents = async () => {
+    try {
+      const res = await fetch('/data/collect.json');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setAgents(data);
+      }
+    } catch (e) {
+      console.error('Failed to load collection agents:', e);
+    }
+  };
+
   useEffect(() => {
-    fetch('/data/collect.json')
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setAgents(data);
-        }
-      })
-      .catch(() => {});
+    loadAgents();
   }, []);
+
+  const loadAgentDetails = (a: CollectionAgent) => {
+    setSelectedAgentId(a.collect_id);
+    setName(a.name || '');
+    setAddress(a.address || '');
+    setCity(a.city || '');
+    setPhone(a.phone || '');
+    setMobile(a.mobile || '');
+    setStatus(`Agent #${a.collect_id} "${a.name}" loaded.`);
+    setTimeout(() => setStatus(''), 2500);
+  };
 
   // Load selected agent data
   useEffect(() => {
     if (!selectedAgentId) return;
     const a = agents.find(ag => ag.collect_id === selectedAgentId);
     if (a) {
-      setName(a.name || '');
-      setAddress(a.address || '');
-      setCity(a.city || '');
-      setPhone(a.phone || '');
-      setMobile(a.mobile || '');
+      loadAgentDetails(a);
     }
-  }, [selectedAgentId, agents]);
+  }, [selectedAgentId]);
 
   // Keyboard shortcut handler (Alt+S, Alt+U, Alt+D, Alt+F, Alt+C, Alt+E, Esc)
   useEffect(() => {
@@ -52,15 +66,17 @@ export default function CollectionAgentForm({ isOpen = true, onClose, onSaveAgen
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        e.stopPropagation();
+        if (isFindOpen) {
+          setIsFindOpen(false);
+        } else {
+          onClose();
+        }
         return;
       }
       if (e.altKey) {
         const key = e.key.toLowerCase();
-        if (key === 's') {
-          e.preventDefault();
-          handleSave();
-        } else if (key === 'u') {
+        if (key === 's' || key === 'u') {
           e.preventDefault();
           handleSave();
         } else if (key === 'd') {
@@ -80,7 +96,7 @@ export default function CollectionAgentForm({ isOpen = true, onClose, onSaveAgen
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, name, address, city, phone, mobile, selectedAgentId]);
+  }, [isOpen, isFindOpen, name, address, city, phone, mobile, selectedAgentId]);
 
   if (!isOpen) return null;
 
@@ -90,8 +106,8 @@ export default function CollectionAgentForm({ isOpen = true, onClose, onSaveAgen
       setTimeout(() => setStatus(''), 3000);
       return;
     }
-    const agentData: Partial<CollectionAgent> = {
-      collect_id: selectedAgentId || agents.length + 1,
+    const agentData: CollectionAgent = {
+      collect_id: selectedAgentId || (agents.length > 0 ? Math.max(...agents.map(a => a.collect_id)) + 1 : 1),
       name: name.trim(),
       address: address.trim(),
       city: city.trim(),
@@ -99,9 +115,11 @@ export default function CollectionAgentForm({ isOpen = true, onClose, onSaveAgen
       mobile: mobile.trim(),
     };
 
+    setAgents(prev => [agentData, ...prev.filter(a => a.collect_id !== agentData.collect_id)]);
     if (onSaveAgent) {
       onSaveAgent(agentData);
     }
+    setSelectedAgentId(agentData.collect_id);
     setStatus(`Collection Agent "${name.trim()}" saved successfully.`);
     setTimeout(() => setStatus(''), 3000);
   };
@@ -127,232 +145,281 @@ export default function CollectionAgentForm({ isOpen = true, onClose, onSaveAgen
     setPhone('');
     setMobile('');
     setStatus('');
+    setIsFindOpen(false);
+    setTimeout(() => nameInputRef.current?.focus(), 50);
   };
 
   const filteredAgents = agents.filter(a => 
     (a.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
-    a.collect_id.toString().includes(searchQuery) ||
+    String(a.collect_id || '').includes(searchQuery) ||
     (a.phone || '').includes(searchQuery) ||
-    (a.mobile || '').includes(searchQuery)
+    (a.mobile || '').includes(searchQuery) ||
+    (a.address || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div className="w-[580px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col relative select-none">
-      {/* Titlebar matching 2008 VB6 Window */}
-      <div className="bg-linear-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs">
+    <div className="relative w-full max-w-[620px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-white border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col select-none overflow-hidden my-auto shrink-0">
+      
+      {/* Titlebar matching media_1791373601013.png */}
+      <div className="bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-sm">💾</span>
-          <span className="tracking-wide">Collection Agent</span>
+          <img 
+            src="/legacy_images/paper.ico" 
+            alt="ico" 
+            className="w-4 h-4" 
+            onError={(e) => (e.currentTarget.style.display = 'none')} 
+          />
+          <span className="font-bold text-xs text-[#808080]">Collection Agent</span>
         </div>
         <div className="flex items-center gap-1">
-          <button className="w-5 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">_</button>
-          <button className="w-5 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">□</button>
-          <button onClick={onClose} className="w-5 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-red-600 hover:text-white cursor-pointer">✕</button>
+          <button className="w-5 h-4 bg-[#ECE9D8] border border-[#808080] text-black text-[10px] font-bold flex items-center justify-center hover:bg-white cursor-pointer">_</button>
+          <button className="w-5 h-4 bg-[#ECE9D8] border border-[#808080] text-black text-[10px] font-bold flex items-center justify-center hover:bg-white cursor-pointer">□</button>
+          <button onClick={onClose} className="w-5 h-4 bg-[#ECE9D8] border border-[#808080] text-black text-[10px] font-bold flex items-center justify-center hover:bg-red-600 hover:text-white cursor-pointer">✕</button>
         </div>
       </div>
 
-      {/* Main White Form Body matching media_1789799625957.png */}
-      <div className="bg-white p-6 flex flex-col justify-between min-h-[380px]">
-        {/* Maroon Header */}
-        <div className="text-center pt-1 pb-4">
-          <h1 className="text-xl font-black text-[#800000] tracking-wider font-sans">
+      {/* Main Body with Clean White Canvas matching media_1791373601013.png */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-white text-xs min-h-0">
+        
+        {/* Header Title */}
+        <div className="text-center">
+          <h1 
+            className="text-xl font-black text-[#800000] tracking-wider uppercase font-serif"
+          >
             COLLECTION AGENT
           </h1>
         </div>
 
-        {/* Input Fields matching exact layout */}
-        <div className="space-y-3 px-8">
-          {/* Name */}
-          <div className="flex items-center">
-            <label className="w-24 font-bold text-[#800000] text-[13px] shrink-0">Name</label>
-            <input 
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-[240px] px-1.5 py-0.5 border border-[#7F9DB9] bg-white font-bold text-black text-[13px] shadow-inner outline-none focus:border-[#0A246A]"
-              autoFocus
-            />
+        {/* Input Fields matching exact proportions of media_1791373601013.png */}
+        <div className="space-y-3 max-w-[460px] mx-auto w-full pt-1">
+          
+          {/* Name Row */}
+          <div className="flex items-center gap-4">
+            <label className="w-20 font-bold text-[#800000] text-right shrink-0">Name</label>
+            <div className="w-56 border border-[#7F9DB9] bg-white px-2 py-0.5 shadow-inner">
+              <input 
+                ref={nameInputRef}
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Jagdish"
+                className="w-full bg-transparent font-bold text-black outline-none text-xs"
+                autoFocus
+              />
+            </div>
           </div>
 
-          {/* Address - slightly longer */}
-          <div className="flex items-center">
-            <label className="w-24 font-bold text-[#800000] text-[13px] shrink-0">Address</label>
-            <input 
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="w-[320px] px-1.5 py-0.5 border border-[#7F9DB9] bg-white text-black text-[13px] shadow-inner outline-none focus:border-[#0A246A]"
-            />
+          {/* Address Row */}
+          <div className="flex items-center gap-4">
+            <label className="w-20 font-bold text-[#800000] text-right shrink-0">Address</label>
+            <div className="w-80 border border-[#7F9DB9] bg-white px-2 py-0.5 shadow-inner">
+              <input 
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="w-full bg-transparent text-black outline-none text-xs"
+              />
+            </div>
           </div>
 
-          {/* City */}
-          <div className="flex items-center">
-            <label className="w-24 font-bold text-[#800000] text-[13px] shrink-0">City</label>
-            <input 
-              type="text"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="w-[200px] px-1.5 py-0.5 border border-[#7F9DB9] bg-white text-black text-[13px] shadow-inner outline-none focus:border-[#0A246A]"
-            />
+          {/* City Row */}
+          <div className="flex items-center gap-4">
+            <label className="w-20 font-bold text-[#800000] text-right shrink-0">City</label>
+            <div className="w-56 border border-[#7F9DB9] bg-white px-2 py-0.5 shadow-inner">
+              <input 
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="w-full bg-transparent text-black outline-none text-xs"
+              />
+            </div>
           </div>
 
-          {/* Phone */}
-          <div className="flex items-center">
-            <label className="w-24 font-bold text-[#800000] text-[13px] shrink-0">Phone</label>
-            <input 
-              type="text"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-[200px] px-1.5 py-0.5 border border-[#7F9DB9] bg-white text-black text-[13px] shadow-inner outline-none focus:border-[#0A246A]"
-            />
+          {/* Phone Row */}
+          <div className="flex items-center gap-4">
+            <label className="w-20 font-bold text-[#800000] text-right shrink-0">Phone</label>
+            <div className="w-56 border border-[#7F9DB9] bg-white px-2 py-0.5 shadow-inner">
+              <input 
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full bg-transparent font-mono text-black outline-none text-xs"
+              />
+            </div>
           </div>
 
-          {/* Mobile */}
-          <div className="flex items-center">
-            <label className="w-24 font-bold text-[#800000] text-[13px] shrink-0">Mobile</label>
-            <input 
-              type="text"
-              value={mobile}
-              onChange={(e) => setMobile(e.target.value)}
-              className="w-[200px] px-1.5 py-0.5 border border-[#7F9DB9] bg-white text-black text-[13px] shadow-inner outline-none focus:border-[#0A246A]"
-            />
+          {/* Mobile Row */}
+          <div className="flex items-center gap-4">
+            <label className="w-20 font-bold text-[#800000] text-right shrink-0">Mobile</label>
+            <div className="w-56 border border-[#7F9DB9] bg-white px-2 py-0.5 shadow-inner">
+              <input 
+                type="text"
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
+                className="w-full bg-transparent font-mono text-black outline-none text-xs"
+              />
+            </div>
           </div>
+
         </div>
 
-        {/* Status Message */}
+        {/* Status Notification */}
         {status && (
-          <div className={`mt-2 py-1 px-2 text-center text-xs font-bold ${status.startsWith('Error') ? 'bg-red-50 text-red-700 border border-red-300' : 'bg-emerald-50 text-emerald-800 border border-emerald-300'}`}>
+          <div className={`p-1 font-bold text-center text-xs ${status.startsWith('Error') ? 'bg-red-100 text-red-800 border border-red-400' : 'bg-emerald-100 text-emerald-800 border border-emerald-400'}`}>
             {status}
           </div>
         )}
 
-        {/* Slanted Parallelogram Action Buttons matching media_1789799625957.png */}
-        <div className="pt-6 pb-2 flex flex-col items-center gap-2 select-none">
-          {/* Top Row: Save, Update, Del */}
-          <div className="flex items-center gap-4">
-            {/* Save */}
+        {/* Action Buttons in 2 Rows matching media_1791373601013.png */}
+        <div className="shrink-0 flex flex-col items-center justify-center gap-2 pt-3 border-t border-slate-200">
+          
+          {/* Row 1: Save, Update, Del */}
+          <div className="flex items-center justify-center gap-3">
             <button 
               onClick={handleSave}
-              className="px-5 py-1 bg-linear-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] shadow-xs transform -skew-x-12 cursor-pointer transition-colors"
+              className="px-4 py-1 bg-gradient-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] shadow-sm transform -skew-x-12 cursor-pointer flex items-center gap-1 text-xs font-bold text-black"
             >
-              <span className="transform skew-x-12 flex items-center gap-1.5 text-xs font-bold text-black">
-                <span className="text-sm leading-none">💾</span>
-                <span><u>S</u>ave</span>
+              <span className="transform skew-x-12 flex items-center gap-1">
+                💾 <u>S</u>ave
               </span>
             </button>
 
-            {/* Update */}
             <button 
               onClick={handleSave}
-              className="px-5 py-1 bg-linear-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] shadow-xs transform -skew-x-12 cursor-pointer transition-colors"
+              className="px-4 py-1 bg-gradient-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] shadow-sm transform -skew-x-12 cursor-pointer flex items-center gap-1 text-xs font-bold text-black"
             >
-              <span className="transform skew-x-12 flex items-center gap-1.5 text-xs font-bold text-black">
-                <span className="text-sm font-bold leading-none">↩</span>
-                <span><u>U</u>pdate</span>
+              <span className="transform skew-x-12 flex items-center gap-1">
+                ↩ <u>U</u>pdate
               </span>
             </button>
 
-            {/* Del */}
             <button 
               onClick={handleDelete}
-              className="px-5 py-1 bg-linear-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] shadow-xs transform -skew-x-12 cursor-pointer transition-colors"
+              className="px-4 py-1 bg-gradient-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] shadow-sm transform -skew-x-12 cursor-pointer flex items-center gap-1 text-xs font-bold text-black"
             >
-              <span className="transform skew-x-12 flex items-center gap-1.5 text-xs font-bold text-black">
-                <span className="text-sm leading-none">🗑</span>
-                <span><u>D</u>el</span>
+              <span className="transform skew-x-12 flex items-center gap-1">
+                🗑 <u>D</u>el
               </span>
             </button>
           </div>
 
-          {/* Bottom Row: Find, Cancel, Exit (Staggered slightly right) */}
-          <div className="flex items-center gap-4 ml-16">
-            {/* Find */}
+          {/* Row 2: Find, Cancel, Exit */}
+          <div className="flex items-center justify-center gap-3">
             <button 
-              onClick={() => setIsFindOpen(true)}
-              className="px-5 py-1 bg-linear-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] shadow-xs transform -skew-x-12 cursor-pointer transition-colors"
+              onClick={() => {
+                loadAgents();
+                setIsFindOpen(true);
+              }}
+              className="px-4 py-1 bg-gradient-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] shadow-sm transform -skew-x-12 cursor-pointer flex items-center gap-1 text-xs font-bold text-blue-900 ring-1 ring-blue-400"
             >
-              <span className="transform skew-x-12 flex items-center gap-1.5 text-xs font-bold text-black">
-                <span className="text-sm leading-none">🔍</span>
-                <span><u>F</u>ind</span>
+              <span className="transform skew-x-12 flex items-center gap-1">
+                🔍 <u>F</u>ind
               </span>
             </button>
 
-            {/* Cancel */}
             <button 
               onClick={handleCancel}
-              className="px-5 py-1 bg-linear-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] shadow-xs transform -skew-x-12 cursor-pointer transition-colors"
+              className="px-4 py-1 bg-gradient-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] shadow-sm transform -skew-x-12 cursor-pointer flex items-center gap-1 text-xs font-bold text-black"
             >
-              <span className="transform skew-x-12 flex items-center gap-1.5 text-xs font-bold text-black">
-                <span className="w-3.5 h-3.5 bg-red-600 text-white rounded-full flex items-center justify-center text-[9px] font-black leading-none">✕</span>
-                <span><u>C</u>ancel</span>
+              <span className="transform skew-x-12 flex items-center gap-1">
+                ❌ <u>C</u>ancel
               </span>
             </button>
 
-            {/* Exit */}
             <button 
               onClick={onClose}
-              className="px-5 py-1 bg-linear-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] shadow-xs transform -skew-x-12 cursor-pointer transition-colors"
+              className="px-4 py-1 bg-gradient-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] shadow-sm transform -skew-x-12 cursor-pointer flex items-center gap-1 text-xs font-bold text-red-800"
             >
-              <span className="transform skew-x-12 flex items-center gap-1.5 text-xs font-bold text-black">
-                <span className="w-3.5 h-3.5 bg-red-800 text-white rounded-xs flex items-center justify-center text-[9px] font-black leading-none">🛑</span>
-                <span><u>E</u>xit</span>
+              <span className="transform skew-x-12 flex items-center gap-1">
+                🛑 <u>E</u>xit
               </span>
             </button>
           </div>
+
         </div>
+
       </div>
 
-      {/* Find Agent Modal Dialog */}
+      {/* Find Collection Agent Modal Dialog */}
       {isFindOpen && (
-        <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl p-3 w-full max-w-md space-y-2 text-xs">
+        <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl p-3 w-full max-w-md space-y-2 text-xs flex flex-col max-h-[85vh]">
+            
             <div className="bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
-              <span>Find Collection Agent ({filteredAgents.length} Found)</span>
+              <span>Find Collection Agent ({filteredAgents.length} Agents Found)</span>
               <button onClick={() => setIsFindOpen(false)} className="text-white hover:text-red-300 font-bold cursor-pointer">✕</button>
             </div>
-            <input 
-              type="text"
-              placeholder="Search by Name, ID, Mobile..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-2 py-1 border border-slate-400 bg-white text-black font-bold outline-none"
-              autoFocus
-            />
-            <div className="max-h-56 overflow-auto border border-slate-300 bg-white">
-              {filteredAgents.map(a => (
-                <button
-                  key={a.collect_id}
-                  onClick={() => {
-                    setSelectedAgentId(a.collect_id);
-                    setIsFindOpen(false);
-                  }}
-                  className="w-full text-left px-2 py-1.5 border-b hover:bg-blue-100 flex justify-between items-center cursor-pointer text-slate-900"
-                >
-                  <div className="flex flex-col">
-                    <span className="font-bold text-xs">{a.name}</span>
-                    {a.address && <span className="text-[10px] text-slate-500 truncate max-w-[260px]">{a.address}</span>}
-                  </div>
-                  <div className="text-right">
-                    <span className="text-blue-900 font-mono text-[10px] font-bold">#{a.collect_id}</span>
-                    {a.mobile && <div className="text-[10px] text-slate-600 font-mono">{a.mobile}</div>}
-                  </div>
-                </button>
-              ))}
-              {filteredAgents.length === 0 && (
-                <div className="p-3 text-center text-slate-500">No agents found matching &quot;{searchQuery}&quot;</div>
-              )}
+
+            <div className="flex gap-2">
+              <input 
+                type="text"
+                placeholder="Type Agent Name, City, Phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 px-2 py-1 border border-slate-400 bg-white font-bold text-blue-900 outline-none"
+                autoFocus
+              />
             </div>
-            <div className="flex justify-end">
+
+            <div className="flex-1 overflow-auto border border-slate-300 bg-white max-h-60">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-[#ECE9D8] sticky top-0 border-b font-bold">
+                  <tr>
+                    <th className="p-1.5 border-r w-14">ID</th>
+                    <th className="p-1.5 border-r">Agent Name</th>
+                    <th className="p-1.5 border-r">City / Area</th>
+                    <th className="p-1.5 border-r">Phone</th>
+                    <th className="p-1.5 w-16 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAgents.map(a => (
+                    <tr 
+                      key={a.collect_id}
+                      onClick={() => {
+                        loadAgentDetails(a);
+                        setIsFindOpen(false);
+                      }}
+                      className="border-b hover:bg-blue-100 cursor-pointer"
+                    >
+                      <td className="p-1.5 border-r font-mono font-bold text-blue-900">#{a.collect_id}</td>
+                      <td className="p-1.5 border-r font-bold text-slate-800">{a.name}</td>
+                      <td className="p-1.5 border-r text-slate-600">{a.city || a.address || '-'}</td>
+                      <td className="p-1.5 border-r font-mono text-slate-700">{a.mobile || a.phone || '-'}</td>
+                      <td className="p-1.5 text-center">
+                        <button
+                          type="button"
+                          className="px-2 py-0.5 bg-blue-700 text-white font-bold text-[10px] rounded-xs shadow-xs"
+                        >
+                          Select
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredAgents.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-4 text-center text-slate-500 italic">
+                        No collection agents found matching &quot;{searchQuery}&quot;
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-end pt-1">
               <button 
                 onClick={() => setIsFindOpen(false)}
-                className="px-3 py-1 bg-white border border-[#808080] font-bold text-xs cursor-pointer hover:bg-slate-100"
+                className="px-4 py-1 bg-[#ECE9D8] border border-[#808080] font-bold text-xs cursor-pointer hover:bg-white"
               >
-                Close
+                Close (Esc)
               </button>
             </div>
+
           </div>
         </div>
       )}
+
     </div>
   );
 }
