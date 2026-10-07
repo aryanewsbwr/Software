@@ -81,6 +81,49 @@ export default function PublicationForm({
     1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0
   });
 
+  // Rate Change Revision Mode State
+  const [isRateChangeMode, setIsRateChangeMode] = useState(false);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const todayDateObj = new Date();
+  const todayDdmmyyyy = `${pad(todayDateObj.getDate())}/${pad(todayDateObj.getMonth() + 1)}/${todayDateObj.getFullYear()}`;
+  const [rateChangeEffDate, setRateChangeEffDate] = useState<string>(todayDdmmyyyy);
+  const [newWeekdayRates, setNewWeekdayRates] = useState<Record<number, number>>({
+    1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0
+  });
+
+  // Rate History Modal State
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyList, setHistoryList] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  const formatDateDisplay = (val: string): string => {
+    const s = val.trim().replace(/\D/g, '');
+    if (s.length === 8) {
+      return `${s.slice(0, 2)}/${s.slice(2, 4)}/${s.slice(4, 8)}`;
+    }
+    return val;
+  };
+
+  const toIsoDate = (val: string): string => {
+    if (!val) return '';
+    const s = val.trim();
+    if (!s || s === '-' || s === '---') return '';
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    if (/^\d{8}$/.test(s)) {
+      const yrFirst = parseInt(s.slice(0, 4), 10);
+      if (yrFirst >= 1990 && yrFirst <= 2099) {
+        return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+      }
+      return `${s.slice(4, 8)}-${s.slice(2, 4)}-${s.slice(0, 2)}`;
+    }
+    const parts = s.split(/[\/\-]/);
+    if (parts.length === 3) {
+      if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+    return '';
+  };
+
   const [publishingDay, setPublishingDay] = useState('');
   const [delChargesChecked, setDelChargesChecked] = useState(false);
   const [pubList, setPubList] = useState<Publication[]>(publications);
@@ -101,6 +144,9 @@ export default function PublicationForm({
 
   const handleCancel = () => {
     setIsNewMode(false);
+    setIsRateChangeMode(false);
+    setRateChangeEffDate(todayDdmmyyyy);
+    setNewWeekdayRates({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 });
     setSelectedPub({
       publica_id: 0,
       public_name: '',
@@ -145,8 +191,31 @@ export default function PublicationForm({
     else fetch('/data/ratechanges.json').then(r => r.json()).then(setLocalRatechanges).catch(() => {});
   }, [ratechanges]);
 
+  const handleOpenHistory = async () => {
+    if (!selectedPub.publica_id) {
+      setMsg('Please select an existing publication first to view rate change history.');
+      setTimeout(() => setMsg(''), 3000);
+      return;
+    }
+    setIsHistoryOpen(true);
+    setIsLoadingHistory(true);
+    try {
+      const res = await fetch(`/api/rates?history=true&publica_id=${selectedPub.publica_id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setHistoryList(data.history || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
   const loadPublication = (p: Publication) => {
     setIsNewMode(false);
+    setIsRateChangeMode(false);
+    setRateChangeEffDate(todayDdmmyyyy);
     const hindiName = cleanOrTransliterateHindi(p.pub_hindi, p.public_name);
     const isPerm = Boolean(p.is_permanent || p.closed_to === '2099-12-31' || (p.closed_to && p.closed_to >= '2090-01-01'));
     const isClsd = Boolean(p.is_closed || isPerm);
@@ -182,6 +251,7 @@ export default function PublicationForm({
       : getEffectiveWeekdayRates(p.publica_id, new Date().toISOString().split('T')[0], activeRates, activeRateChanges, magDay);
 
     setWeekdayRates(effectiveRates);
+    setNewWeekdayRates({ ...effectiveRates });
     if (magDay >= 1 && magDay <= 7) {
       setSelectedDayRow(magDay);
     } else {
@@ -191,6 +261,9 @@ export default function PublicationForm({
 
   const handleNew = () => {
     setIsNewMode(true);
+    setIsRateChangeMode(false);
+    setRateChangeEffDate(todayDdmmyyyy);
+    setNewWeekdayRates({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 });
     setSelectedPub({
       publica_id: 0,
       public_name: '',
@@ -200,6 +273,7 @@ export default function PublicationForm({
       type_p: '',
       circulation: '',
       duration: '',
+      magzine_day: 0,
       chr_del: 0,
       is_closed: false,
       is_permanent: false,
@@ -274,11 +348,19 @@ export default function PublicationForm({
   }, [weekdayRates, selectedPub, isNewMode, isClosed, isPermanent, closedFrom, closedTo]);
 
   const copySundayRate = () => {
-    const sun = weekdayRates[1] || 0;
-    const updated: Record<number, number> = {};
-    WEEKDAYS.forEach(d => { updated[d.id] = sun; });
-    setWeekdayRates(updated);
-    setMsg(`F1 Triggered: Copied Sunday rate (₹${sun}) across all 7 weekdays!`);
+    if (isRateChangeMode) {
+      const sun = newWeekdayRates[1] || 0;
+      const updated: Record<number, number> = {};
+      WEEKDAYS.forEach(d => { updated[d.id] = sun; });
+      setNewWeekdayRates(updated);
+      setMsg(`F1 Triggered: Copied Sunday New Rate (₹${sun}) across all 7 weekdays!`);
+    } else {
+      const sun = weekdayRates[1] || 0;
+      const updated: Record<number, number> = {};
+      WEEKDAYS.forEach(d => { updated[d.id] = sun; });
+      setWeekdayRates(updated);
+      setMsg(`F1 Triggered: Copied Sunday rate (₹${sun}) across all 7 weekdays!`);
+    }
     setTimeout(() => setMsg(''), 3000);
   };
 
@@ -304,6 +386,16 @@ export default function PublicationForm({
         }
         return prev;
       });
+      setNewWeekdayRates(prev => {
+        if (prev[dayId] && prev[dayId] > 0) return prev;
+        const existingRate = prev[1] || Object.values(prev).find(v => v > 0) || 0;
+        if (existingRate > 0) {
+          const updated: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 };
+          updated[dayId] = existingRate;
+          return updated;
+        }
+        return prev;
+      });
     }
   };
 
@@ -316,6 +408,38 @@ export default function PublicationForm({
 
     const todayStr = new Date().toISOString().split('T')[0];
     const pubMagDay = publishingDay ? (DAY_NAME_TO_ID[publishingDay] || null) : (selectedPub.magzine_day || null);
+
+    // If Rate Change Revision Mode:
+    if (isRateChangeMode && selectedPub.publica_id > 0) {
+      const effIso = toIsoDate(rateChangeEffDate) || todayStr;
+      try {
+        const res = await fetch('/api/rates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            publica_id: selectedPub.publica_id,
+            is_rate_change: true,
+            effective_date: effIso,
+            new_rates: newWeekdayRates,
+            old_rates: weekdayRates
+          })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        if (effIso <= todayStr) {
+          setWeekdayRates(newWeekdayRates);
+        }
+        setIsRateChangeMode(false);
+        setMsg(`✓ Rate Change for Publication #${selectedPub.publica_id} "${selectedPub.public_name}" effective ${effIso} saved successfully!`);
+      } catch (err: any) {
+        setMsg(`Error saving rate change: ${err.message}`);
+      }
+      setTimeout(() => setMsg(''), 4000);
+      return;
+    }
+
+    // Standard Publication Save
     const pubToSave = {
       ...selectedPub,
       magzine_day: pubMagDay,
@@ -346,7 +470,7 @@ export default function PublicationForm({
       if (onSave) {
         onSave(saved);
       }
-      setMsg(`Publication #${saved.publica_id} "${saved.public_name}" saved successfully with effective rates for current date!`);
+      setMsg(`Publication #${saved.publica_id} "${saved.public_name}" saved successfully with effective rates!`);
     } catch (err: any) {
       setMsg(`Error saving publication: ${err.message}`);
     }
@@ -716,69 +840,154 @@ export default function PublicationForm({
           </div>
         </div>
 
-        {/* Weekdays Rate Grid matching screenshot_02.jpg */}
-        <div className="flex items-center justify-center gap-8 pt-2 pb-1">
-          {/* Weekdays Grid */}
-          <div className="w-[300px] bg-white border border-[#808080] shadow-sm">
-            <div className="bg-[#ECE9D8] text-center font-bold text-xs py-1 border-b border-[#808080] text-[#000080] flex items-center justify-between px-2">
-              <span>Weekdays Rate (दर विवरण)</span>
-              <span className="text-[10px] text-slate-600">Effective Rates</span>
-            </div>
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="bg-[#ECE9D8] border-b border-[#808080]">
-                  <th className="p-1 border-r text-left">Weekdays</th>
-                  <th className="p-1 text-center w-24">Rate (₹)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {WEEKDAYS.map((d) => (
-                  <tr 
-                    key={d.id}
-                    onClick={() => setSelectedDayRow(d.id)}
-                    className={`cursor-pointer border-b border-slate-200 ${selectedDayRow === d.id ? 'bg-[#316AC5] text-white font-bold' : 'hover:bg-blue-50 text-black'}`}
-                  >
-                    <td className="p-1 border-r">{d.name} ({d.hindi})</td>
-                    <td className="p-0.5 text-center">
-                      <input 
-                        type="number"
-                        step="0.25"
-                        value={weekdayRates[d.id] ? weekdayRates[d.id] : (weekdayRates[d.id] === 0 ? '0' : '')}
-                        placeholder="0.00"
-                        onChange={(e) => setWeekdayRates({ ...weekdayRates, [d.id]: parseFloat(e.target.value) || 0 })}
-                        className={`w-full text-center text-xs font-bold outline-none ${selectedDayRow === d.id ? 'bg-[#316AC5] text-white' : 'bg-transparent text-black'}`}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Right Side Shortcut Labels & Checkbox */}
-          <div className="space-y-3 text-xs font-bold">
-            <div className="text-red-700 font-bold text-xs leading-relaxed">
-              <div>F10 Select Del. Charges</div>
-              <div>F12 Unselect Del. Charges</div>
-            </div>
-            
-            <label className="flex items-center gap-2 cursor-pointer text-slate-900 font-bold text-xs">
+        {/* Weekdays Rate Section with Rate Change Revision Mode */}
+        <div className="flex flex-col items-center gap-1.5 pt-1 pb-1">
+          {/* Mode Selector & Rate History Button */}
+          <div className="flex items-center justify-center gap-5 py-1 px-3 bg-[#E3DFCA] border border-[#BFBAA0] rounded-xs shadow-xs text-xs font-bold">
+            <label className="flex items-center gap-1.5 cursor-pointer text-[#800000]">
               <input 
-                type="checkbox" 
-                checked={delChargesChecked}
-                onChange={(e) => setDelChargesChecked(e.target.checked)}
+                type="radio" 
+                name="rateMode" 
+                checked={!isRateChangeMode} 
+                onChange={() => setIsRateChangeMode(false)} 
                 className="cursor-pointer"
               />
-              <span>Del. Charges (डिलीवरी शुल्क)</span>
+              <span>Standard Rate (वर्तमान दर)</span>
             </label>
 
-            <div>
-              <button 
-                onClick={copySundayRate}
-                className="px-3 py-1.5 bg-[#FFF4C8] hover:bg-[#FFE99A] border border-[#CCA000] text-black text-xs font-bold shadow-xs cursor-pointer rounded-xs"
-              >
-                Press F1: Copy Sunday Rate
-              </button>
+            <label className="flex items-center gap-1.5 cursor-pointer text-[#006600] bg-white px-2 py-0.5 border border-green-600/40 rounded-xs shadow-xs">
+              <input 
+                type="radio" 
+                name="rateMode" 
+                checked={isRateChangeMode} 
+                onChange={() => {
+                  setIsRateChangeMode(true);
+                  setNewWeekdayRates({ ...weekdayRates });
+                }} 
+                className="cursor-pointer"
+              />
+              <span>📈 Rate Change (दर परिवर्तन)</span>
+            </label>
+
+            <button
+              type="button"
+              onClick={handleOpenHistory}
+              className="px-2.5 py-0.5 bg-[#E6F4FE] hover:bg-[#C8E8FA] active:bg-[#BCE4FA] border border-[#006699] text-blue-900 rounded-xs text-[11px] font-bold shadow-xs cursor-pointer flex items-center gap-1"
+            >
+              <span>📜</span>
+              <span>Rate History (दर इतिहास)</span>
+            </button>
+          </div>
+
+          {/* Effective Date Row (Shown only when in Rate Change Mode) */}
+          {isRateChangeMode && (
+            <div className="flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-300 rounded-xs text-xs font-bold text-amber-950 shadow-xs">
+              <span className="text-amber-900">📅 Effective Date (लागू दिनांक):</span>
+              <div className="border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white px-1.5 py-0.5 shadow-inner">
+                <input 
+                  type="text" 
+                  value={rateChangeEffDate} 
+                  onChange={(e) => setRateChangeEffDate(e.target.value)}
+                  onBlur={() => setRateChangeEffDate(formatDateDisplay(rateChangeEffDate))}
+                  placeholder="DD/MM/YYYY"
+                  className="w-24 text-center font-mono font-bold text-blue-900 outline-none bg-transparent"
+                />
+              </div>
+              <span className="text-[10px] text-amber-800 font-normal">(इस दिनांक से नया रेट लागू होगा)</span>
+            </div>
+          )}
+
+          {/* Weekdays Rate Grid and Shortcuts */}
+          <div className="flex items-center justify-center gap-6 pt-1 pb-1 w-full max-w-[620px]">
+            {/* Weekdays Grid */}
+            <div className={`${isRateChangeMode ? 'w-[370px]' : 'w-[300px]'} bg-white border border-[#808080] shadow-sm transition-all`}>
+              <div className="bg-[#ECE9D8] text-center font-bold text-xs py-1 border-b border-[#808080] text-[#000080] flex items-center justify-between px-2">
+                <span>Weekdays Rate (दर विवरण)</span>
+                <span className="text-[10px] text-slate-600">
+                  {isRateChangeMode ? 'Enter New Rates' : 'Effective Rates'}
+                </span>
+              </div>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-[#ECE9D8] border-b border-[#808080]">
+                    <th className="p-1 border-r text-left">Weekdays</th>
+                    {isRateChangeMode ? (
+                      <>
+                        <th className="p-1 border-r text-center w-20 text-slate-600">Current (₹)</th>
+                        <th className="p-1 text-center w-24 text-emerald-800 bg-emerald-50">New Rate (₹)</th>
+                      </>
+                    ) : (
+                      <th className="p-1 text-center w-24">Rate (₹)</th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {WEEKDAYS.map((d) => (
+                    <tr 
+                      key={d.id}
+                      onClick={() => setSelectedDayRow(d.id)}
+                      className={`cursor-pointer border-b border-slate-200 ${selectedDayRow === d.id ? 'bg-blue-50 font-bold' : 'hover:bg-blue-50 text-black'}`}
+                    >
+                      <td className="p-1 border-r">{d.name} ({d.hindi})</td>
+                      {isRateChangeMode ? (
+                        <>
+                          <td className="p-1 border-r text-center font-bold text-slate-600 bg-slate-50">
+                            {weekdayRates[d.id] ?? 0}
+                          </td>
+                          <td className="p-0.5 text-center bg-emerald-50/40">
+                            <input 
+                              type="number"
+                              step="0.25"
+                              value={newWeekdayRates[d.id] ? newWeekdayRates[d.id] : (newWeekdayRates[d.id] === 0 ? '0' : '')}
+                              placeholder="0.00"
+                              onChange={(e) => setNewWeekdayRates({ ...newWeekdayRates, [d.id]: parseFloat(e.target.value) || 0 })}
+                              className="w-full text-center text-xs font-bold outline-none bg-white border border-emerald-500 text-emerald-900 shadow-inner focus:bg-yellow-50"
+                            />
+                          </td>
+                        </>
+                      ) : (
+                        <td className="p-0.5 text-center">
+                          <input 
+                            type="number"
+                            step="0.25"
+                            value={weekdayRates[d.id] ? weekdayRates[d.id] : (weekdayRates[d.id] === 0 ? '0' : '')}
+                            placeholder="0.00"
+                            onChange={(e) => setWeekdayRates({ ...weekdayRates, [d.id]: parseFloat(e.target.value) || 0 })}
+                            className="w-full text-center text-xs font-bold outline-none bg-transparent text-black"
+                          />
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Right Side Shortcut Labels & Checkbox */}
+            <div className="space-y-2.5 text-xs font-bold">
+              <div className="text-red-700 font-bold text-xs leading-relaxed">
+                <div>F10 Select Del. Charges</div>
+                <div>F12 Unselect Del. Charges</div>
+              </div>
+              
+              <label className="flex items-center gap-2 cursor-pointer text-slate-900 font-bold text-xs">
+                <input 
+                  type="checkbox" 
+                  checked={delChargesChecked}
+                  onChange={(e) => setDelChargesChecked(e.target.checked)}
+                  className="cursor-pointer"
+                />
+                <span>Del. Charges (डिलीवरी शुल्क)</span>
+              </label>
+
+              <div>
+                <button 
+                  onClick={copySundayRate}
+                  className="px-3 py-1.5 bg-[#FFF4C8] hover:bg-[#FFE99A] border border-[#CCA000] text-black text-xs font-bold shadow-xs cursor-pointer rounded-xs"
+                >
+                  {isRateChangeMode ? 'Press F1: Copy Sunday New Rate' : 'Press F1: Copy Sunday Rate'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -993,6 +1202,85 @@ export default function PublicationForm({
               </div>
               <button 
                 onClick={() => setIsFindOpen(false)}
+                className="px-4 py-1 bg-white border border-[#808080] font-bold text-xs cursor-pointer hover:bg-slate-100"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rate Change History Modal Dialog */}
+      {isHistoryOpen && (
+        <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-3">
+          <div className="w-[580px] max-h-[460px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma text-xs">
+            {/* Titlebar */}
+            <div className="bg-[#0A246A] text-white px-2 py-1 font-bold flex justify-between items-center">
+              <span>📜 Rate Change History - {selectedPub.public_name} (#{selectedPub.publica_id})</span>
+              <button onClick={() => setIsHistoryOpen(false)} className="text-white hover:text-red-300 font-bold cursor-pointer">✕</button>
+            </div>
+            
+            <div className="p-2.5 space-y-2 flex-1 overflow-hidden flex flex-col">
+              <div className="bg-white p-2 border border-slate-300 text-xs text-blue-900 font-bold flex justify-between items-center">
+                <span>Publication: #{selectedPub.publica_id} - {selectedPub.public_name}</span>
+                <span className="text-slate-600 font-normal">Total Recorded Changes: {historyList.length}</span>
+              </div>
+
+              {/* History Table */}
+              <div className="flex-1 bg-white border border-slate-400 overflow-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead className="sticky top-0 bg-[#ECE9D8] border-b border-slate-400">
+                    <tr>
+                      <th className="p-1 border-r text-center w-10">#</th>
+                      <th className="p-1 border-r text-left">Effective Date (दिनांक)</th>
+                      <th className="p-1 border-r text-left">Day / Weekday (दिन)</th>
+                      <th className="p-1 border-r text-right w-24">Old Rate (₹)</th>
+                      <th className="p-1 text-right w-24 text-emerald-800">New Rate (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoadingHistory ? (
+                      <tr>
+                        <td colSpan={5} className="p-4 text-center text-slate-500 font-bold">
+                          Loading rate change history...
+                        </td>
+                      </tr>
+                    ) : historyList.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="p-4 text-center text-slate-500 font-bold">
+                          No previous rate change revisions found for this publication.
+                        </td>
+                      </tr>
+                    ) : (
+                      historyList.map((h, idx) => {
+                        const dayNum = h.dayofweek !== undefined ? h.dayofweek : h.Dayofweek;
+                        const dayObj = WEEKDAYS.find(w => w.id === dayNum);
+                        const dayLabel = dayNum === 0 ? 'All Days (सभी दिन)' : (dayObj ? `${dayObj.name} (${dayObj.hindi})` : `Day ${dayNum}`);
+                        const effDate = (h.dated || h.Dated || h.effective_date || '').split('T')[0];
+                        const oldVal = Number(h.oldrate ?? h.OldRate ?? 0);
+                        const newVal = Number(h.new_rate ?? h.NewRate ?? 0);
+
+                        return (
+                          <tr key={idx} className="border-b border-slate-200 hover:bg-blue-50">
+                            <td className="p-1 border-r text-center font-mono text-slate-500">{idx + 1}</td>
+                            <td className="p-1 border-r font-mono font-bold text-blue-900">{effDate}</td>
+                            <td className="p-1 border-r font-bold text-slate-700">{dayLabel}</td>
+                            <td className="p-1 border-r text-right font-mono text-slate-500">₹{oldVal.toFixed(2)}</td>
+                            <td className="p-1 text-right font-mono font-bold text-emerald-700 bg-emerald-50/50">₹{newVal.toFixed(2)}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-2 border-t bg-[#ECE9D8] flex justify-end">
+              <button 
+                onClick={() => setIsHistoryOpen(false)}
                 className="px-4 py-1 bg-white border border-[#808080] font-bold text-xs cursor-pointer hover:bg-slate-100"
               >
                 Close
