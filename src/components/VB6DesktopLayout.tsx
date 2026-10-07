@@ -804,13 +804,25 @@ export default function VB6DesktopLayout() {
           />
         )}
 
-        {/* 9e. Publication Discontinue (Dual-Tab: Tab 1 Publication, Tab 2 Customer) */}
+        {/* 9e. Publication Discontinue (Dedicated tab inside Publication) */}
         {activeWindow === 'pubdiscontinue' && (
-          <DiscontinueForm 
+          <PublicationForm 
             onClose={() => setActiveWindow(null)} 
             publications={publications}
-            hawkers={hawkers}
-            initialTab="publication"
+            publishers={publishers}
+            rates={rates}
+            ratechanges={ratechanges}
+            initialTab="discontinue"
+            onSave={(savedPub) => {
+              setPublications(prev => [savedPub, ...prev.filter(p => p.publica_id !== savedPub.publica_id)]);
+              fetch('/api/publications?with_rates=true')
+                .then(r => r.json())
+                .then(data => { if (data.publications) setPublications(normalizeAndSortPubList(data.publications)); })
+                .catch(() => {});
+              fetch('/data/rates.json').then(r => r.json()).then(setRates).catch(() => {});
+              fetch('/data/ratechanges.json').then(r => r.json()).then(setRatechanges).catch(() => {});
+              setStatusMessage(`Publication #${savedPub.publica_id} "${savedPub.public_name}" saved.`);
+            }}
           />
         )}
         {activeWindow === 'pubsupplement' && (

@@ -11,6 +11,7 @@ interface PublicationFormProps {
   publishers?: Publisher[];
   rates?: Rate[];
   ratechanges?: RateChange[];
+  initialTab?: 'master' | 'discontinue';
   onSave?: (pub: Publication) => void;
   onDelete?: (pubId: number) => void;
 }
@@ -51,9 +52,12 @@ export default function PublicationForm({
   publishers = [],
   rates = [],
   ratechanges = [],
+  initialTab = 'master',
   onSave,
   onDelete
 }: PublicationFormProps) {
+  const [activeMainTab, setActiveMainTab] = useState<'master' | 'discontinue'>(initialTab || 'master');
+
   const [selectedPub, setSelectedPub] = useState<Publication>({
     publica_id: 0,
     public_name: '',
@@ -95,6 +99,125 @@ export default function PublicationForm({
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // Tab 2: Publication Discontinue State
+  const [pubDisMode, setPubDisMode] = useState<'single' | 'holiday'>('single');
+  const [pubDisHolidayDesc, setPubDisHolidayDesc] = useState('');
+  const [pubDisSelectedId, setPubDisSelectedId] = useState<string>('');
+  const [pubDisHoldType, setPubDisHoldType] = useState<'Temporary' | 'Permanent'>('Temporary');
+  const [pubDisFromDate, setPubDisFromDate] = useState<string>(todayDdmmyyyy);
+  const [pubDisToDate, setPubDisToDate] = useState<string>('');
+  const [pubDisRemark, setPubDisRemark] = useState<string>('Discontinued');
+  const [pubDisMsg, setPubDisMsg] = useState<{ text: string; isError?: boolean } | null>(null);
+  const [isPubDisSaving, setIsPubDisSaving] = useState(false);
+  const [pubDisHistoryList, setPubDisHistoryList] = useState<any[]>([]);
+  const [isLoadingPubDisHistory, setIsLoadingPubDisHistory] = useState(false);
+
+  const fetchPubDisHistory = async () => {
+    setIsLoadingPubDisHistory(true);
+    try {
+      const res = await fetch('/api/publicationdis', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        setPubDisHistoryList(data.discontinues || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoadingPubDisHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeMainTab === 'discontinue') {
+      fetchPubDisHistory();
+      if (selectedPub.publica_id > 0 && !pubDisSelectedId) {
+        setPubDisSelectedId(String(selectedPub.publica_id));
+      }
+    }
+  }, [activeMainTab, selectedPub.publica_id]);
+
+  const handlePubDisSave = async () => {
+    const isHoliday = pubDisMode === 'holiday' || pubDisSelectedId === '0';
+    if (!isHoliday && !pubDisSelectedId) {
+      setPubDisMsg({ text: 'कृपया पहले पत्रिका/अखबार (Publication) चुनें.', isError: true });
+      return;
+    }
+    if (!pubDisFromDate) {
+      setPubDisMsg({ text: 'कृपया फ्रॉम डेट (From Date) दर्ज करें.', isError: true });
+      return;
+    }
+    if (pubDisHoldType === 'Temporary' && !pubDisToDate) {
+      setPubDisMsg({ text: 'अस्थाई छुट्टी के लिए समाप्ति दिनांक (To Date) दर्ज करें.', isError: true });
+      return;
+    }
+
+    setIsPubDisSaving(true);
+    setPubDisMsg(null);
+    try {
+      const fromIso = toIsoDate(pubDisFromDate);
+      const toIso = pubDisHoldType === 'Permanent' ? '2099-12-31' : toIsoDate(pubDisToDate);
+      const pid = isHoliday ? 0 : parseInt(pubDisSelectedId, 10);
+      const descText = isHoliday 
+        ? (pubDisHolidayDesc.trim() || pubDisRemark.trim() || 'General Holiday')
+        : (pubDisRemark.trim() || 'Discontinued');
+
+      const res = await fetch('/api/publicationdis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          publica_id: pid,
+          from_date: fromIso,
+          to_date: toIso,
+          dis_type: pubDisHoldType === 'Permanent' ? 'P' : 'T',
+          remark: descText
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save publication discontinue');
+
+      await fetchPubDisHistory();
+      const label = isHoliday 
+        ? `[Holiday] सभी समाचार पत्र (${descText})` 
+        : (pubList.find(p => p.publica_id === pid)?.public_name || `Pub #${pid}`);
+
+      setPubDisMsg({
+        text: `✓ ${label} का ${pubDisHoldType === 'Permanent' ? 'स्थाई बंद (Permanent Stop)' : 'अस्थाई रोक / अवकाश (Hold / Holiday)'} सफलतापूर्वक दर्ज हुआ!`,
+        isError: false
+      });
+    } catch (err: any) {
+      setPubDisMsg({ text: `त्रुटि: ${err.message}`, isError: true });
+    } finally {
+      setIsPubDisSaving(false);
+    }
+  };
+
+  const handlePubDisDelete = async (discId: number) => {
+    if (!confirm(`Are you sure you want to delete discontinue record #${discId}?`)) return;
+    try {
+      const res = await fetch(`/api/publicationdis?id=${discId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setPubDisHistoryList(prev => prev.filter(d => d.id !== discId));
+        setPubDisMsg({ text: `✓ Record #${discId} successfully deleted.`, isError: false });
+      } else {
+        const d = await res.json();
+        setPubDisMsg({ text: `Delete failed: ${d.error || 'Server error'}`, isError: true });
+      }
+    } catch (err: any) {
+      setPubDisMsg({ text: `Error: ${err.message}`, isError: true });
+    }
+  };
+
+  const handlePubDisCancel = () => {
+    setPubDisMode('single');
+    setPubDisHolidayDesc('');
+    setPubDisSelectedId(selectedPub.publica_id > 0 ? String(selectedPub.publica_id) : '');
+    setPubDisHoldType('Temporary');
+    setPubDisFromDate(todayDdmmyyyy);
+    setPubDisToDate('');
+    setPubDisRemark('Discontinued');
+    setPubDisMsg(null);
+  };
 
   const formatDateDisplay = (val: string): string => {
     const s = val.trim().replace(/\D/g, '');
@@ -556,7 +679,9 @@ export default function PublicationForm({
       <div className="bg-gradient-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs">
         <div className="flex items-center gap-1.5">
           <span className="text-sm">📰</span>
-          <span className="tracking-wide">Publication Info - {isNewMode ? '[NEW ENTRY]' : `[ID: #${selectedPub.publica_id}]`}</span>
+          <span className="tracking-wide">
+            {activeMainTab === 'discontinue' ? 'Publication Discontinue' : `Publication Info - ${isNewMode ? '[NEW ENTRY]' : `[ID: #${selectedPub.publica_id}]`}`}
+          </span>
         </div>
         <div className="flex items-center gap-1">
           <button className="w-5 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">_</button>
@@ -565,7 +690,39 @@ export default function PublicationForm({
         </div>
       </div>
 
-      {/* Main Body */}
+      {/* VB6 Two Tabs: 1. Publication Master & Rates, 2. Publication Discontinue */}
+      <div className="flex items-end px-3 pt-2 bg-[#D4D0C8] border-b border-[#808080] gap-1">
+        <button
+          type="button"
+          onClick={() => setActiveMainTab('master')}
+          className={`px-4 py-1 font-bold text-xs border-t-2 border-l-2 border-r-2 rounded-t-sm cursor-pointer transition-colors ${
+            activeMainTab === 'master'
+              ? 'bg-[#ECE9D8] text-[#800000] border-t-white border-l-white border-r-[#404040] -mb-[1px] pb-1.5 shadow-sm'
+              : 'bg-[#C0BCB0] text-slate-700 border-t-[#D4D0C8] border-l-[#D4D0C8] border-r-[#808080] hover:bg-[#D4D0C8]'
+          }`}
+        >
+          📰 1. Publication Master & Rates (प्रकाशन विवरण व दर)
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveMainTab('discontinue');
+            if (selectedPub.publica_id > 0) {
+              setPubDisSelectedId(String(selectedPub.publica_id));
+            }
+          }}
+          className={`px-4 py-1 font-bold text-xs border-t-2 border-l-2 border-r-2 rounded-t-sm cursor-pointer transition-colors ${
+            activeMainTab === 'discontinue'
+              ? 'bg-[#ECE9D8] text-[#000080] border-t-white border-l-white border-r-[#404040] -mb-[1px] pb-1.5 shadow-sm'
+              : 'bg-[#C0BCB0] text-slate-700 border-t-[#D4D0C8] border-l-[#D4D0C8] border-r-[#808080] hover:bg-[#D4D0C8]'
+          }`}
+        >
+          🛑 2. Publication Discontinue (प्रकाशन बंद / अवकाश)
+        </button>
+      </div>
+
+      {/* Tab 1: Publication Master & Rates */}
+      {activeMainTab === 'master' && (
       <div 
         className="p-4 flex flex-col justify-between bg-cover bg-center min-h-[520px]"
         style={{ backgroundImage: "url('/legacy_images/Publication.jpg'), linear-gradient(135deg, #F0F4F8 0%, #FFFFFF 100%)" }}
@@ -1090,6 +1247,280 @@ export default function PublicationForm({
           </button>
         </div>
       </div>
+      )}
+
+      {/* Tab 2: Publication Discontinue */}
+      {activeMainTab === 'discontinue' && (
+        <div 
+          className="p-4 flex flex-col justify-between bg-cover bg-center min-h-[520px]"
+          style={{ backgroundImage: "url('/legacy_images/Publication.jpg'), linear-gradient(135deg, #F0F4F8 0%, #FFFFFF 100%)" }}
+        >
+          <div className="space-y-2.5 max-w-[680px] mx-auto w-full">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-1.5 border-b border-[#CCA000]/40">
+              <h1 className="text-xl font-black text-[#800000] tracking-wider uppercase font-sans">
+                PUBLICATIONS DISCONTINUE (प्रकाशन अवकाश / बंद)
+              </h1>
+              <span className="font-mono text-xs font-bold text-blue-900 bg-blue-50 px-2 py-0.5 border border-blue-200">
+                {pubDisMode === 'holiday' ? 'ALL DAILY PAPERS' : pubDisSelectedId ? `PUB ID: #${pubDisSelectedId}` : 'SELECT PUBLICATION'}
+              </span>
+            </div>
+
+            {/* Mode Selection */}
+            <div className="flex items-center justify-center gap-6 py-1 px-3 bg-[#E3DFCA] border border-[#BFBAA0] rounded-xs shadow-xs text-xs font-bold">
+              <label className="flex items-center gap-1.5 cursor-pointer text-[#800000]">
+                <input 
+                  type="radio" 
+                  name="pubDisMode" 
+                  value="single" 
+                  checked={pubDisMode === 'single'} 
+                  onChange={() => setPubDisMode('single')} 
+                  className="cursor-pointer"
+                />
+                <span>Single Publication (विशिष्ट पत्रिका/अखबार)</span>
+              </label>
+
+              <label className="flex items-center gap-1.5 cursor-pointer text-[#006600] bg-white px-2.5 py-0.5 border border-green-600/40 rounded-xs shadow-xs">
+                <input 
+                  type="radio" 
+                  name="pubDisMode" 
+                  value="holiday" 
+                  checked={pubDisMode === 'holiday'} 
+                  onChange={() => {
+                    setPubDisMode('holiday');
+                    setPubDisHoldType('Temporary');
+                  }} 
+                  className="cursor-pointer"
+                />
+                <span>🏖️ Holiday (अवकाश - सभी दैनिक समाचार पत्र)</span>
+              </label>
+            </div>
+
+            {/* Publication Selector or Holiday Description */}
+            {pubDisMode === 'single' ? (
+              <div className="bg-white/95 border border-[#800000]/30 p-2.5 rounded-xs shadow-xs space-y-1.5 text-xs font-bold">
+                <div className="flex items-center gap-2">
+                  <label className="w-28 text-right pr-2 text-[#800000]">Publication</label>
+                  <select
+                    value={pubDisSelectedId}
+                    onChange={(e) => setPubDisSelectedId(e.target.value)}
+                    className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white font-bold text-black text-xs outline-none shadow-inner"
+                  >
+                    <option value="">-- Select Publication (पत्रिका/अखबार चुनें) --</option>
+                    {pubList.map(p => (
+                      <option key={p.publica_id} value={p.publica_id}>
+                        #{p.publica_id} - {p.public_name} {p.pub_hindi ? `(${p.pub_hindi})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <label className="w-28 text-right pr-2 text-[#800000]">Remark / कारण</label>
+                  <input
+                    type="text"
+                    value={pubDisRemark}
+                    onChange={(e) => setPubDisRemark(e.target.value)}
+                    placeholder="e.g. Press Holiday, Strike, Discontinued..."
+                    className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white font-bold text-black text-xs outline-none shadow-inner"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white/95 border border-green-600/40 p-2.5 rounded-xs shadow-xs space-y-1.5 text-xs font-bold">
+                <div className="flex items-center gap-2">
+                  <label className="w-28 text-right pr-2 text-green-900">Target</label>
+                  <div className="flex-1 px-2 py-1 bg-emerald-50 border border-emerald-300 text-emerald-950 font-bold rounded-xs flex items-center gap-1.5">
+                    <span>🏖️</span>
+                    <span>All Daily Newspapers (सभी दैनिक समाचार पत्र - पत्रिकाएं शामिल नहीं)</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <label className="w-28 text-right pr-2 text-green-900">Holiday Desc</label>
+                  <input
+                    type="text"
+                    value={pubDisHolidayDesc}
+                    onChange={(e) => setPubDisHolidayDesc(e.target.value)}
+                    placeholder="e.g. Diwali, Holi, Press Holiday, New Year..."
+                    className="flex-1 px-2 py-1 border border-[#7F9DB9] bg-white font-bold text-blue-900 text-xs outline-none shadow-inner"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Temporary / Permanent & Dates Box */}
+            <div className="bg-white/95 border border-[#800000]/30 p-2.5 rounded-xs shadow-xs space-y-2 text-xs font-bold">
+              <div className="flex items-center justify-center gap-8 border-b border-slate-200 pb-1.5">
+                <label className="flex items-center gap-1.5 cursor-pointer text-amber-900">
+                  <input
+                    type="radio"
+                    name="pubHoldType"
+                    checked={pubDisHoldType === 'Temporary'}
+                    onChange={() => setPubDisHoldType('Temporary')}
+                    className="cursor-pointer"
+                  />
+                  <span>🟠 Temporary Hold / Holiday (अस्थाई अवकाश/रोक)</span>
+                </label>
+
+                <label className="flex items-center gap-1.5 cursor-pointer text-red-700">
+                  <input
+                    type="radio"
+                    name="pubHoldType"
+                    checked={pubDisHoldType === 'Permanent'}
+                    onChange={() => {
+                      setPubDisHoldType('Permanent');
+                      setPubDisToDate('Permanent');
+                    }}
+                    className="cursor-pointer"
+                  />
+                  <span>🔴 Permanent Stop (स्थाई बंद)</span>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-center gap-6 pt-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[#800000]">📅 From Date:</span>
+                  <input
+                    type="text"
+                    value={pubDisFromDate}
+                    onChange={(e) => setPubDisFromDate(e.target.value)}
+                    onBlur={() => setPubDisFromDate(formatDateDisplay(pubDisFromDate))}
+                    placeholder="DD/MM/YYYY"
+                    className="w-28 px-2 py-0.5 border border-[#7F9DB9] bg-white text-center font-mono font-bold text-blue-900 outline-none shadow-inner"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[#800000]">📅 To Date:</span>
+                  {pubDisHoldType === 'Permanent' ? (
+                    <span className="w-28 px-2 py-0.5 bg-red-100 border border-red-300 text-red-900 text-center font-bold">
+                      Permanent
+                    </span>
+                  ) : (
+                    <input
+                      type="text"
+                      value={pubDisToDate}
+                      onChange={(e) => setPubDisToDate(e.target.value)}
+                      onBlur={() => setPubDisToDate(formatDateDisplay(pubDisToDate))}
+                      placeholder="DD/MM/YYYY"
+                      className="w-28 px-2 py-0.5 border border-[#7F9DB9] bg-white text-center font-mono font-bold text-blue-900 outline-none shadow-inner"
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Status Message */}
+            {pubDisMsg && (
+              <div className={`py-1 px-2 text-center text-xs font-bold rounded-xs ${pubDisMsg.isError ? 'bg-red-50 text-red-700 border border-red-300' : 'bg-emerald-50 text-emerald-800 border border-emerald-300'}`}>
+                {pubDisMsg.text}
+              </div>
+            )}
+
+            {/* Active Publication Discontinues List Table */}
+            <div className="bg-white border border-[#808080] shadow-sm rounded-xs overflow-hidden">
+              <div className="bg-[#ECE9D8] px-2 py-1 font-bold text-xs text-[#000080] border-b border-[#808080] flex justify-between items-center">
+                <span>📜 Active & Recorded Publication Discontinues ({pubDisHistoryList.length})</span>
+                <button
+                  type="button"
+                  onClick={fetchPubDisHistory}
+                  className="text-[10px] text-blue-800 underline hover:text-blue-950 font-normal cursor-pointer"
+                >
+                  Refresh
+                </button>
+              </div>
+              <div className="max-h-[140px] overflow-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead className="bg-[#F0EDE0] border-b border-slate-300 sticky top-0 font-bold text-slate-800">
+                    <tr>
+                      <th className="p-1 border-r text-left w-10">ID</th>
+                      <th className="p-1 border-r text-left">Publication</th>
+                      <th className="p-1 border-r text-center w-24">From Date</th>
+                      <th className="p-1 border-r text-center w-24">To Date</th>
+                      <th className="p-1 border-r text-left">Remark / Holiday</th>
+                      <th className="p-1 text-center w-14">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoadingPubDisHistory ? (
+                      <tr>
+                        <td colSpan={6} className="p-3 text-center text-slate-500 font-bold">Loading discontinue records...</td>
+                      </tr>
+                    ) : pubDisHistoryList.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-3 text-center text-slate-500 font-bold">No publication discontinue records found.</td>
+                      </tr>
+                    ) : (
+                      pubDisHistoryList.map((d, idx) => {
+                        const pubObj = pubList.find(p => p.publica_id === (d.publica_id || d.Publica_id));
+                        const isAll = (d.publica_id || d.Publica_id) === 0;
+                        const name = isAll ? '🏖️ [All Daily Newspapers]' : (pubObj?.public_name || `Publication #${d.publica_id || d.Publica_id}`);
+                        const fromD = (d.from_date || d.entry_date || '-').split('T')[0];
+                        const toD = (d.to_date || d.oc_date || 'Permanent').split('T')[0];
+                        const recId = d.id || d.discontinue_id || idx;
+
+                        return (
+                          <tr key={recId} className="border-b border-slate-200 hover:bg-blue-50 text-[11px]">
+                            <td className="p-1 border-r font-mono text-slate-600 text-center">#{recId}</td>
+                            <td className="p-1 border-r font-bold text-slate-900">{name}</td>
+                            <td className="p-1 border-r text-center font-mono text-blue-900">{fromD}</td>
+                            <td className="p-1 border-r text-center font-mono text-blue-900">{toD}</td>
+                            <td className="p-1 border-r text-slate-700">{d.remark || 'Discontinued'}</td>
+                            <td className="p-1 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handlePubDisDelete(d.id)}
+                                className="px-1.5 py-0.5 bg-red-100 hover:bg-red-200 text-red-800 border border-red-300 font-bold text-[10px] rounded-xs cursor-pointer"
+                                title="Delete / Reopen"
+                              >
+                                🗑
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Publication Discontinue Action Buttons */}
+          <div className="flex items-center justify-center gap-2 pt-2 border-t border-[#808080]">
+            <button 
+              onClick={handlePubDisSave}
+              disabled={isPubDisSaving}
+              title="Save publication discontinue"
+              className="px-4 py-1 bg-gradient-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] border border-[#006699] shadow-xs transform -skew-x-12 cursor-pointer font-bold text-black text-xs"
+            >
+              <span className="transform skew-x-12 flex items-center gap-1">
+                💾 {isPubDisSaving ? 'Saving...' : 'Save Discontinue'}
+              </span>
+            </button>
+
+            <button 
+              onClick={handlePubDisCancel}
+              title="Clear discontinue fields"
+              className="px-4 py-1 bg-gradient-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] border border-[#006699] shadow-xs transform -skew-x-12 cursor-pointer font-bold text-black text-xs"
+            >
+              <span className="transform skew-x-12 flex items-center gap-1">
+                ✖ Cancel
+              </span>
+            </button>
+
+            <button 
+              onClick={onClose}
+              className="px-4 py-1 bg-gradient-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] border border-[#006699] shadow-xs transform -skew-x-12 cursor-pointer font-bold text-red-800 text-xs"
+            >
+              <span className="transform skew-x-12 flex items-center gap-1">
+                🛑 Exit
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Find Publication Modal Dialog with Active / Closed Filters */}
       {isFindOpen && (
