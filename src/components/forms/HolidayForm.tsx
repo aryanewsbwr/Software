@@ -184,10 +184,10 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
   };
 
   return (
-    <div className="relative w-[520px] h-[640px] bg-white border-2 border-[#808080] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden">
+    <div className="relative w-full max-w-[520px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-white border-2 border-[#808080] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
       
       {/* Title Bar matching screenshot_07.jpg */}
-      <div className="bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between">
+      <div className="bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1.5">
           <img 
             src="/legacy_images/paper.ico" 
@@ -205,7 +205,7 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
       </div>
 
       {/* Main Body */}
-      <div className="flex-1 bg-white p-3 flex flex-col justify-between relative overflow-hidden">
+      <div className="flex-1 bg-white p-3 flex flex-col justify-between relative overflow-y-auto min-h-0">
         
         {/* Top Header matching screenshot_07.jpg */}
         <div className="text-center pb-1">
@@ -349,7 +349,7 @@ export default function HolidayForm({ onClose, holidays = [], publications = [] 
         )}
 
         {/* Classic Parallelogram-Beveled Action Buttons matching screenshot_07.jpg */}
-        <div className="flex flex-col items-center justify-center gap-2 pt-2 select-none">
+        <div className="shrink-0 flex flex-col items-center justify-center gap-1.5 pt-2 select-none border-t border-[#808080]/30 bg-white pb-1">
           
           {/* Top Row: Save, Update, Find */}
           <div className="flex items-center justify-center gap-3">

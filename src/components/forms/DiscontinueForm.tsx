@@ -386,10 +386,10 @@ export default function DiscontinueForm({
   };
 
   return (
-    <div className="relative w-[590px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden text-xs">
+    <div className="relative w-full max-w-[590px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden text-xs my-auto shrink-0">
       
       {/* Title Bar matching screenshot_10.jpg */}
-      <div className="bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold">
+      <div className="bg-[#0A246A] text-white px-2 py-1 flex items-center justify-between font-bold shrink-0">
         <div className="flex items-center gap-1.5">
           <img 
             src="/legacy_images/paper.ico" 
@@ -409,7 +409,7 @@ export default function DiscontinueForm({
       </div>
 
       {/* Main Body */}
-      <div className="p-4 flex flex-col justify-between space-y-3 bg-[#ECE9D8] min-h-[380px]">
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-between space-y-3 bg-[#ECE9D8] min-h-0">
         
         {/* CUSTOMER DISCONTINUE INFO (screenshot_10.jpg) */}
         <div className="space-y-2.5">
@@ -663,7 +663,7 @@ export default function DiscontinueForm({
         </div>
 
         {/* Action Buttons matching VB6 (Save, Update, Delete, Find, Cancel, Exit) */}
-        <div className="flex items-center justify-between gap-1 pt-2 border-t border-[#808080]">
+        <div className="shrink-0 flex flex-wrap items-center justify-between gap-1 pt-2 border-t border-[#808080] bg-[#ECE9D8] pb-1">
           <button 
             type="button"
             onClick={handleSave}

@@ -709,9 +709,9 @@ export default function PublicationForm({
   const permanentCount = pubList.filter(p => p.is_permanent).length;
 
   return (
-    <div className="relative w-[760px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden">
+    <div className="relative w-full max-w-[780px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
       {/* Title Bar */}
-      <div className="bg-gradient-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs">
+      <div className="bg-gradient-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs shrink-0">
         <div className="flex items-center gap-1.5">
           <span className="text-sm">📰</span>
           <span className="tracking-wide">
@@ -726,11 +726,11 @@ export default function PublicationForm({
       </div>
 
       {/* VB6 Two Tabs: 1. Publication Master & Rates, 2. Publication Discontinue */}
-      <div className="flex items-end px-3 pt-2 bg-[#D4D0C8] border-b border-[#808080] gap-1">
+      <div className="flex items-end px-2 sm:px-3 pt-2 bg-[#D4D0C8] border-b border-[#808080] gap-1 overflow-x-auto flex-nowrap shrink-0 scrollbar-thin">
         <button
           type="button"
           onClick={() => setActiveMainTab('master')}
-          className={`px-4 py-1 font-bold text-xs border-t-2 border-l-2 border-r-2 rounded-t-sm cursor-pointer transition-colors ${
+          className={`px-3 sm:px-4 py-1 font-bold text-xs border-t-2 border-l-2 border-r-2 rounded-t-sm cursor-pointer whitespace-nowrap transition-colors ${
             activeMainTab === 'master'
               ? 'bg-[#ECE9D8] text-[#800000] border-t-white border-l-white border-r-[#404040] -mb-[1px] pb-1.5 shadow-sm'
               : 'bg-[#C0BCB0] text-slate-700 border-t-[#D4D0C8] border-l-[#D4D0C8] border-r-[#808080] hover:bg-[#D4D0C8]'
@@ -746,7 +746,7 @@ export default function PublicationForm({
               setPubDisSelectedId(String(selectedPub.publica_id));
             }
           }}
-          className={`px-4 py-1 font-bold text-xs border-t-2 border-l-2 border-r-2 rounded-t-sm cursor-pointer transition-colors ${
+          className={`px-3 sm:px-4 py-1 font-bold text-xs border-t-2 border-l-2 border-r-2 rounded-t-sm cursor-pointer whitespace-nowrap transition-colors ${
             activeMainTab === 'discontinue'
               ? 'bg-[#ECE9D8] text-[#000080] border-t-white border-l-white border-r-[#404040] -mb-[1px] pb-1.5 shadow-sm'
               : 'bg-[#C0BCB0] text-slate-700 border-t-[#D4D0C8] border-l-[#D4D0C8] border-r-[#808080] hover:bg-[#D4D0C8]'
@@ -758,7 +758,7 @@ export default function PublicationForm({
 
       {/* Tab 1: Publication Master & Rates */}
       {activeMainTab === 'master' && (
-      <div className="p-4 flex flex-col justify-between bg-[#ECE9D8] min-h-[520px]">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 flex flex-col justify-between space-y-3 bg-[#ECE9D8] min-h-0">
         {/* Header with Title and Active/Closed Status */}
         <div className="flex items-center justify-between pb-2 border-b border-[#CCA000]/40">
           <div className="flex items-center gap-2">
@@ -1201,7 +1201,7 @@ export default function PublicationForm({
         )}
 
         {/* Action Buttons matching screenshot_02.jpg with New button */}
-        <div className="flex items-center justify-center gap-2 pt-2 border-t border-[#808080]">
+        <div className="shrink-0 flex flex-wrap items-center justify-center gap-1 sm:gap-2 pt-2 border-t border-[#808080] bg-[#ECE9D8] pb-1">
           {/* New / Add Button */}
           <button 
             onClick={handleNew}
@@ -1283,7 +1283,7 @@ export default function PublicationForm({
 
       {/* Tab 2: Publication Discontinue */}
       {activeMainTab === 'discontinue' && (
-        <div className="p-4 flex flex-col justify-between space-y-3 bg-[#ECE9D8] min-h-[420px]">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 flex flex-col justify-between space-y-3 bg-[#ECE9D8] min-h-0">
           <div className="space-y-3">
             <div className="text-center">
               <h1 
@@ -1498,12 +1498,12 @@ export default function PublicationForm({
           </div>
 
           {/* Action Buttons matching VB6 */}
-          <div className="flex items-center justify-between gap-1 pt-2 border-t border-[#808080]">
+          <div className="shrink-0 flex flex-wrap items-center justify-between gap-1 pt-2 border-t border-[#808080] bg-[#ECE9D8] pb-1">
             <button 
               type="button"
               onClick={handlePubDisSave}
               disabled={isPubDisSaving}
-              className="flex-1 py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
+              className="flex-1 min-w-[50px] py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
             >
               <u>S</u>ave
             </button>
@@ -1512,7 +1512,7 @@ export default function PublicationForm({
               type="button"
               onClick={handlePubDisSave}
               disabled={isPubDisSaving}
-              className="flex-1 py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
+              className="flex-1 min-w-[50px] py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
             >
               <u>U</u>pdate
             </button>
@@ -1520,7 +1520,7 @@ export default function PublicationForm({
             <button 
               type="button"
               onClick={handlePubDisMainDelete}
-              className="flex-1 py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
+              className="flex-1 min-w-[50px] py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
             >
               <u>D</u>elete
             </button>
@@ -1531,7 +1531,7 @@ export default function PublicationForm({
                 fetchPubDisHistory();
                 setIsPubDisFindOpen(true);
               }}
-              className="flex-1 py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
+              className="flex-1 min-w-[50px] py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
             >
               <u>F</u>ind
             </button>
@@ -1539,7 +1539,7 @@ export default function PublicationForm({
             <button 
               type="button"
               onClick={handlePubDisCancel}
-              className="flex-1 py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
+              className="flex-1 min-w-[50px] py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-black shadow-xs cursor-pointer text-center"
             >
               <u>C</u>ancel
             </button>
@@ -1547,7 +1547,7 @@ export default function PublicationForm({
             <button 
               type="button"
               onClick={onClose}
-              className="flex-1 py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-red-800 shadow-xs cursor-pointer text-center"
+              className="flex-1 min-w-[50px] py-1 px-2 bg-[#ECE9D8] hover:bg-[#F5F4EA] active:bg-[#D4D0C8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] active:border-t-[#404040] active:border-l-[#404040] active:border-r-white active:border-b-white text-xs font-bold text-red-800 shadow-xs cursor-pointer text-center"
             >
               <u>E</u>xit
             </button>

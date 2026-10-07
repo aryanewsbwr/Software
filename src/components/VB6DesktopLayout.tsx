@@ -679,11 +679,11 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
       </div>
 
       {/* 3. MAIN MDI DESKTOP CANVAS */}
-      <div className="flex-1 p-3 overflow-auto flex items-center justify-center relative">
+      <div className="flex-1 p-1 sm:p-2 md:p-3 overflow-auto flex justify-center items-start relative min-h-0">
         
         {/* Clean MDI Desktop Wallpaper (When no form is open) */}
         {activeWindow === null && (
-          <div className="flex flex-col items-center justify-center text-center p-8 opacity-85 select-none pointer-events-none">
+          <div className="flex flex-col items-center justify-center text-center p-8 opacity-85 select-none pointer-events-none my-auto">
             <div className="w-24 h-24 rounded-full bg-white/20 border-2 border-white/40 shadow-2xl flex items-center justify-center mb-3 backdrop-blur-xs">
               <span className="text-3xl font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-wider font-serif">ANA</span>
             </div>

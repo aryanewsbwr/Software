@@ -164,9 +164,9 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
   );
 
   return (
-    <div className="w-[660px] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col relative select-none">
+    <div className="w-full max-w-[660px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl font-tahoma flex flex-col relative select-none overflow-hidden my-auto shrink-0">
       {/* Titlebar */}
-      <div className="bg-linear-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs">
+      <div className="bg-linear-to-r from-[#0A246A] via-[#3A6EA5] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs shrink-0">
         <div className="flex items-center gap-1.5">
           <span className="text-sm">🗞️</span>
           <span className="tracking-wide">Hawker Master</span>
@@ -179,7 +179,7 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
       </div>
 
       {/* Main Form Body */}
-      <div className="p-4 space-y-3 bg-[#ECE9D8] text-xs">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#ECE9D8] text-xs min-h-0">
         <h2 className="text-center font-black text-[#800000] text-lg tracking-wider">
           HAWKER DETAIL
         </h2>
@@ -274,7 +274,7 @@ export default function HawkerForm({ isOpen = true, onClose, hawkers = [], regio
         )}
 
         {/* Slanted Parallelogram Action Buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-[#808080]">
+        <div className="shrink-0 flex flex-wrap items-center justify-center gap-1.5 pt-2 border-t border-[#808080] bg-[#ECE9D8] pb-1">
           <button 
             onClick={handleSave}
             className="px-4 py-1 bg-linear-to-b from-[#E6F4FE] via-[#C8E8FA] to-[#9FD6F4] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#89C7ED] active:to-[#D5EBFB] border border-[#006699] text-black font-bold text-xs transform -skew-x-12 shadow-xs cursor-pointer"

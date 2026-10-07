@@ -106,10 +106,10 @@ export default function PubDiscontinueForm({ onClose, publications = [], mode = 
   };
 
   return (
-    <div className="relative w-[520px] h-[360px] bg-white border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden">
+    <div className="relative w-full max-w-[520px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-white border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
       
       {/* Title Bar matching screenshot_11.jpg */}
-      <div className="bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between">
+      <div className="bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1.5">
           <img src="/legacy_images/paper.ico" alt="ico" className="w-4 h-4" onError={(e) => (e.currentTarget.style.display = 'none')} />
           <span className="font-bold text-xs text-[#808080]">Publication Info</span>
@@ -122,7 +122,7 @@ export default function PubDiscontinueForm({ onClose, publications = [], mode = 
       </div>
 
       {/* Main Body matching screenshot_11.jpg */}
-      <div className="flex-1 bg-white p-4 flex flex-col justify-between">
+      <div className="flex-1 bg-white p-4 flex flex-col justify-between overflow-y-auto min-h-0">
         
         {/* Header */}
         <div className="text-center pb-2">
@@ -204,7 +204,7 @@ export default function PubDiscontinueForm({ onClose, publications = [], mode = 
         )}
 
         {/* Action Buttons matching screenshot_11.jpg */}
-        <div className="flex items-center justify-center gap-2 pt-2 border-t border-slate-200">
+        <div className="shrink-0 flex flex-wrap items-center justify-center gap-1.5 pt-2 border-t border-slate-200 bg-white pb-1">
           <button 
             onClick={handleSave}
             className="px-3.5 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer flex items-center gap-1 text-xs font-bold text-black"

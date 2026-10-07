@@ -152,9 +152,9 @@ export default function PublisherForm({ onClose, publishers = [], onSave }: Publ
   );
 
   return (
-    <div className="relative w-[700px] h-[520px] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma">
+    <div className="relative w-full max-w-[700px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] vb-window flex flex-col shadow-2xl overflow-hidden font-tahoma my-auto shrink-0">
       {/* Title Bar */}
-      <div className="vb-titlebar-xp select-none">
+      <div className="vb-titlebar-xp select-none shrink-0">
         <div className="flex items-center gap-1.5">
           <img src="/legacy_images/paper.ico" alt="ico" className="w-3.5 h-3.5" onError={(e) => (e.currentTarget.style.display = 'none')} />
           <span>Publisher Info</span>
@@ -168,7 +168,7 @@ export default function PublisherForm({ onClose, publishers = [], onSave }: Publ
 
       {/* Main Body with Background Texture Image */}
       <div 
-        className="flex-1 relative p-4 flex flex-col justify-between bg-cover bg-center"
+        className="flex-1 overflow-y-auto relative p-3 sm:p-4 flex flex-col justify-between bg-cover bg-center min-h-0"
         style={{ backgroundImage: "url('/legacy_images/Publisher.jpg'), linear-gradient(135deg, #E6F0FA 0%, #FFFFFF 100%)" }}
       >
         {/* Header */}
@@ -291,7 +291,7 @@ export default function PublisherForm({ onClose, publishers = [], onSave }: Publ
         )}
 
         {/* Bottom Trapezoidal 3D Button Bar matching screenshot_01.jpg */}
-        <div className="flex items-center justify-center gap-2 pt-2 border-t border-slate-300/80">
+        <div className="shrink-0 flex flex-wrap items-center justify-center gap-1.5 pt-2 border-t border-slate-300/80 bg-[#ECE9D8] pb-1">
           <button onClick={handleSave} className="vb-action-btn">
             <span>💾 Save</span>
           </button>

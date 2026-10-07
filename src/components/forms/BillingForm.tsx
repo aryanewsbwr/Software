@@ -151,10 +151,10 @@ export default function BillingForm({ onClose }: BillingFormProps) {
   const totalPages = Math.ceil(totalCustomers / 200) || 1;
 
   return (
-    <div className={`relative ${showGrid ? 'w-[920px] h-[640px]' : 'w-[600px] h-auto'} bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden transition-all duration-200`}>
+    <div className={`relative w-full ${showGrid ? 'max-w-[920px]' : 'max-w-[600px]'} max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0 transition-all duration-200`}>
       
       {/* Title Bar matching screenshot_14.jpg */}
-      <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs">
+      <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs shrink-0">
         <div className="flex items-center gap-1.5">
           <img 
             src="/legacy_images/paper.ico" 
@@ -171,8 +171,9 @@ export default function BillingForm({ onClose }: BillingFormProps) {
         </div>
       </div>
 
-      {/* Main Authentic Bill Processing Bar (screenshot_14.jpg) */}
-      <div className="p-4 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white m-3 space-y-3">
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {/* Main Authentic Bill Processing Bar (screenshot_14.jpg) */}
+        <div className="p-4 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white m-3 space-y-3">
         
         {/* Row 1: Region, Month, Year & Process Button */}
         <div className="grid grid-cols-12 gap-2 items-center text-xs">
@@ -582,6 +583,7 @@ export default function BillingForm({ onClose }: BillingFormProps) {
         </div>
       )}
 
+      </div>
     </div>
   );
 }

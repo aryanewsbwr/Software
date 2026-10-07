@@ -202,10 +202,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const calculatedBalance = Math.round((totalDues - revAmt - lessAmt) * 100) / 100;
 
   return (
-    <div className="relative w-[880px] h-[640px] bg-[#C0DCF8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden">
+    <div className="relative w-full max-w-[880px] max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#C0DCF8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
       
       {/* Title Bar matching screenshot_13.jpg */}
-      <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-0.5 flex items-center justify-between font-bold text-xs">
+      <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-0.5 flex items-center justify-between font-bold text-xs shrink-0">
         <div className="flex items-center gap-1.5">
           <img 
             src="/legacy_images/paper.ico" 
@@ -223,7 +223,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 p-2 flex flex-col justify-between overflow-hidden bg-[#D4E8FA]">
+      <div className="flex-1 p-2 flex flex-col justify-between overflow-y-auto min-h-0 bg-[#D4E8FA]">
         
         {/* 1. TOP CUSTOMER HEADER SECTION matching screenshot_13.jpg */}
         <div className="space-y-1 text-xs">
