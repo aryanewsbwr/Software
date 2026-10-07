@@ -148,19 +148,25 @@ function getHolidays(): any[] {
 }
 
 async function getPublicationDiscontinues(): Promise<any[]> {
-  if (cachedPubDis && cachedPubDis.length > 0) return cachedPubDis;
   const localPubDis = loadJson('publicationdis.json') || [];
   try {
-    const { data } = await supabase.from('publicationdis').select('*');
-    if (data && data.length > 0) {
-      cachedPubDis = data;
-      return cachedPubDis;
+    const { data, error } = await supabase.from('publicationdis').select('*');
+    if (!error && data && data.length > 0) {
+      const merged = [...data];
+      const seen = new Set(data.map((d: any) => `${d.publica_id}-${d.entry_date}-${d.oc_date}`));
+      for (const ld of localPubDis) {
+        const key = `${ld.publica_id || ld.Publica_id}-${ld.entry_date || ld.from_date}-${ld.oc_date || ld.to_date}`;
+        if (!seen.has(key)) {
+          merged.push(ld);
+          seen.add(key);
+        }
+      }
+      return merged;
     }
   } catch (err) {
     // fallback
   }
-  cachedPubDis = localPubDis;
-  return cachedPubDis;
+  return localPubDis;
 }
 
 
