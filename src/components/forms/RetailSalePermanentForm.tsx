@@ -119,6 +119,29 @@ export default function RetailSalePermanentForm({
     return pub ? (pub.public_name || (pub as any).name) : `Publication #${pubId}`;
   };
 
+  // Rates and Ratechanges state (cached and auto-fetched if needed)
+  const [localRates, setLocalRates] = useState<Rate[]>(rates);
+  const [localRatechanges, setLocalRatechanges] = useState<RateChange[]>(ratechanges);
+
+  useEffect(() => {
+    if (rates && rates.length > 0) setLocalRates(rates);
+    else fetch('/data/rates.json').then(r => r.json()).then(setLocalRates).catch(() => {});
+  }, [rates]);
+
+  useEffect(() => {
+    if (ratechanges && ratechanges.length > 0) setLocalRatechanges(ratechanges);
+    else fetch('/data/ratechanges.json').then(r => r.json()).then(setLocalRatechanges).catch(() => {});
+  }, [ratechanges]);
+
+  // Format DD/MM/YYYY
+  const formatDateDisplay = (val: string): string => {
+    const s = val.trim().replace(/\D/g, '');
+    if (s.length === 8) {
+      return `${s.slice(0, 2)}/${s.slice(2, 4)}/${s.slice(4, 8)}`;
+    }
+    return val;
+  };
+
   // Parse DD/MM/YYYY to YYYY-MM-DD
   const getIsoDate = (dStr: string) => {
     const parts = dStr.split('/');
@@ -139,22 +162,39 @@ export default function RetailSalePermanentForm({
     return iso;
   };
 
-  // Convert Day of Week for rate lookup
-  const isoDate = getIsoDate(vrDateStr);
-  const dateObj = new Date(isoDate + 'T12:00:00');
-  const dayOfWeekVb6 = (isNaN(dateObj.getTime()) ? 0 : dateObj.getDay()) + 1;
-
   // Rate Helper for a publication (uses dynamic rates from database)
-  const getPubDefaultRate = (pubId: number) => {
+  const getPubDefaultRate = (pubId: number, targetDateStr: string = vrDateStr) => {
     const pub = pubList.find(p => p.publica_id === pubId);
     if (!pub) return 5.0;
-    const eff = getSingleEffectiveRate(pub.publica_id, dayOfWeekVb6, isoDate, rates, ratechanges);
+    const targetIso = getIsoDate(targetDateStr);
+    const dObj = new Date(targetIso + 'T12:00:00');
+    const dOfWeek = (isNaN(dObj.getTime()) ? 0 : dObj.getDay()) + 1;
+    const allRates = (rates && rates.length > 0) ? rates : localRates;
+    const allRCs = (ratechanges && ratechanges.length > 0) ? ratechanges : localRatechanges;
+
+    const eff = getSingleEffectiveRate(pub.publica_id, dOfWeek, targetIso, allRates, allRCs, pub.magzine_day);
     if (eff > 0) return eff;
+    if (pub.current_rates && pub.current_rates[dOfWeek] > 0) return pub.current_rates[dOfWeek];
+    if (pub.current_rates && pub.current_rates[1] > 0) return pub.current_rates[1];
     if (pub.today_rate && pub.today_rate > 0) return pub.today_rate;
     return 5.0;
   };
 
-  // Load a voucher into the form
+  const handleDateBlur = () => {
+    const formatted = formatDateDisplay(vrDateStr);
+    setVrDateStr(formatted);
+    // Refresh row rates for the new date
+    setRows(prev => prev.map(r => {
+      const autoRate = getPubDefaultRate(r.publica_id, formatted);
+      return {
+        ...r,
+        rate: autoRate,
+        amt: autoRate * r.copies
+      };
+    }));
+  };
+
+  // Load a voucher into the form (ONLY called when explicitly selected from Find / Recent)
   const loadSaleIntoForm = (primarySale: any, allSalesForCust: any[]) => {
     const saleDateIso = primarySale.Vr_Date || primarySale.vr_date;
     const saleDateDdMm = parseIsoToDdMmYyyy(saleDateIso);
@@ -169,13 +209,13 @@ export default function RetailSalePermanentForm({
       return {
         publica_id: pId,
         copies: Number(s.Copies || s.copies || 1),
-        rate: Number(s.Rate || s.rate || getPubDefaultRate(pId)),
-        amt: recAmt > 0 ? recAmt : Number(s.Rate || s.rate || getPubDefaultRate(pId))
+        rate: Number(s.Rate || s.rate || getPubDefaultRate(pId, saleDateDdMm)),
+        amt: recAmt > 0 ? recAmt : Number(s.Rate || s.rate || getPubDefaultRate(pId, saleDateDdMm))
       };
     });
     setRows(loadedRows.length > 0 ? loadedRows : [{ publica_id: 1, copies: 1, rate: 5.0, amt: 5.0 }]);
     setStatusMsg({ 
-      text: `Loaded existing retail sale for ${saleDateDdMm} (${loadedRows.length} item(s)).`, 
+      text: `Loaded existing retail sale voucher for ${saleDateDdMm} (${loadedRows.length} item(s)).`, 
       isError: false 
     });
   };
@@ -210,14 +250,14 @@ export default function RetailSalePermanentForm({
     }, 150);
   };
 
-  // Select a customer
+  // Select a customer (Keeps form date intact and starts fresh entry for that date)
   const handleSelectCustomer = async (c: Customer) => {
     setSelectedCust(c);
     setCustInput(`${c.name_eng || ''} (#${c.customer_id})`);
     setShowSuggestions(false);
     setStatusMsg(null);
 
-    // 1. Check if customer's subscriptions are closed
+    // 1. Check customer's subscriptions and initialize first row with customer's paper
     try {
       const subRes = await fetch(`/api/subscriptions?customer_id=${c.customer_id}`);
       const subData = await subRes.json();
@@ -231,25 +271,39 @@ export default function RetailSalePermanentForm({
         const firstActive = subs.find((s: any) => s.is_active) || subs[0];
         if (firstActive) {
           const pId = Number(firstActive.publica_id || firstActive.publication_id || 1);
-          const r = getPubDefaultRate(pId);
+          const r = getPubDefaultRate(pId, vrDateStr);
+          const copies = Number(firstActive.qty || 1);
           setRows([{
             publica_id: pId,
-            copies: Number(firstActive.qty || 1),
+            copies: copies,
             rate: r,
-            amt: r * Number(firstActive.qty || 1)
+            amt: r * copies
           }]);
+          const pub = pubList.find(p => p.publica_id === pId);
+          if (pub) {
+            setNarration(pub.public_name);
+          }
         }
+      } else {
+        const defaultPubId = pubList[0]?.publica_id || 1;
+        const autoRate = getPubDefaultRate(defaultPubId, vrDateStr);
+        setRows([{
+          publica_id: defaultPubId,
+          copies: 1,
+          rate: autoRate,
+          amt: autoRate
+        }]);
+        setNarration('');
       }
     } catch (_) {}
 
-    // 2. Fetch existing retail sales for this customer
+    // 2. Fetch recent sales history in background without overwriting new entry
     try {
       const res = await fetch(`/api/retail-sale?customer_id=${c.customer_id}`);
       const data = await res.json();
       if (data.sales && data.sales.length > 0) {
         setCustomerSales(data.sales);
-        setSelectedSaleIdx(0);
-        loadSaleIntoForm(data.sales[0], data.sales);
+        setSelectedSaleIdx(-1);
       } else {
         setCustomerSales([]);
         setSelectedSaleIdx(-1);
@@ -353,9 +407,13 @@ export default function RetailSalePermanentForm({
       if (field === 'publica_id') {
         const pId = parseInt(value, 10);
         cur.publica_id = pId;
-        const autoRate = getPubDefaultRate(pId);
+        const autoRate = getPubDefaultRate(pId, vrDateStr);
         cur.rate = autoRate;
         cur.amt = autoRate * cur.copies;
+        const pub = pubList.find(p => p.publica_id === pId);
+        if (pub && (!narration || rows.length <= 1)) {
+          setNarration(pub.public_name);
+        }
       } else if (field === 'copies') {
         const c = Math.max(1, parseInt(value, 10) || 1);
         cur.copies = c;
@@ -374,7 +432,7 @@ export default function RetailSalePermanentForm({
 
   const handleAddRow = () => {
     const defaultPubId = pubList[0]?.publica_id || 1;
-    const autoRate = getPubDefaultRate(defaultPubId);
+    const autoRate = getPubDefaultRate(defaultPubId, vrDateStr);
     setRows(prev => [...prev, {
       publica_id: defaultPubId,
       copies: 1,
@@ -535,6 +593,7 @@ export default function RetailSalePermanentForm({
                   type="text" 
                   value={vrDateStr}
                   onChange={(e) => setVrDateStr(e.target.value)}
+                  onBlur={handleDateBlur}
                   className="w-24 text-center font-mono font-bold text-black outline-none bg-transparent"
                   placeholder="DD/MM/YYYY"
                 />

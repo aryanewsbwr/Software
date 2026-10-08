@@ -112,7 +112,8 @@ export default function CounterSaleForm({
       dayOfWeekVb6,
       saleDate,
       rates,
-      ratechanges
+      ratechanges,
+      pub.magzine_day
     );
 
     setInputRate(effective > 0 ? effective : (pub.today_rate || 5.0));

@@ -94,8 +94,23 @@ export function getSingleEffectiveRate(
   dayOfWeek: number, // 1=Sun .. 7=Sat
   targetDateIso: string = new Date().toISOString().split('T')[0],
   rates: Rate[] = [],
-  ratechanges: RateChange[] = []
+  ratechanges: RateChange[] = [],
+  magzineDay?: number | null
 ): number {
-  const map = getEffectiveWeekdayRates(publicaId, targetDateIso, rates, ratechanges);
-  return map[dayOfWeek] || 0;
+  const map = getEffectiveWeekdayRates(publicaId, targetDateIso, rates, ratechanges, magzineDay);
+  if (map[dayOfWeek] && map[dayOfWeek] > 0) {
+    return map[dayOfWeek];
+  }
+  if (magzineDay && map[magzineDay] && map[magzineDay] > 0) {
+    return map[magzineDay];
+  }
+  if (map[1] && map[1] > 0) {
+    return map[1];
+  }
+  const anyRate = Object.values(map).find(v => v > 0);
+  if (anyRate && anyRate > 0) {
+    return anyRate;
+  }
+  return 0;
 }
+
