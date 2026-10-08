@@ -376,20 +376,25 @@ async function fetchRetailSales(customerIds: number[], fySuffix: string): Promis
   const seen = new Set<string>();
   const merged: any[] = [];
   for (const item of [...matchingLocal, ...matchingDb]) {
-    const rId = item.Retail_id || item.retail_id || item.sale_id;
-    const key = rId 
-      ? `id-${rId}` 
-      : `${item.Customer_id || item.customer_id}-${item.Publica_id || item.publica_id}-${item.Vr_Date || item.vr_date}-${item.Rate || item.rate || 0}-${item.Amt || item.amt || 0}-${item.Copies || item.copies || 1}`;
+    const cid = Number(item.Customer_id || item.customer_id);
+    const pid = Number(item.Publica_id || item.publica_id);
+    const vDate = item.Vr_Date || item.vr_date || item.dated || item.Dated || '';
+    const rate = Number(item.Rate !== undefined && item.Rate !== null ? item.Rate : (item.rate || 0));
+    const amt = Number(item.Amt !== undefined && item.Amt !== null ? item.Amt : (item.amt !== undefined && item.amt !== null ? item.amt : (item.amount || 0)));
+    const copies = Number(item.Copies || item.copies || 1);
+    const rId = item.Retail_id || item.retail_id || item.sale_id || '';
+
+    const key = `${cid}_${pid}_${vDate}_${copies}_${rate}_${amt}_${rId}`;
     if (!seen.has(key)) {
       seen.add(key);
       merged.push({
-        Retail_id: item.Retail_id || item.retail_id || item.sale_id,
-        Vr_Date: item.Vr_Date || item.vr_date || item.dated || item.Dated,
-        Customer_id: Number(item.Customer_id || item.customer_id),
-        Publica_id: Number(item.Publica_id || item.publica_id),
-        Copies: Number(item.Copies || item.copies || 1),
-        Rate: Number(item.Rate !== undefined && item.Rate !== null ? item.Rate : (item.rate || 0)),
-        Amt: item.Amt !== undefined && item.Amt !== null ? Number(item.Amt) : (item.amt !== undefined && item.amt !== null ? Number(item.amt) : (item.amount || 0)),
+        Retail_id: rId ? Number(rId) : undefined,
+        Vr_Date: vDate,
+        Customer_id: cid,
+        Publica_id: pid,
+        Copies: copies,
+        Rate: rate,
+        Amt: amt,
         Narr: item.Narr || item.narr || item.narration || ''
       });
     }

@@ -47,7 +47,15 @@ export async function GET(request: NextRequest) {
     const seenSales = new Set<string>();
     const salesList: any[] = [];
     for (const s of allDbSales) {
-      const sKey = s.retail_id ? `id-${s.retail_id}` : `${s.customer_id}-${s.publica_id}-${s.vr_date}-${s.rate}-${s.amt}`;
+      const cid = Number(s.customer_id || s.Customer_id);
+      const pid = Number(s.publica_id || s.Publica_id);
+      const vDate = s.vr_date || s.Vr_Date || '';
+      const copies = Number(s.copies || s.Copies || 1);
+      const rate = Number(s.rate || s.Rate || 0);
+      const amt = Number(s.amt !== undefined ? s.amt : (s.Amt || 0));
+      const rId = s.retail_id || s.Retail_id || '';
+
+      const sKey = `${cid}_${pid}_${vDate}_${copies}_${rate}_${amt}_${rId}`;
       if (!seenSales.has(sKey)) {
         seenSales.add(sKey);
         salesList.push(s);
@@ -131,17 +139,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Customer ID is required.' }, { status: 400 });
     }
 
-    // Determine highest retail_id from Supabase
+    // Determine highest retail_id from Supabase across all retail tables
     let maxId = 1200;
     try {
-      const { data: maxRow } = await supabase
-        .from('retailsale20252026')
-        .select('retail_id')
-        .order('retail_id', { ascending: false })
-        .limit(1);
+      for (const tbl of ['retailsale', 'retailsale20252026', 'retailsale20262027']) {
+        const { data: maxRow } = await supabase
+          .from(tbl)
+          .select('retail_id')
+          .order('retail_id', { ascending: false })
+          .limit(1);
 
-      if (maxRow && maxRow.length > 0 && maxRow[0].retail_id) {
-        maxId = Math.max(maxId, Number(maxRow[0].retail_id));
+        if (maxRow && maxRow.length > 0 && maxRow[0].retail_id) {
+          maxId = Math.max(maxId, Number(maxRow[0].retail_id));
+        }
       }
     } catch (_) {}
 
