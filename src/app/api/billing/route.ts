@@ -220,41 +220,18 @@ async function getPublicationDiscontinues(): Promise<any[]> {
 }
 
 async function getSupplements(): Promise<any[]> {
-  const localList = loadJson('pubsupplements.json') || [];
   try {
-    const { data: dbRows } = await supabase.from('publicationsup').select('*');
-    if (dbRows && dbRows.length > 0) {
-      const mergedMap = new Map<string, any>();
-      localList.forEach((item: any) => {
-        const key = `${item.publicasup_id || item.publica_id}_${item.publica_id}_${item.month || item.date_iso || item.date}`;
-        mergedMap.set(key, item);
-      });
-
-      for (const r of dbRows) {
-        const pParent = Number(r.publicasup_id || r.publica_id);
-        const pSupp = Number(r.publica_id);
-        const gKey = `${pParent}_${pSupp}_${r.month}_${r.year}`;
-        if (!mergedMap.has(gKey)) {
-          mergedMap.set(gKey, {
-            publicasup_id: pParent,
-            publica_id: pSupp,
-            month: r.month,
-            year: r.year,
-            region_ids: [Number(r.region_id)],
-            all_regions: Number(r.region_id) === 0,
-            rate: 0
-          });
-        } else {
-          const ex = mergedMap.get(gKey);
-          if (ex && ex.region_ids && !ex.region_ids.includes(Number(r.region_id))) {
-            ex.region_ids.push(Number(r.region_id));
-            if (Number(r.region_id) === 0) ex.all_regions = true;
-          }
-        }
-      }
-      return Array.from(mergedMap.values());
+    const { data, error } = await supabase.storage.from('news-images').download('data/pubsupplements.json');
+    if (!error && data) {
+      const text = await data.text();
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
-  } catch (_) {}
+  } catch (err) {
+    console.warn('Supabase storage download error in billing:', err);
+  }
+
+  const localList = loadJson('pubsupplements.json') || [];
   return localList;
 }
 

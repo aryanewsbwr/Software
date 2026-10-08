@@ -7,14 +7,23 @@ import { parseLegacyDateToIso, MONTH_NAMES } from '@/lib/billingEngine';
 
 export const dynamic = 'force-dynamic';
 
-function getStoragePaths(): string[] {
-  return [
-    path.join(os.tmpdir(), 'pubsupplements.json'),
-    path.join(process.cwd(), 'public', 'data', 'pubsupplements.json')
-  ];
-}
+const STORAGE_BUCKET = 'news-images';
+const STORAGE_FILE = 'data/pubsupplements.json';
 
-function loadJsonSupplements(): any[] {
+async function loadSupplementsFromStorage(): Promise<any[]> {
+  // 1. Try Supabase Storage
+  try {
+    const { data, error } = await supabase.storage.from(STORAGE_BUCKET).download(STORAGE_FILE);
+    if (!error && data) {
+      const text = await data.text();
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {
+    console.warn('Supabase storage download error:', err);
+  }
+
+  // 2. Fallback to /tmp
   const tmpPath = path.join(os.tmpdir(), 'pubsupplements.json');
   if (fs.existsSync(tmpPath)) {
     try {
@@ -23,6 +32,7 @@ function loadJsonSupplements(): any[] {
     } catch {}
   }
 
+  // 3. Fallback to public/data
   const pubPath = path.join(process.cwd(), 'public', 'data', 'pubsupplements.json');
   if (fs.existsSync(pubPath)) {
     try {
@@ -34,8 +44,19 @@ function loadJsonSupplements(): any[] {
   return [];
 }
 
-function saveJsonSupplements(data: any[]) {
-  // 1. Always write to /tmp (always writable on serverless / Vercel)
+async function saveSupplementsToStorage(data: any[]) {
+  // 1. Save to Supabase Storage (Persistent across all serverless containers)
+  try {
+    await supabase.storage.from(STORAGE_BUCKET).upload(
+      STORAGE_FILE,
+      Buffer.from(JSON.stringify(data, null, 2)),
+      { upsert: true, contentType: 'application/json' }
+    );
+  } catch (err) {
+    console.warn('Supabase storage upload error:', err);
+  }
+
+  // 2. Save to /tmp
   try {
     const tmpPath = path.join(os.tmpdir(), 'pubsupplements.json');
     fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
@@ -43,84 +64,23 @@ function saveJsonSupplements(data: any[]) {
     console.warn('Could not write to tmpdir:', err);
   }
 
-  // 2. Also write to public/data if writable (local development)
+  // 3. Save to public/data if writable
   try {
     const dir = path.join(process.cwd(), 'public', 'data');
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     const pubPath = path.join(dir, 'pubsupplements.json');
     fs.writeFileSync(pubPath, JSON.stringify(data, null, 2), 'utf-8');
-  } catch {
-    // Silently ignore EROFS on read-only serverless lambdas
-  }
+  } catch {}
 }
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const pubId = searchParams.get('publica_id');
-    const month = searchParams.get('month');
-    const year = searchParams.get('year');
 
-    const jsonList = loadJsonSupplements();
+    const supplements = await loadSupplementsFromStorage();
 
-    // Fetch from Supabase publicationsup to ensure full persistence across serverless invocations
-    let dbRows: any[] = [];
-    try {
-      const { data, error } = await supabase.from('publicationsup').select('*');
-      if (!error && data) {
-        dbRows = data;
-      }
-    } catch (_) {}
-
-    // Merge Supabase entries with rich local JSON items
-    const mergedMap = new Map<string, any>();
-
-    // 1. Add JSON items first (they have rate, custom names, etc.)
-    jsonList.forEach(item => {
-      const key = `${item.id || item.publica_id}_${item.date_iso || item.date}_${item.rate}`;
-      mergedMap.set(key, item);
-    });
-
-    // 2. Group DB rows by publica_id, publicasup_id, month, year
-    const dbGrouped = new Map<string, any>();
-    for (const r of dbRows) {
-      const gKey = `${r.publicasup_id || r.publica_id}_${r.publica_id}_${r.month}_${r.year}`;
-      if (!dbGrouped.has(gKey)) {
-        dbGrouped.set(gKey, {
-          id: Number(r.id),
-          publicasup_id: Number(r.publicasup_id || r.publica_id),
-          publica_id: Number(r.publica_id),
-          month: r.month,
-          year: r.year,
-          region_ids: [Number(r.region_id)],
-          all_regions: Number(r.region_id) === 0,
-          date_iso: `${r.year}-10-01`,
-          date: `01/10/${r.year}`,
-          rate: 0
-        });
-      } else {
-        const existing = dbGrouped.get(gKey);
-        if (Number(r.region_id) === 0) {
-          existing.all_regions = true;
-        } else if (!existing.region_ids.includes(Number(r.region_id))) {
-          existing.region_ids.push(Number(r.region_id));
-        }
-      }
-    }
-
-    dbGrouped.forEach((val, key) => {
-      // Check if already in mergedMap with similar pub/month
-      const existsInJson = jsonList.some(
-        j => (Number(j.publica_id) === val.publica_id || Number(j.publicasup_id) === val.publicasup_id) &&
-             (j.date_iso?.includes(val.year) || j.date?.includes(val.year))
-      );
-      if (!existsInJson) {
-        mergedMap.set(`db_${key}`, val);
-      }
-    });
-
-    let filtered = Array.from(mergedMap.values());
-
+    let filtered = supplements;
     if (pubId) {
       filtered = filtered.filter((s: any) => 
         Number(s.publica_id) === Number(pubId) || Number(s.publicasup_id) === Number(pubId)
@@ -167,7 +127,7 @@ export async function POST(request: NextRequest) {
     const monthName = !isNaN(dateObj.getTime()) ? MONTH_NAMES[dateObj.getMonth()] : 'October';
     const yearStr = !isNaN(dateObj.getTime()) ? String(dateObj.getFullYear()) : '2026';
 
-    const list = loadJsonSupplements();
+    const list = await loadSupplementsFromStorage();
 
     let finalId = id ? Number(id) : 0;
     const isUpdate = finalId > 0 && list.some((s: any) => Number(s.id) === finalId);
@@ -200,12 +160,11 @@ export async function POST(request: NextRequest) {
       updatedList = [record, ...list];
     }
 
-    // Save to local / tmp storage safely
-    saveJsonSupplements(updatedList);
+    // Save to persistent Supabase Storage & local caches
+    await saveSupplementsToStorage(updatedList);
 
     // Also persist to Supabase publicationsup table
     try {
-      // 1. Delete old assignments for this parent & supplement pub for that month/year
       await supabase
         .from('publicationsup')
         .delete()
@@ -214,7 +173,6 @@ export async function POST(request: NextRequest) {
         .eq('month', monthName)
         .eq('year', yearStr);
 
-      // 2. Insert new rows per region (or 0 for all regions)
       const targetRegions = record.all_regions || record.region_ids.length === 0
         ? [0]
         : record.region_ids;
@@ -251,12 +209,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Supplement ID is required.' }, { status: 400 });
     }
 
-    const list = loadJsonSupplements();
+    const list = await loadSupplementsFromStorage();
     const targetItem = list.find((s: any) => Number(s.id) === Number(id));
     const filtered = list.filter((s: any) => Number(s.id) !== Number(id));
-    saveJsonSupplements(filtered);
+    
+    await saveSupplementsToStorage(filtered);
 
-    // Also delete from Supabase if we found target item
     if (targetItem) {
       try {
         const parentId = Number(targetItem.publicasup_id || targetItem.publica_id);
