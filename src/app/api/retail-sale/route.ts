@@ -18,28 +18,41 @@ export async function GET(request: NextRequest) {
     const pubMap = new Map<number, any>();
     (dbPubs || []).forEach((p: any) => pubMap.set(Number(p.publica_id), p));
 
-    // 2. Fetch Retail Sales from Supabase table retailsale20252026
-    let query = supabase
-      .from('retailsale20252026')
-      .select('*')
-      .order('retail_id', { ascending: false })
-      .limit(limit);
+    // 2. Fetch Retail Sales from Supabase tables (retailsale20252026, retailsale20262027, retailsale)
+    const allDbSales: any[] = [];
+    const retailTables = ['retailsale20252026', 'retailsale20262027', 'retailsale'];
+    
+    for (const tbl of retailTables) {
+      try {
+        let query = supabase
+          .from(tbl)
+          .select('*')
+          .order('retail_id', { ascending: false })
+          .limit(limit);
 
-    if (dateParam && dateParam !== 'all') {
-      query = query.eq('vr_date', dateParam);
+        if (dateParam && dateParam !== 'all') {
+          query = query.eq('vr_date', dateParam);
+        }
+        if (custIdParam) {
+          query = query.eq('customer_id', Number(custIdParam));
+        }
+
+        const { data: tblSales } = await query;
+        if (tblSales && tblSales.length > 0) {
+          allDbSales.push(...tblSales);
+        }
+      } catch {}
     }
-    if (custIdParam) {
-      query = query.eq('customer_id', Number(custIdParam));
+
+    const seenSales = new Set<string>();
+    const salesList: any[] = [];
+    for (const s of allDbSales) {
+      const sKey = s.retail_id ? `id-${s.retail_id}` : `${s.customer_id}-${s.publica_id}-${s.vr_date}-${s.rate}-${s.amt}`;
+      if (!seenSales.has(sKey)) {
+        seenSales.add(sKey);
+        salesList.push(s);
+      }
     }
-
-    const { data: dbSales, error } = await query;
-
-    if (error) {
-      console.error('Supabase retail sale query error:', error);
-      return NextResponse.json({ error: error.message, sales: [] }, { status: 500 });
-    }
-
-    const salesList = dbSales || [];
 
     // 3. Fetch matching customer details from Supabase if needed
     const customerIds = Array.from(new Set(salesList.map((s: any) => Number(s.customer_id)).filter(Boolean)));
@@ -161,11 +174,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'At least one publication item is required.' }, { status: 400 });
     }
 
-    // Direct insert into Supabase table
+    // Direct insert into Supabase tables
     const { data: inserted, error: insertError } = await supabase
       .from('retailsale20252026')
       .insert(rowsToInsert)
       .select();
+
+    try {
+      await supabase.from('retailsale20262027').insert(rowsToInsert);
+    } catch {}
 
     if (insertError) {
       console.error('Supabase retail sale insert error:', insertError);
@@ -191,23 +208,14 @@ export async function DELETE(request: NextRequest) {
     const date = searchParams.get('date');
 
     if (retailId) {
-      const { error } = await supabase
-        .from('retailsale20252026')
-        .delete()
-        .eq('retail_id', Number(retailId));
-
-      if (error) throw error;
+      await supabase.from('retailsale20252026').delete().eq('retail_id', Number(retailId));
+      try { await supabase.from('retailsale20262027').delete().eq('retail_id', Number(retailId)); } catch {}
       return NextResponse.json({ success: true, message: `Retail sale #${retailId} deleted from Supabase.` });
     }
 
     if (customerId && date) {
-      const { error } = await supabase
-        .from('retailsale20252026')
-        .delete()
-        .eq('customer_id', Number(customerId))
-        .eq('vr_date', date);
-
-      if (error) throw error;
+      await supabase.from('retailsale20252026').delete().eq('customer_id', Number(customerId)).eq('vr_date', date);
+      try { await supabase.from('retailsale20262027').delete().eq('customer_id', Number(customerId)).eq('vr_date', date); } catch {}
       return NextResponse.json({ success: true, message: `Retail sales for customer #${customerId} on ${date} deleted from Supabase.` });
     }
 

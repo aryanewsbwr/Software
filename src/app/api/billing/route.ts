@@ -309,77 +309,64 @@ async function fetchRetailSales(customerIds: number[], fySuffix: string): Promis
   });
 
   const matchingDb: any[] = [];
+  const candidateTables = Array.from(new Set([
+    'retailsale',
+    `retailsale${fySuffix}`,
+    'retailsale20252026',
+    'retailsale20262027'
+  ]));
+
   try {
     const CHUNK_SIZE = 50;
     for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
       const chunk = customerIds.slice(i, i + CHUNK_SIZE);
       
-      // 1. Query generic retailsale table
-      try {
-        const { data: genData } = await supabase
-          .from('retailsale')
-          .select('*')
-          .in('customer_id', chunk)
-          .limit(50000);
-        if (genData && genData.length > 0) {
-          matchingDb.push(...genData.map((r: any) => ({
-            Retail_id: r.retail_id || r.Retail_id || r.sale_id,
-            Vr_Date: r.vr_date || r.Vr_Date || r.dated || r.Dated,
-            Customer_id: Number(r.customer_id || r.Customer_id),
-            Publica_id: Number(r.publica_id || r.Publica_id),
-            Copies: Number(r.copies || r.Copies || 1),
-            Rate: Number(r.rate !== undefined && r.rate !== null ? r.rate : (r.Rate || 0)),
-            Amt: r.amt !== undefined && r.amt !== null ? Number(r.amt) : (r.Amt !== undefined && r.Amt !== null ? Number(r.Amt) : (r.amount || 0)),
-            Narr: r.narr || r.Narr || r.narration || ''
-          })));
+      for (const tbl of candidateTables) {
+        // Try customer_id (lowercase)
+        try {
+          const { data: tblDataLower } = await supabase
+            .from(tbl)
+            .select('*')
+            .in('customer_id', chunk)
+            .limit(50000);
+          if (tblDataLower && tblDataLower.length > 0) {
+            matchingDb.push(...tblDataLower.map((r: any) => ({
+              Retail_id: r.retail_id || r.Retail_id || r.sale_id,
+              Vr_Date: r.vr_date || r.Vr_Date || r.dated || r.Dated,
+              Customer_id: Number(r.customer_id || r.Customer_id),
+              Publica_id: Number(r.publica_id || r.Publica_id),
+              Copies: Number(r.copies || r.Copies || 1),
+              Rate: Number(r.rate !== undefined && r.rate !== null ? r.rate : (r.Rate || 0)),
+              Amt: r.amt !== undefined && r.amt !== null ? Number(r.amt) : (r.Amt !== undefined && r.Amt !== null ? Number(r.Amt) : (r.amount || 0)),
+              Narr: r.narr || r.Narr || r.narration || ''
+            })));
+          }
+        } catch {
+          // ignore table / column missing error
         }
-      } catch {
-        // ignore
-      }
 
-      // 2. Query FY specific table (e.g. retailsale20252026, retailsale20262027)
-      try {
-        const { data: fyDataLower } = await supabase
-          .from(`retailsale${fySuffix}`)
-          .select('*')
-          .in('customer_id', chunk)
-          .limit(50000);
-        if (fyDataLower && fyDataLower.length > 0) {
-          matchingDb.push(...fyDataLower.map((r: any) => ({
-            Retail_id: r.retail_id || r.Retail_id || r.sale_id,
-            Vr_Date: r.vr_date || r.Vr_Date || r.dated || r.Dated,
-            Customer_id: Number(r.customer_id || r.Customer_id),
-            Publica_id: Number(r.publica_id || r.Publica_id),
-            Copies: Number(r.copies || r.Copies || 1),
-            Rate: Number(r.rate !== undefined && r.rate !== null ? r.rate : (r.Rate || 0)),
-            Amt: r.amt !== undefined && r.amt !== null ? Number(r.amt) : (r.Amt !== undefined && r.Amt !== null ? Number(r.Amt) : (r.amount || 0)),
-            Narr: r.narr || r.Narr || r.narration || ''
-          })));
+        // Try Customer_id (uppercase)
+        try {
+          const { data: tblDataUpper } = await supabase
+            .from(tbl)
+            .select('*')
+            .in('Customer_id', chunk)
+            .limit(50000);
+          if (tblDataUpper && tblDataUpper.length > 0) {
+            matchingDb.push(...tblDataUpper.map((r: any) => ({
+              Retail_id: r.retail_id || r.Retail_id || r.sale_id,
+              Vr_Date: r.vr_date || r.Vr_Date || r.dated || r.Dated,
+              Customer_id: Number(r.customer_id || r.Customer_id),
+              Publica_id: Number(r.publica_id || r.Publica_id),
+              Copies: Number(r.copies || r.Copies || 1),
+              Rate: Number(r.rate !== undefined && r.rate !== null ? r.rate : (r.Rate || 0)),
+              Amt: r.amt !== undefined && r.amt !== null ? Number(r.amt) : (r.Amt !== undefined && r.Amt !== null ? Number(r.Amt) : (r.amount || 0)),
+              Narr: r.narr || r.Narr || r.narration || ''
+            })));
+          }
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore
-      }
-
-      try {
-        const { data: fyDataUpper } = await supabase
-          .from(`retailsale${fySuffix}`)
-          .select('*')
-          .in('Customer_id', chunk)
-          .limit(50000);
-        if (fyDataUpper && fyDataUpper.length > 0) {
-          matchingDb.push(...fyDataUpper.map((r: any) => ({
-            Retail_id: r.retail_id || r.Retail_id || r.sale_id,
-            Vr_Date: r.vr_date || r.Vr_Date || r.dated || r.Dated,
-            Customer_id: Number(r.customer_id || r.Customer_id),
-            Publica_id: Number(r.publica_id || r.Publica_id),
-            Copies: Number(r.copies || r.Copies || 1),
-            Rate: Number(r.rate !== undefined && r.rate !== null ? r.rate : (r.Rate || 0)),
-            Amt: r.amt !== undefined && r.amt !== null ? Number(r.amt) : (r.Amt !== undefined && r.Amt !== null ? Number(r.Amt) : (r.amount || 0)),
-            Narr: r.narr || r.Narr || r.narration || ''
-          })));
-        }
-      } catch {
-        // ignore
       }
     }
   } catch (err) {
