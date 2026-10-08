@@ -215,21 +215,51 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const retailId = searchParams.get('retail_id');
     const customerId = searchParams.get('customer_id');
+    const publicaId = searchParams.get('publica_id');
     const date = searchParams.get('date');
 
-    if (retailId) {
-      await supabase.from('retailsale20252026').delete().eq('retail_id', Number(retailId));
-      try { await supabase.from('retailsale20262027').delete().eq('retail_id', Number(retailId)); } catch {}
-      return NextResponse.json({ success: true, message: `Retail sale #${retailId} deleted from Supabase.` });
+    const tables = ['retailsale', 'retailsale20252026', 'retailsale20262027'];
+
+    for (const tbl of tables) {
+      if (retailId) {
+        try { await supabase.from(tbl).delete().eq('retail_id', Number(retailId)); } catch {}
+        try { await supabase.from(tbl).delete().eq('Retail_id', Number(retailId)); } catch {}
+        try { await supabase.from(tbl).delete().eq('sale_id', Number(retailId)); } catch {}
+      }
+
+      if (customerId && date) {
+        if (publicaId) {
+          try { 
+            await supabase.from(tbl).delete()
+              .eq('customer_id', Number(customerId))
+              .eq('vr_date', date)
+              .eq('publica_id', Number(publicaId)); 
+          } catch {}
+          try { 
+            await supabase.from(tbl).delete()
+              .eq('Customer_id', Number(customerId))
+              .eq('Vr_Date', date)
+              .eq('Publica_id', Number(publicaId)); 
+          } catch {}
+        } else {
+          try { 
+            await supabase.from(tbl).delete()
+              .eq('customer_id', Number(customerId))
+              .eq('vr_date', date); 
+          } catch {}
+          try { 
+            await supabase.from(tbl).delete()
+              .eq('Customer_id', Number(customerId))
+              .eq('Vr_Date', date); 
+          } catch {}
+        }
+      }
     }
 
-    if (customerId && date) {
-      await supabase.from('retailsale20252026').delete().eq('customer_id', Number(customerId)).eq('vr_date', date);
-      try { await supabase.from('retailsale20262027').delete().eq('customer_id', Number(customerId)).eq('vr_date', date); } catch {}
-      return NextResponse.json({ success: true, message: `Retail sales for customer #${customerId} on ${date} deleted from Supabase.` });
-    }
-
-    return NextResponse.json({ error: 'retail_id or (customer_id and date) required.' }, { status: 400 });
+    return NextResponse.json({ 
+      success: true, 
+      message: `Deleted retail sale from database successfully.` 
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

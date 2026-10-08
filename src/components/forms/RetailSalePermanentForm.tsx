@@ -537,19 +537,38 @@ export default function RetailSalePermanentForm({
   // Delete an individual sale item from the history view
   const handleDeleteSaleItem = async (saleItem: any) => {
     const rId = saleItem.retail_id || saleItem.Retail_id;
-    const pName = saleItem.public_name || saleItem.Publica_Name || `Pub #${saleItem.publica_id || saleItem.Publica_id}`;
-    const dStr = parseIsoToDdMmYyyy(saleItem.vr_date || saleItem.Vr_Date);
+    const cId = saleItem.customer_id || saleItem.Customer_id || selectedCust?.customer_id;
+    const pId = saleItem.publica_id || saleItem.Publica_id;
+    const vDate = saleItem.vr_date || saleItem.Vr_Date;
+    const pName = saleItem.public_name || saleItem.Publica_Name || `Pub #${pId}`;
+    const dStr = parseIsoToDdMmYyyy(vDate);
+    const targetIso = vDate ? (vDate.includes('T') ? vDate.split('T')[0] : (vDate.includes('/') ? getIsoDate(vDate) : vDate)) : '';
 
     if (!window.confirm(`Are you sure you want to delete retail sale of ${pName} (${saleItem.copies || saleItem.Copies || 1} copy @ ₹${Number(saleItem.rate || saleItem.Rate || 0).toFixed(2)}) on ${dStr}?`)) {
       return;
     }
 
+    // Immediately remove from UI state
+    setCustomerSales(prev => prev.filter(s => {
+      const matchId = rId && (s.retail_id === rId || s.Retail_id === rId);
+      const matchCombo = (s.customer_id === cId || s.Customer_id === cId) &&
+                         (s.publica_id === pId || s.Publica_id === pId) &&
+                         (s.vr_date === vDate || s.Vr_Date === vDate);
+      return !(matchId || matchCombo);
+    }));
+
     try {
-      const res = await fetch(`/api/retail-sale?retail_id=${rId}`, {
+      const queryParams = new URLSearchParams();
+      if (rId) queryParams.set('retail_id', String(rId));
+      if (cId) queryParams.set('customer_id', String(cId));
+      if (pId) queryParams.set('publica_id', String(pId));
+      if (targetIso) queryParams.set('date', targetIso);
+
+      const res = await fetch(`/api/retail-sale?${queryParams.toString()}`, {
         method: 'DELETE'
       });
       if (res.ok) {
-        setStatusMsg({ text: `✓ Deleted retail sale item #${rId} (${pName}) on ${dStr}.`, isError: false });
+        setStatusMsg({ text: `✓ Deleted retail sale item (${pName}) on ${dStr}.`, isError: false });
         if (selectedCust) {
           const refRes = await fetch(`/api/retail-sale?customer_id=${selectedCust.customer_id}`);
           const refData = await refRes.json();
