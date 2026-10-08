@@ -76,7 +76,7 @@ export default function RetailSalePermanentForm({
   // Find Modal State
   const [isFindOpen, setIsFindOpen] = useState<boolean>(false);
   const [findSearch, setFindSearch] = useState<string>('');
-  const [findTab, setFindTab] = useState<'customer' | 'voucher'>('customer');
+  const [findTab, setFindTab] = useState<'history' | 'customer' | 'voucher'>('history');
   const [filteredCusts, setFilteredCusts] = useState<Customer[]>([]);
   const [isFindLoading, setIsFindLoading] = useState<boolean>(false);
   const findTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -384,10 +384,6 @@ export default function RetailSalePermanentForm({
         const autoRate = getPubDefaultRate(pId, vrDateStr);
         cur.rate = autoRate;
         cur.amt = autoRate * cur.copies;
-        const pub = pubList.find(p => p.publica_id === pId);
-        if (pub && (!narration || rows.length <= 1)) {
-          setNarration(pub.public_name);
-        }
       } else if (field === 'copies') {
         const c = Math.max(1, parseInt(value, 10) || 1);
         cur.copies = c;
@@ -428,11 +424,6 @@ export default function RetailSalePermanentForm({
       rate: autoRate,
       amt: autoRate * defaultQty
     }]);
-
-    const pub = pubList.find(p => p.publica_id === defaultPubId);
-    if (pub && (!narration || rows.length === 0)) {
-      setNarration(pub.public_name);
-    }
   };
 
   const handleRemoveRow = (index: number) => {
@@ -508,7 +499,7 @@ export default function RetailSalePermanentForm({
         method: 'DELETE'
       });
       if (res.ok) {
-        setStatusMsg({ text: `Deleted retail sale for ${vrDateStr}.`, isError: false });
+        setStatusMsg({ text: `✓ Deleted retail sale for ${vrDateStr}.`, isError: false });
         setRows([]);
         setNarration('');
         const refRes = await fetch(`/api/retail-sale?customer_id=${selectedCust.customer_id}`);
@@ -517,6 +508,66 @@ export default function RetailSalePermanentForm({
       }
     } catch (err: any) {
       setStatusMsg({ text: `Delete failed: ${err.message}`, isError: true });
+    }
+  };
+
+  // Open Find Modal (opens customer history if customer is selected, otherwise opens search)
+  const handleOpenFind = async () => {
+    setIsFindOpen(true);
+    setFindSearch('');
+    if (selectedCust) {
+      setFindTab('history');
+      setIsFindLoading(true);
+      try {
+        const refRes = await fetch(`/api/retail-sale?customer_id=${selectedCust.customer_id}`);
+        const refData = await refRes.json();
+        if (refData.sales) {
+          setCustomerSales(refData.sales);
+        }
+      } catch (err) {
+        console.error('Error fetching sales history:', err);
+      } finally {
+        setIsFindLoading(false);
+      }
+    } else {
+      setFindTab('customer');
+    }
+  };
+
+  // Delete an individual sale item from the history view
+  const handleDeleteSaleItem = async (saleItem: any) => {
+    const rId = saleItem.retail_id || saleItem.Retail_id;
+    const pName = saleItem.public_name || saleItem.Publica_Name || `Pub #${saleItem.publica_id || saleItem.Publica_id}`;
+    const dStr = parseIsoToDdMmYyyy(saleItem.vr_date || saleItem.Vr_Date);
+
+    if (!window.confirm(`Are you sure you want to delete retail sale of ${pName} (${saleItem.copies || saleItem.Copies || 1} copy @ ₹${Number(saleItem.rate || saleItem.Rate || 0).toFixed(2)}) on ${dStr}?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/retail-sale?retail_id=${rId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setStatusMsg({ text: `✓ Deleted retail sale item #${rId} (${pName}) on ${dStr}.`, isError: false });
+        if (selectedCust) {
+          const refRes = await fetch(`/api/retail-sale?customer_id=${selectedCust.customer_id}`);
+          const refData = await refRes.json();
+          setCustomerSales(refData.sales || []);
+        }
+        // Refresh recent sales
+        fetch('/api/retail-sale?limit=100')
+          .then(r => r.json())
+          .then(d => {
+            if (d.sales) setAllRecentSales(d.sales);
+          })
+          .catch(() => {});
+      } else {
+        const errData = await res.json();
+        alert(`Delete failed: ${errData.error || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      alert(`Delete failed: ${err.message}`);
     }
   };
 
@@ -559,7 +610,7 @@ export default function RetailSalePermanentForm({
           handleDelete();
         } else if (k === 'f') {
           e.preventDefault();
-          setIsFindOpen(true);
+          handleOpenFind();
         } else if (k === 'c') {
           e.preventDefault();
           handleCancel();
@@ -891,11 +942,7 @@ export default function RetailSalePermanentForm({
               <div className="flex items-center gap-2">
                 <button 
                   type="button"
-                  onClick={() => {
-                    setIsFindOpen(true);
-                    setFindTab('customer');
-                    setFindSearch('');
-                  }}
+                  onClick={handleOpenFind}
                   className="px-3.5 py-0.5 bg-gradient-to-b from-[#E0F7FA] via-[#C8E8FA] to-[#B2EBF2] hover:from-[#F0F8FF] hover:to-[#BCE4FA] active:from-[#80DEEA] border border-[#00838F] shadow-xs transform -skew-x-12 cursor-pointer text-xs font-bold text-black"
                 >
                   <span className="transform skew-x-12 flex items-center gap-1">
@@ -1045,40 +1092,126 @@ export default function RetailSalePermanentForm({
 
             {/* Tabs */}
             <div className="flex border-b border-[#808080] gap-1 pt-1">
-              <button
-                type="button"
-                onClick={() => setFindTab('customer')}
-                className={`px-3 py-1 font-bold cursor-pointer ${
-                  findTab === 'customer'
-                    ? 'bg-white border-t border-l border-r border-[#808080] -mb-[1px]'
-                    : 'bg-[#D4D0C8] hover:bg-slate-200 text-black'
-                }`}
-              >
-                👤 Permanent Customers
-              </button>
+              {selectedCust && (
+                <button
+                  type="button"
+                  onClick={() => setFindTab('history')}
+                  className={`px-3 py-1 font-bold cursor-pointer ${
+                    findTab === 'history'
+                      ? 'bg-white border-t border-l border-r border-[#808080] -mb-[1px] text-blue-900'
+                      : 'bg-[#D4D0C8] hover:bg-slate-200 text-black'
+                  }`}
+                >
+                  📜 #{selectedCust.customer_id} History ({customerSales.length})
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setFindTab('voucher')}
                 className={`px-3 py-1 font-bold cursor-pointer ${
                   findTab === 'voucher'
-                    ? 'bg-white border-t border-l border-r border-[#808080] -mb-[1px]'
+                    ? 'bg-white border-t border-l border-r border-[#808080] -mb-[1px] text-blue-900'
                     : 'bg-[#D4D0C8] hover:bg-slate-200 text-black'
                 }`}
               >
-                🧾 Retail Sale Vouchers ({allRecentSales.length})
+                🧾 All Retail Vouchers ({allRecentSales.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFindTab('customer')}
+                className={`px-3 py-1 font-bold cursor-pointer ${
+                  findTab === 'customer'
+                    ? 'bg-white border-t border-l border-r border-[#808080] -mb-[1px] text-blue-900'
+                    : 'bg-[#D4D0C8] hover:bg-slate-200 text-black'
+                }`}
+              >
+                👤 Search Customer
               </button>
             </div>
             
             <input 
               type="text" 
-              placeholder={findTab === 'customer' ? "Search all 24,626 customers by ID, Name, Phone..." : "Search voucher by Customer, Date, Publication..."}
+              placeholder={
+                findTab === 'history' 
+                  ? `Filter #${selectedCust?.customer_id} ${selectedCust?.name_eng} sales by date, publication...` 
+                  : findTab === 'customer' 
+                  ? "Search all 24,626 customers by ID, Name, Phone..." 
+                  : "Search voucher by Customer, Date, Publication..."
+              }
               value={findSearch}
               onChange={(e) => setFindSearch(e.target.value)}
               className="w-full px-2 py-1 bg-white border border-[#808080] font-bold outline-none shadow-inner"
               autoFocus
             />
 
-            {findTab === 'customer' ? (
+            {findTab === 'history' ? (
+              <div className="bg-white border border-[#808080] max-h-72 overflow-auto divide-y divide-slate-200 shadow-inner">
+                {isFindLoading && (
+                  <div className="p-3 text-center text-slate-500 italic">Loading sales history...</div>
+                )}
+                {!isFindLoading && customerSales.length === 0 && (
+                  <div className="p-4 text-center text-slate-500 italic">
+                    No retail sales recorded yet for #{selectedCust?.customer_id} {selectedCust?.name_eng}.
+                  </div>
+                )}
+                {!isFindLoading && customerSales
+                  .filter(s => {
+                    if (!findSearch.trim()) return true;
+                    const q = findSearch.toLowerCase().trim();
+                    const pName = String(s.Publica_Name || s.public_name || '').toLowerCase();
+                    const sDate = parseIsoToDdMmYyyy(s.Vr_Date || s.vr_date);
+                    const narr = String(s.Narr || s.narr || '').toLowerCase();
+                    return pName.includes(q) || sDate.includes(q) || narr.includes(q);
+                  })
+                  .map((s, idx) => {
+                    const sDate = parseIsoToDdMmYyyy(s.Vr_Date || s.vr_date);
+                    const pName = s.Publica_Name || s.public_name || `Publication #${s.Publica_id || s.publica_id}`;
+                    const copies = Number(s.Copies || s.copies || 1);
+                    const rate = Number(s.Rate || s.rate || 0);
+                    const amt = Number(s.Amt !== undefined ? s.Amt : (s.amt !== undefined ? s.amt : s.amount || 0));
+                    const narrText = s.Narr || s.narr;
+
+                    return (
+                      <div 
+                        key={s.Retail_id || s.retail_id || idx}
+                        className="p-2 hover:bg-[#F0F4FF] flex justify-between items-center gap-2 transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-blue-900 text-xs">{pName}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded font-mono">📅 {sDate}</span>
+                          </div>
+                          <div className="text-[11px] text-slate-600 mt-0.5">
+                            <span className="font-semibold">{copies}</span> copy @ ₹{rate.toFixed(2)} = <strong className="text-[#800000] font-mono">₹{amt.toFixed(2)}</strong>
+                            {narrText && <span className="text-slate-500 italic ml-2">({narrText})</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              loadSaleIntoForm(s, customerSales);
+                              setIsFindOpen(false);
+                            }}
+                            className="px-2.5 py-1 bg-[#ECE9D8] hover:bg-white active:bg-[#D4D0C8] border border-[#808080] text-blue-900 font-bold text-[11px] rounded-xs shadow-xs cursor-pointer flex items-center gap-1"
+                            title="Load this voucher into form"
+                          >
+                            ↩ Load
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSaleItem(s)}
+                            className="px-2 py-1 bg-red-50 hover:bg-red-600 hover:text-white border border-red-300 text-red-700 font-bold text-[11px] rounded-xs shadow-xs cursor-pointer flex items-center gap-1 transition-colors"
+                            title="Delete this retail sale item from database"
+                          >
+                            🗑 Del
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            ) : findTab === 'customer' ? (
               <div className="bg-white border border-[#808080] max-h-60 overflow-auto divide-y divide-slate-200 shadow-inner">
                 {isFindLoading && (
                   <div className="p-3 text-center text-slate-500 italic">Searching database...</div>
@@ -1111,38 +1244,50 @@ export default function RetailSalePermanentForm({
                   return (
                     <div 
                       key={s.Retail_id || s.retail_id || idx}
-                      onClick={() => {
-                        const targetCust: Customer = {
-                          customer_id: sCustId,
-                          name_eng: s.Customer_Name || s.customer_name || `Customer #${sCustId}`,
-                          security_deposit: 0,
-                          priority: 0,
-                          dueamount: sCustId === 24669 ? 3206 : 0,
-                          due_amount: sCustId === 24669 ? 3206 : 0,
-                          cbal: sCustId === 24669 ? 3206 : 0,
-                          region_id: 1,
-                          delivery: 0,
-                          discount: 0
-                        };
-                        handleSelectCustomer(targetCust);
-                        setIsFindOpen(false);
-                      }}
-                      className="p-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer flex justify-between items-center"
+                      className="p-1.5 hover:bg-[#F0F4FF] flex justify-between items-center"
                     >
-                      <div>
-                        <div className="font-bold text-blue-900 group-hover:text-white">
+                      <div 
+                        onClick={() => {
+                          const targetCust: Customer = {
+                            customer_id: sCustId,
+                            name_eng: s.Customer_Name || s.customer_name || `Customer #${sCustId}`,
+                            security_deposit: 0,
+                            priority: 0,
+                            dueamount: sCustId === 24669 ? 3206 : 0,
+                            due_amount: sCustId === 24669 ? 3206 : 0,
+                            cbal: sCustId === 24669 ? 3206 : 0,
+                            region_id: 1,
+                            delivery: 0,
+                            discount: 0
+                          };
+                          handleSelectCustomer(targetCust);
+                          setIsFindOpen(false);
+                        }}
+                        className="cursor-pointer flex-1 min-w-0"
+                      >
+                        <div className="font-bold text-blue-900">
                           #{sCustId} {s.Customer_Name || s.customer_name || 'Customer'}
                         </div>
-                        <div className="text-[10px] text-slate-600 group-hover:text-slate-200">
+                        <div className="text-[10px] text-slate-600">
                           {s.Publica_Name || s.publica_name || `Pub #${s.Publica_id || s.publica_id}`} • {s.Copies || s.copies || 1} copy @ ₹{Number(s.Rate || s.rate || 0).toFixed(2)}
                           {s.Narr || s.narr ? ` • ${s.Narr || s.narr}` : ''}
                         </div>
                       </div>
-                      <div className="text-right shrink-0 ml-2">
-                        <span className="font-bold text-[#800000] group-hover:text-yellow-300 font-mono block">
-                          ₹{Number(s.Amt !== undefined ? s.Amt : (s.amt || 0)).toFixed(2)}
-                        </span>
-                        <span className="text-[10px] text-slate-500 group-hover:text-slate-200 font-mono">📅 {sDate}</span>
+                      <div className="text-right shrink-0 ml-2 flex items-center gap-2">
+                        <div>
+                          <span className="font-bold text-[#800000] font-mono block">
+                            ₹{Number(s.Amt !== undefined ? s.Amt : (s.amt || 0)).toFixed(2)}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">📅 {sDate}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSaleItem(s)}
+                          className="px-2 py-0.5 bg-red-50 hover:bg-red-600 hover:text-white border border-red-300 text-red-700 font-bold text-[10px] rounded-xs shadow-xs cursor-pointer"
+                          title="Delete"
+                        >
+                          🗑
+                        </button>
                       </div>
                     </div>
                   );
