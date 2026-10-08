@@ -132,6 +132,7 @@ export function calculateBilling({
   receipts = [],
   regions = [],
   retailSales = [],
+  supplements = [],
   startBillId,
   priorMonthBalances
 }: {
@@ -151,6 +152,7 @@ export function calculateBilling({
   receipts: any[];
   regions: any[];
   retailSales?: any[];
+  supplements?: any[];
   startBillId?: number;
   priorMonthBalances?: Map<number, number> | Record<number, number>;
 }) {
@@ -865,6 +867,68 @@ export function calculateBilling({
       }
     }
 
+    // =========================================================================
+    // 1C. PROCESS PUBLICATION SUPPLEMENTS (P S)
+    // =========================================================================
+    let customerSupplementTotal = 0;
+    const custSubPubIds = new Set(custSubs.map(s => Number(s.publica_id || s.Publica_id || s.publication_id)));
+
+    for (const supp of supplements) {
+      const suppDateIso = parseLegacyDateToIso(supp.date_iso || supp.date);
+      if (suppDateIso && suppDateIso >= monthStartIso && suppDateIso <= monthEndIso) {
+        const pId = Number(supp.publica_id || supp.Publica_id);
+        if (custSubPubIds.has(pId)) {
+          const appliesToRegion = Boolean(
+            supp.all_regions ||
+            !supp.region_ids ||
+            supp.region_ids.length === 0 ||
+            supp.region_ids.includes(Number(custRegionId))
+          );
+
+          if (appliesToRegion) {
+            const sub = custSubs.find(s => Number(s.publica_id || s.Publica_id || s.publication_id) === pId);
+            const copies = Number(sub?.qty || sub?.copies || 1);
+            const suppRate = Number(supp.rate || 0);
+            const lineAmt = Math.round(copies * suppRate * 100) / 100;
+
+            const pub = pubMap.get(pId);
+            const pubName = pub?.pub_hindi 
+              ? cleanOrTransliterateHindi(pub.pub_hindi, pub.name || pub.public_name)
+              : (pub?.name || pub?.public_name || supp.public_name || `Publication #${pId}`);
+
+            customerSupplementTotal += lineAmt;
+
+            // Add to breakup with sort_order 1 and (P S) label
+            custBreakup.push({
+              customer_id: custId,
+              name_eng: custNameEng,
+              customer_hindi: custNameHindi,
+              sort_order: 1,
+              item: `${pubName} (P S)`,
+              rate: suppRate,
+              qty: copies,
+              days_or_copies: copies,
+              amount: lineAmt
+            });
+
+            dbBillItems.push({
+              Bill_id: nextBillId,
+              Customer_id: custId,
+              Publica_id: pId,
+              Region_id: custRegionId,
+              Qty: copies,
+              Rate: suppRate,
+              D_Charges: null,
+              TotalAmt: lineAmt,
+              Month: standardMonthName,
+              year: String(startYear),
+              sno: null
+            });
+          }
+        }
+      }
+    }
+
     // Customer Discount Total Line in Breakup
     // Note: Discounts strictly apply ONLY to subscription paper totals, never to retail sales or delivery charges
     if (customerDiscountTotal > 0) {
@@ -901,10 +965,6 @@ export function calculateBilling({
     // 2. CHARGES & TOTAL COMPUTATION (Formula 8)
     // =========================================================================
     // Determine Previous Due / Opening Balance:
-    // 1) If an authentic committed bill header exists in billnoYYYYYYYY for this month, its recorded balance is authoritative:
-    //    In FoxPro billno.balance: deficit/due is negative (e.g. -409.50 -> +409.50 on bill), advance is positive.
-    // 2) Deduct any late receipts received after this bill was generated (recp_no >= 1196564) so paid customers are not double-charged.
-    // 3) Otherwise fall back to live customer.cbal.
     let customerPreviousBalance = 0;
     if (existingHeader && existingHeader.balance !== null && existingHeader.balance !== undefined) {
       const recordedBalanceDue = -Number(existingHeader.balance);
@@ -924,20 +984,20 @@ export function calculateBilling({
     const previousDue = Math.round(customerPreviousBalance * 100) / 100;
 
     const openingBalanceThisBill = previousDue;
-    const roundedPaperTotal = roundToFoxProRule(customerPaperTotal + customerRetailTotal);
-    const currentMonthCharges = roundToFoxProRule(customerPaperTotal + customerDeliveryTotal + customerRetailTotal - customerDiscountTotal);
+    const roundedPaperTotal = roundToFoxProRule(customerPaperTotal + customerRetailTotal + customerSupplementTotal);
+    const currentMonthCharges = roundToFoxProRule(customerPaperTotal + customerDeliveryTotal + customerRetailTotal + customerSupplementTotal - customerDiscountTotal);
     const totalPayable = roundToFoxProRule(openingBalanceThisBill + currentMonthCharges);
 
     // In FoxPro monthly delivery billing, bills are ONLY generated for customers with active paper/magazine deliveries or retail sales in this month.
     // Discontinued customers with 0 current deliveries do not get recurring monthly delivery bills.
-    if (customerPaperTotal === 0 && customerRetailTotal === 0) {
+    if (customerPaperTotal === 0 && customerRetailTotal === 0 && customerSupplementTotal === 0) {
       continue;
     }
 
     // Insert "Current Month Charges" Subtotal row into Breakup
     let currentMonthLabel = 'Current Month Charges (चालू माह शुल्क)';
     if (customerDeliveryTotal > 0 || customerDiscountTotal > 0) {
-      const parts = [`Papers: ₹${(customerPaperTotal + customerRetailTotal).toFixed(2)}`];
+      const parts = [`Papers: ₹${(customerPaperTotal + customerRetailTotal + customerSupplementTotal).toFixed(2)}`];
       if (customerDeliveryTotal > 0) parts.push(`Delivery: ₹${customerDeliveryTotal.toFixed(2)}`);
       if (customerDiscountTotal > 0) parts.push(`Discount: -₹${customerDiscountTotal.toFixed(2)}`);
       currentMonthLabel = `Current Month Charges (${parts.join(' + ')})`;

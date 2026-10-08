@@ -211,6 +211,10 @@ async function getPublicationDiscontinues(): Promise<any[]> {
   return localPubDis;
 }
 
+function getSupplements(): any[] {
+  return loadJson('pubsupplements.json') || [];
+}
+
 
 
 async function getMaxBillId(fySuffix: string): Promise<number> {
@@ -468,6 +472,7 @@ export async function GET(request: NextRequest) {
         receipts: liveCustReceipts,
         regions: regions,
         retailSales: liveRetail,
+        supplements: getSupplements(),
         startBillId: maxBillId + 1
       });
 
@@ -551,6 +556,7 @@ export async function GET(request: NextRequest) {
       receipts: liveCustReceipts,
       regions: regions,
       retailSales: dbBatchRetail,
+      supplements: getSupplements(),
       startBillId: maxBillId + 1 + (page - 1) * limit
     });
 
@@ -649,6 +655,7 @@ export async function POST(request: NextRequest) {
       receipts: liveCustReceipts,
       regions: regions,
       retailSales: dbBatchRetail,
+      supplements: getSupplements(),
       startBillId: maxBillId + 1
     });
 

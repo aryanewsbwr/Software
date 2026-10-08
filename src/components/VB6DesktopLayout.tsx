@@ -57,6 +57,7 @@ import DiscontinueForm from './forms/DiscontinueForm';
 import CompanyForm from './forms/CompanyForm';
 import PurchaseForm from './forms/PurchaseForm';
 import PubDiscontinueForm from './forms/PubDiscontinueForm';
+import PubSupplementForm from './forms/PubSupplementForm';
 import ReceiptAllotmentForm from './forms/ReceiptAllotmentForm';
 import HawkerPriorityForm from './forms/HawkerPriorityForm';
 import ApplyCustomerAgentForm from './forms/ApplyCustomerAgentForm';
@@ -886,10 +887,11 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
           />
         )}
         {activeWindow === 'pubsupplement' && (
-          <PubDiscontinueForm 
+          <PubSupplementForm 
             onClose={() => setActiveWindow(null)} 
             publications={publications}
-            mode="supplement"
+            rates={rates}
+            ratechanges={ratechanges}
           />
         )}
 
