@@ -21,10 +21,13 @@ interface RegionItem {
 interface SupplementRecord {
   id: number;
   publica_id: number;
+  publicasup_id?: number;
   public_name: string;
   supplement_name: string;
   date: string;
   date_iso: string;
+  month?: string;
+  year?: string;
   rate: number;
   region_ids: number[];
   all_regions: boolean;
@@ -55,6 +58,7 @@ export default function PubSupplementForm({
 
   const [pubList, setPubList] = useState<Publication[]>(() => cleanAndSortPubs(publications));
   const [selectedPubId, setSelectedPubId] = useState<number | ''>('');
+  const [selectedSuppPubId, setSelectedSuppPubId] = useState<number | ''>('');
   const [supplementName, setSupplementName] = useState<string>('');
   
   // Date in DD/MM/YYYY
@@ -165,21 +169,47 @@ export default function PubSupplementForm({
     return 5.0;
   };
 
-  // Handle publication change
+  // Handle Main Publication change
   const handlePubChange = (pubIdStr: string) => {
     if (!pubIdStr) {
       setSelectedPubId('');
-      setSupplementRate(0);
+      if (!selectedSuppPubId) {
+        setSupplementRate(0);
+        setSupplementName('');
+      }
       return;
     }
     const pId = parseInt(pubIdStr, 10);
     setSelectedPubId(pId);
     const pub = pubList.find(p => p.publica_id === pId);
     if (pub) {
-      const autoRate = getPubRate(pId, dateStr);
+      // If Supplement Name is not yet chosen, default to this publication
+      if (!selectedSuppPubId) {
+        setSelectedSuppPubId(pId);
+        setSupplementName(pub.public_name);
+        const autoRate = getPubRate(pId, dateStr);
+        setSupplementRate(autoRate);
+      }
+    }
+  };
+
+  // Handle Supplement Publication dropdown change
+  const handleSupplementPubChange = (suppIdStr: string) => {
+    if (!suppIdStr) {
+      setSelectedSuppPubId('');
+      setSupplementName('');
+      return;
+    }
+    const sId = parseInt(suppIdStr, 10);
+    setSelectedSuppPubId(sId);
+    const sPub = pubList.find(p => p.publica_id === sId);
+    if (sPub) {
+      setSupplementName(sPub.public_name);
+      const autoRate = getPubRate(sId, dateStr);
       setSupplementRate(autoRate);
-      if (!supplementName) {
-        setSupplementName(`${pub.public_name} Special`);
+      // If Main publication not chosen yet, set it too
+      if (!selectedPubId) {
+        setSelectedPubId(sId);
       }
     }
   };
@@ -222,8 +252,8 @@ export default function PubSupplementForm({
 
   // Save / Update Handler
   const handleSave = async () => {
-    if (!selectedPubId) {
-      setMsg({ text: 'Please select a publication.', isError: true });
+    if (!selectedPubId && !selectedSuppPubId) {
+      setMsg({ text: 'Please select a Publication.', isError: true });
       return;
     }
     if (!isAllRegions && selectedRegionIds.length === 0) {
@@ -231,8 +261,10 @@ export default function PubSupplementForm({
       return;
     }
 
-    const pub = pubList.find(p => p.publica_id === selectedPubId);
-    if (!pub) {
+    const mainPub = pubList.find(p => p.publica_id === (selectedPubId || selectedSuppPubId));
+    const suppPub = pubList.find(p => p.publica_id === (selectedSuppPubId || selectedPubId));
+
+    if (!mainPub) {
       setMsg({ text: 'Invalid publication selected.', isError: true });
       return;
     }
@@ -243,9 +275,10 @@ export default function PubSupplementForm({
     try {
       const payload = {
         id: selectedId,
-        publica_id: pub.publica_id,
-        public_name: pub.public_name,
-        supplement_name: supplementName.trim() || `${pub.public_name} Supplement`,
+        publicasup_id: mainPub.publica_id,
+        publica_id: suppPub?.publica_id || mainPub.publica_id,
+        public_name: mainPub.public_name,
+        supplement_name: supplementName.trim() || suppPub?.public_name || mainPub.public_name,
         date: dateStr,
         rate: Number(supplementRate || 0),
         region_ids: isAllRegions ? [] : selectedRegionIds,
@@ -262,7 +295,7 @@ export default function PubSupplementForm({
       if (!res.ok) throw new Error(data.error || 'Failed to save');
 
       setMsg({ 
-        text: `✓ Supplement saved for ${pub.public_name} @ ₹${Number(supplementRate || 0).toFixed(2)} (${isAllRegions ? 'All Regions' : `${selectedRegionIds.length} Regions`})!`, 
+        text: `✓ Supplement saved for ${mainPub.public_name} (${payload.supplement_name}) @ ₹${Number(supplementRate || 0).toFixed(2)} (${isAllRegions ? 'All Regions' : `${selectedRegionIds.length} Regions`})!`, 
         isError: false 
       });
 
@@ -278,14 +311,15 @@ export default function PubSupplementForm({
   // Load a record from history into form
   const handleLoadRecord = (rec: SupplementRecord) => {
     setSelectedId(rec.id);
-    setSelectedPubId(rec.publica_id);
+    setSelectedPubId(rec.publicasup_id || rec.publica_id);
+    setSelectedSuppPubId(rec.publica_id);
     setSupplementName(rec.supplement_name || '');
     setDateStr(parseIsoToDdMmYyyy(rec.date_iso || rec.date));
     setSupplementRate(rec.rate);
     setIsAllRegions(Boolean(rec.all_regions || !rec.region_ids || rec.region_ids.length === 0));
     setSelectedRegionIds(rec.region_ids || (rec.all_regions ? regions.map(r => r.region_id) : []));
     setIsFindOpen(false);
-    setMsg({ text: `Loaded supplement #${rec.id} (${rec.public_name} @ ₹${rec.rate})`, isError: false });
+    setMsg({ text: `Loaded supplement #${rec.id} (${rec.public_name} - ${rec.supplement_name} @ ₹${rec.rate})`, isError: false });
   };
 
   // Delete Record Handler
@@ -312,6 +346,7 @@ export default function PubSupplementForm({
   const handleCancel = () => {
     setSelectedId(null);
     setSelectedPubId('');
+    setSelectedSuppPubId('');
     setSupplementName('');
     setSupplementRate(0);
     setIsAllRegions(true);
@@ -355,7 +390,7 @@ export default function PubSupplementForm({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFindOpen, selectedPubId, selectedId, supplementRate, dateStr, isAllRegions, selectedRegionIds]);
+  }, [isFindOpen, selectedPubId, selectedSuppPubId, selectedId, supplementRate, dateStr, isAllRegions, selectedRegionIds]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 select-none">
@@ -399,7 +434,7 @@ export default function PubSupplementForm({
           {/* Form Fields Grid */}
           <div className="space-y-2.5 bg-white p-3 border border-[#808080] shadow-inner">
             
-            {/* 1. Publication Name */}
+            {/* 1. Publication Name (Main Paper) */}
             <div className="flex items-center gap-3">
               <label className="w-32 font-bold text-[#000080] text-right shrink-0">Publication Name</label>
               <select 
@@ -408,23 +443,26 @@ export default function PubSupplementForm({
                 className="flex-1 px-2 py-1 border border-[#808080] bg-white font-bold text-black outline-none shadow-xs"
                 autoFocus
               >
-                <option value="">-- Select Publication --</option>
+                <option value="">-- Select Main Publication --</option>
                 {pubList.map(p => (
-                  <option key={p.publica_id} value={p.publica_id}>{p.public_name}</option>
+                  <option key={`pub_${p.publica_id}`} value={p.publica_id}>{p.public_name}</option>
                 ))}
               </select>
             </div>
 
-            {/* 2. Supplement Name */}
+            {/* 2. Supplement Name (Supplement Publication Dropdown) */}
             <div className="flex items-center gap-3">
               <label className="w-32 font-bold text-[#800000] text-right shrink-0">Supplement Name</label>
-              <input 
-                type="text" 
-                value={supplementName}
-                onChange={(e) => setSupplementName(e.target.value)}
-                placeholder="e.g. Today Eng (P S) / Rasrang"
+              <select 
+                value={selectedSuppPubId}
+                onChange={(e) => handleSupplementPubChange(e.target.value)}
                 className="flex-1 px-2 py-1 border border-[#808080] bg-white font-bold text-black outline-none shadow-xs"
-              />
+              >
+                <option value="">-- Select Supplement Publication --</option>
+                {pubList.map(p => (
+                  <option key={`supp_${p.publica_id}`} value={p.publica_id}>{p.public_name}</option>
+                ))}
+              </select>
             </div>
 
             {/* 3. Date & Supplement Rate Row */}
@@ -480,7 +518,7 @@ export default function PubSupplementForm({
                       className={`flex items-center gap-2 px-1.5 py-0.5 rounded cursor-pointer hover:bg-blue-50 ${isChecked ? 'bg-blue-50/70 font-semibold' : 'text-slate-700'}`}
                     >
                       <input 
-                        type="checkbox"
+                        type="checkbox" 
                         checked={isChecked}
                         onChange={() => handleToggleRegion(rId)}
                         className="cursor-pointer"
@@ -497,7 +535,7 @@ export default function PubSupplementForm({
               <div className="flex items-center justify-between mt-1.5 pt-1 bg-[#ECE9D8] px-2 py-1 border border-[#808080]">
                 <label className="flex items-center gap-2 cursor-pointer font-bold text-black">
                   <input 
-                    type="checkbox"
+                    type="checkbox" 
                     checked={isAllRegions}
                     onChange={(e) => handleToggleAllRegions(e.target.checked)}
                     className="cursor-pointer w-4 h-4"

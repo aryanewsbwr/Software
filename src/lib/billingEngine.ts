@@ -875,26 +875,44 @@ export function calculateBilling({
 
     for (const supp of supplements) {
       const suppDateIso = parseLegacyDateToIso(supp.date_iso || supp.date);
-      if (suppDateIso && suppDateIso >= monthStartIso && suppDateIso <= monthEndIso) {
-        const pId = Number(supp.publica_id || supp.Publica_id);
-        if (custSubPubIds.has(pId)) {
+      const suppMonth = (supp.month || '').toLowerCase().trim();
+      const isMatchingMonth = (suppDateIso && suppDateIso >= monthStartIso && suppDateIso <= monthEndIso) ||
+                              (suppMonth && (suppMonth === standardMonthName.toLowerCase() || suppMonth.startsWith(standardMonthName.toLowerCase().slice(0, 3))));
+
+      if (isMatchingMonth) {
+        const parentId = Number(supp.publicasup_id || supp.publica_id || supp.Publica_id || 0);
+        const suppId = Number(supp.publica_id || supp.publicasup_id || supp.Publica_id || 0);
+
+        const matchingPubId = custSubPubIds.has(parentId) 
+          ? parentId 
+          : (custSubPubIds.has(suppId) ? suppId : null);
+
+        if (matchingPubId !== null) {
           const appliesToRegion = Boolean(
             supp.all_regions ||
             !supp.region_ids ||
             supp.region_ids.length === 0 ||
-            supp.region_ids.includes(Number(custRegionId))
+            supp.region_ids.includes(Number(custRegionId)) ||
+            (supp.region_id !== undefined && (Number(supp.region_id) === 0 || Number(supp.region_id) === Number(custRegionId)))
           );
 
           if (appliesToRegion) {
-            const sub = custSubs.find(s => Number(s.publica_id || s.Publica_id || s.publication_id) === pId);
+            const sub = custSubs.find(s => Number(s.publica_id || s.Publica_id || s.publication_id) === matchingPubId);
             const copies = Number(sub?.qty || sub?.copies || 1);
-            const suppRate = Number(supp.rate || 0);
+            let suppRate = Number(supp.rate || 0);
+            if (suppRate <= 0) {
+              const dow = 1;
+              suppRate = getEffectiveRate(suppId || parentId, dow, monthStartIso);
+            }
+            if (suppRate <= 0) suppRate = 5.0;
+
             const lineAmt = Math.round(copies * suppRate * 100) / 100;
 
-            const pub = pubMap.get(pId);
-            const pubName = pub?.pub_hindi 
-              ? cleanOrTransliterateHindi(pub.pub_hindi, pub.name || pub.public_name)
-              : (pub?.name || pub?.public_name || supp.public_name || `Publication #${pId}`);
+            const suppPub = pubMap.get(suppId) || pubMap.get(parentId);
+            const rawPubName = supp.supplement_name || suppPub?.name || suppPub?.public_name || supp.public_name || `Publication #${suppId || parentId}`;
+            const pubName = suppPub?.pub_hindi 
+              ? cleanOrTransliterateHindi(suppPub.pub_hindi, rawPubName)
+              : rawPubName;
 
             customerSupplementTotal += lineAmt;
 
@@ -914,7 +932,7 @@ export function calculateBilling({
             dbBillItems.push({
               Bill_id: nextBillId,
               Customer_id: custId,
-              Publica_id: pId,
+              Publica_id: suppId || parentId,
               Region_id: custRegionId,
               Qty: copies,
               Rate: suppRate,

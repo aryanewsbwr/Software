@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { supabase } from '@/lib/supabaseClient';
 import { calculateBilling, MONTH_NAMES, parseLegacyDateToIso } from '@/lib/billingEngine';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
@@ -20,6 +21,13 @@ let cachedPubDis: any[] | null = null;
 let cachedAllSubs: any[] | null = null;
 
 function loadJson(filename: string): any[] {
+  const tmpPath = path.join(os.tmpdir(), filename);
+  if (fs.existsSync(tmpPath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(tmpPath, 'utf-8'));
+      if (Array.isArray(data) && data.length > 0) return data;
+    } catch {}
+  }
   const f = path.join(process.cwd(), 'public', 'data', filename);
   if (fs.existsSync(f)) {
     try {
@@ -211,8 +219,43 @@ async function getPublicationDiscontinues(): Promise<any[]> {
   return localPubDis;
 }
 
-function getSupplements(): any[] {
-  return loadJson('pubsupplements.json') || [];
+async function getSupplements(): Promise<any[]> {
+  const localList = loadJson('pubsupplements.json') || [];
+  try {
+    const { data: dbRows } = await supabase.from('publicationsup').select('*');
+    if (dbRows && dbRows.length > 0) {
+      const mergedMap = new Map<string, any>();
+      localList.forEach((item: any) => {
+        const key = `${item.publicasup_id || item.publica_id}_${item.publica_id}_${item.month || item.date_iso || item.date}`;
+        mergedMap.set(key, item);
+      });
+
+      for (const r of dbRows) {
+        const pParent = Number(r.publicasup_id || r.publica_id);
+        const pSupp = Number(r.publica_id);
+        const gKey = `${pParent}_${pSupp}_${r.month}_${r.year}`;
+        if (!mergedMap.has(gKey)) {
+          mergedMap.set(gKey, {
+            publicasup_id: pParent,
+            publica_id: pSupp,
+            month: r.month,
+            year: r.year,
+            region_ids: [Number(r.region_id)],
+            all_regions: Number(r.region_id) === 0,
+            rate: 0
+          });
+        } else {
+          const ex = mergedMap.get(gKey);
+          if (ex && ex.region_ids && !ex.region_ids.includes(Number(r.region_id))) {
+            ex.region_ids.push(Number(r.region_id));
+            if (Number(r.region_id) === 0) ex.all_regions = true;
+          }
+        }
+      }
+      return Array.from(mergedMap.values());
+    }
+  } catch (_) {}
+  return localList;
 }
 
 
@@ -446,13 +489,14 @@ export async function GET(request: NextRequest) {
       }
       const targetCusts = targetCust ? [targetCust] : [];
 
-      const [custSubs, { bills: liveCustBills, billHeaders: liveCustBillHeaders, receipts: liveCustReceipts }, pubDis, liveRetail, maxBillId, liveHolidays] = await Promise.all([
+      const [custSubs, { bills: liveCustBills, billHeaders: liveCustBillHeaders, receipts: liveCustReceipts }, pubDis, liveRetail, maxBillId, liveHolidays, liveSupps] = await Promise.all([
         fetchSubscriptions([cid]),
         fetchBillsAndReceipts([cid], fySuffix),
         getPublicationDiscontinues(),
         fetchRetailSales([cid], fySuffix),
         getMaxBillId(fySuffix),
-        getHolidays()
+        getHolidays(),
+        getSupplements()
       ]);
 
       const singleResult = calculateBilling({
@@ -472,7 +516,7 @@ export async function GET(request: NextRequest) {
         receipts: liveCustReceipts,
         regions: regions,
         retailSales: liveRetail,
-        supplements: getSupplements(),
+        supplements: liveSupps,
         startBillId: maxBillId + 1
       });
 
@@ -530,13 +574,14 @@ export async function GET(request: NextRequest) {
     const paginatedCusts = targetCusts.slice((page - 1) * limit, page * limit);
     const paginatedCustIds = paginatedCusts.map(c => c.customer_id || c.Customer_id);
 
-    const [paginatedSubs, { bills: liveCustBills, billHeaders: liveCustBillHeaders, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId, liveHolidays] = await Promise.all([
+    const [paginatedSubs, { bills: liveCustBills, billHeaders: liveCustBillHeaders, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId, liveHolidays, liveSupps] = await Promise.all([
       fetchSubscriptions(paginatedCustIds),
       fetchBillsAndReceipts(paginatedCustIds, fySuffix),
       getPublicationDiscontinues(),
       fetchRetailSales(paginatedCustIds, fySuffix),
       getMaxBillId(fySuffix),
-      getHolidays()
+      getHolidays(),
+      getSupplements()
     ]);
 
     const result = calculateBilling({
@@ -556,7 +601,7 @@ export async function GET(request: NextRequest) {
       receipts: liveCustReceipts,
       regions: regions,
       retailSales: dbBatchRetail,
-      supplements: getSupplements(),
+      supplements: liveSupps,
       startBillId: maxBillId + 1 + (page - 1) * limit
     });
 
@@ -624,7 +669,7 @@ export async function POST(request: NextRequest) {
     });
 
     const targetCustIds = targetCusts.map(c => c.customer_id || c.Customer_id);
-    const [targetSubs, { bills: liveCustBills, billHeaders: liveCustBillHeaders, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId, liveHolidays, rates, ratechanges, pubs, discontinues, regions] = await Promise.all([
+    const [targetSubs, { bills: liveCustBills, billHeaders: liveCustBillHeaders, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId, liveHolidays, rates, ratechanges, pubs, discontinues, regions, liveSupps] = await Promise.all([
       fetchSubscriptions(targetCustIds),
       fetchBillsAndReceipts(targetCustIds, fySuffix),
       getPublicationDiscontinues(),
@@ -635,7 +680,8 @@ export async function POST(request: NextRequest) {
       getRateChanges(),
       getPublications(),
       getDiscontinues(),
-      getRegions()
+      getRegions(),
+      getSupplements()
     ]);
 
     const result = calculateBilling({
@@ -655,7 +701,7 @@ export async function POST(request: NextRequest) {
       receipts: liveCustReceipts,
       regions: regions,
       retailSales: dbBatchRetail,
-      supplements: getSupplements(),
+      supplements: liveSupps,
       startBillId: maxBillId + 1
     });
 
