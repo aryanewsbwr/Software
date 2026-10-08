@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -13,7 +13,7 @@ const STORAGE_FILE = 'data/pubsupplements.json';
 async function loadSupplementsFromStorage(): Promise<any[]> {
   // 1. Try Supabase Storage
   try {
-    const { data, error } = await supabase.storage.from(STORAGE_BUCKET).download(STORAGE_FILE);
+    const { data, error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).download(STORAGE_FILE);
     if (!error && data) {
       const text = await data.text();
       const parsed = JSON.parse(text);
@@ -47,7 +47,7 @@ async function loadSupplementsFromStorage(): Promise<any[]> {
 async function saveSupplementsToStorage(data: any[]) {
   // 1. Save to Supabase Storage (Persistent across all serverless containers)
   try {
-    await supabase.storage.from(STORAGE_BUCKET).upload(
+    await supabaseAdmin.storage.from(STORAGE_BUCKET).upload(
       STORAGE_FILE,
       Buffer.from(JSON.stringify(data, null, 2)),
       { upsert: true, contentType: 'application/json' }
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
 
     // Also persist to Supabase publicationsup table
     try {
-      await supabase
+      await supabaseAdmin
         .from('publicationsup')
         .delete()
         .eq('publicasup_id', parentPubId)
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
         region_id: rId
       }));
 
-      await supabase.from('publicationsup').insert(rowsToInsert);
+      await supabaseAdmin.from('publicationsup').insert(rowsToInsert);
     } catch (sbErr) {
       console.warn('Supabase publicationsup insert notice:', sbErr);
     }
@@ -224,7 +224,7 @@ export async function DELETE(request: NextRequest) {
         const monthName = !isNaN(dObj.getTime()) ? MONTH_NAMES[dObj.getMonth()] : targetItem.month || 'October';
         const yearStr = !isNaN(dObj.getTime()) ? String(dObj.getFullYear()) : targetItem.year || '2026';
 
-        await supabase
+        await supabaseAdmin
           .from('publicationsup')
           .delete()
           .eq('publicasup_id', parentId)

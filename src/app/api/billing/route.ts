@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { supabase } from '@/lib/supabaseClient';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { calculateBilling, MONTH_NAMES, parseLegacyDateToIso } from '@/lib/billingEngine';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 
@@ -221,7 +222,7 @@ async function getPublicationDiscontinues(): Promise<any[]> {
 
 async function getSupplements(): Promise<any[]> {
   try {
-    const { data, error } = await supabase.storage.from('news-images').download('data/pubsupplements.json');
+    const { data, error } = await supabaseAdmin.storage.from('news-images').download('data/pubsupplements.json');
     if (!error && data) {
       const text = await data.text();
       const parsed = JSON.parse(text);
