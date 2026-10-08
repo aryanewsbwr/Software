@@ -841,7 +841,7 @@ export function calculateBilling({
           name_eng: custNameEng,
           customer_hindi: custNameHindi,
           sort_order: 1,
-          item: pubName,
+          item: `${pubName} (RS)`,
           rate: effectiveRate,
           qty: copies,
           days_or_copies: copies,

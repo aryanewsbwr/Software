@@ -303,7 +303,7 @@ async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
 async function fetchRetailSales(customerIds: number[], fySuffix: string): Promise<any[]> {
   if (customerIds.length === 0) return [];
   const localSales = loadJson('retailsale.json');
-  const matchingLocal = localSales.filter((s: any) => {
+  const matchingLocal = (localSales || []).filter((s: any) => {
     const cid = Number(s.Customer_id || s.customer_id);
     return customerIds.includes(cid);
   });
@@ -322,14 +322,14 @@ async function fetchRetailSales(customerIds: number[], fySuffix: string): Promis
           .in('customer_id', chunk)
           .limit(50000);
         if (genData && genData.length > 0) {
-          matchingDb.push(...genData.map(r => ({
+          matchingDb.push(...genData.map((r: any) => ({
             Retail_id: r.retail_id || r.Retail_id || r.sale_id,
-            Vr_Date: r.vr_date || r.Vr_Date,
-            Customer_id: r.customer_id || r.Customer_id,
-            Publica_id: r.publica_id || r.Publica_id,
-            Copies: r.copies || r.Copies || 1,
-            Rate: r.rate || r.Rate || 0,
-            Amt: r.amt !== undefined ? r.amt : (r.Amt !== undefined ? r.Amt : (r.amount || 0)),
+            Vr_Date: r.vr_date || r.Vr_Date || r.dated || r.Dated,
+            Customer_id: Number(r.customer_id || r.Customer_id),
+            Publica_id: Number(r.publica_id || r.Publica_id),
+            Copies: Number(r.copies || r.Copies || 1),
+            Rate: Number(r.rate !== undefined && r.rate !== null ? r.rate : (r.Rate || 0)),
+            Amt: r.amt !== undefined && r.amt !== null ? Number(r.amt) : (r.Amt !== undefined && r.Amt !== null ? Number(r.Amt) : (r.amount || 0)),
             Narr: r.narr || r.Narr || r.narration || ''
           })));
         }
@@ -337,15 +337,46 @@ async function fetchRetailSales(customerIds: number[], fySuffix: string): Promis
         // ignore
       }
 
-      // 2. Query FY specific table (e.g. retailsale20252026)
+      // 2. Query FY specific table (e.g. retailsale20252026, retailsale20262027)
       try {
-        const { data: fyData } = await supabase
+        const { data: fyDataLower } = await supabase
+          .from(`retailsale${fySuffix}`)
+          .select('*')
+          .in('customer_id', chunk)
+          .limit(50000);
+        if (fyDataLower && fyDataLower.length > 0) {
+          matchingDb.push(...fyDataLower.map((r: any) => ({
+            Retail_id: r.retail_id || r.Retail_id || r.sale_id,
+            Vr_Date: r.vr_date || r.Vr_Date || r.dated || r.Dated,
+            Customer_id: Number(r.customer_id || r.Customer_id),
+            Publica_id: Number(r.publica_id || r.Publica_id),
+            Copies: Number(r.copies || r.Copies || 1),
+            Rate: Number(r.rate !== undefined && r.rate !== null ? r.rate : (r.Rate || 0)),
+            Amt: r.amt !== undefined && r.amt !== null ? Number(r.amt) : (r.Amt !== undefined && r.Amt !== null ? Number(r.Amt) : (r.amount || 0)),
+            Narr: r.narr || r.Narr || r.narration || ''
+          })));
+        }
+      } catch {
+        // ignore
+      }
+
+      try {
+        const { data: fyDataUpper } = await supabase
           .from(`retailsale${fySuffix}`)
           .select('*')
           .in('Customer_id', chunk)
           .limit(50000);
-        if (fyData && fyData.length > 0) {
-          matchingDb.push(...fyData);
+        if (fyDataUpper && fyDataUpper.length > 0) {
+          matchingDb.push(...fyDataUpper.map((r: any) => ({
+            Retail_id: r.retail_id || r.Retail_id || r.sale_id,
+            Vr_Date: r.vr_date || r.Vr_Date || r.dated || r.Dated,
+            Customer_id: Number(r.customer_id || r.Customer_id),
+            Publica_id: Number(r.publica_id || r.Publica_id),
+            Copies: Number(r.copies || r.Copies || 1),
+            Rate: Number(r.rate !== undefined && r.rate !== null ? r.rate : (r.Rate || 0)),
+            Amt: r.amt !== undefined && r.amt !== null ? Number(r.amt) : (r.Amt !== undefined && r.Amt !== null ? Number(r.Amt) : (r.amount || 0)),
+            Narr: r.narr || r.Narr || r.narration || ''
+          })));
         }
       } catch {
         // ignore
@@ -364,7 +395,16 @@ async function fetchRetailSales(customerIds: number[], fySuffix: string): Promis
       : `${item.Customer_id || item.customer_id}-${item.Publica_id || item.publica_id}-${item.Vr_Date || item.vr_date}-${item.Rate || item.rate || 0}-${item.Amt || item.amt || 0}-${item.Copies || item.copies || 1}`;
     if (!seen.has(key)) {
       seen.add(key);
-      merged.push(item);
+      merged.push({
+        Retail_id: item.Retail_id || item.retail_id || item.sale_id,
+        Vr_Date: item.Vr_Date || item.vr_date || item.dated || item.Dated,
+        Customer_id: Number(item.Customer_id || item.customer_id),
+        Publica_id: Number(item.Publica_id || item.publica_id),
+        Copies: Number(item.Copies || item.copies || 1),
+        Rate: Number(item.Rate !== undefined && item.Rate !== null ? item.Rate : (item.rate || 0)),
+        Amt: item.Amt !== undefined && item.Amt !== null ? Number(item.Amt) : (item.amt !== undefined && item.amt !== null ? Number(item.amt) : (item.amount || 0)),
+        Narr: item.Narr || item.narr || item.narration || ''
+      });
     }
   }
   return merged;
