@@ -86,10 +86,8 @@ export default function RetailSalePermanentForm({
   const [selectedSaleIdx, setSelectedSaleIdx] = useState<number>(-1);
   const [allRecentSales, setAllRecentSales] = useState<any[]>([]);
 
-  // Rows in the grid (Publication | Copies | Rate | Rec.Amt)
-  const [rows, setRows] = useState<SaleRow[]>([
-    { publica_id: 1, copies: 1, rate: 5.0, amt: 5.0 }
-  ]);
+  // Rows in the grid (Publication | Copies | Rate | Rec.Amt) - starts empty; added by F1 or double tap
+  const [rows, setRows] = useState<SaleRow[]>([]);
 
   // Narration
   const [narration, setNarration] = useState<string>('');
@@ -256,44 +254,20 @@ export default function RetailSalePermanentForm({
     setCustInput(`${c.name_eng || ''} (#${c.customer_id})`);
     setShowSuggestions(false);
     setStatusMsg(null);
+    setRows([]); // Grid starts clean empty; user adds publication via F1 or Double Tap!
+    setNarration('');
 
-    // 1. Check customer's subscriptions and initialize first row with customer's paper
+    // 1. Check customer's subscriptions in background for caution status
     try {
       const subRes = await fetch(`/api/subscriptions?customer_id=${c.customer_id}`);
       const subData = await subRes.json();
       const subs = subData.subscriptions || subData.all_subscriptions || [];
+      (c as any)._subscriptions = subs;
       if (subs.length > 0) {
         const hasActive = subs.some((s: any) => s.is_active);
         if (!hasActive) {
           setShowCautionClosed(true);
         }
-        // If customer has subscribed papers, initialize grid with customer's paper
-        const firstActive = subs.find((s: any) => s.is_active) || subs[0];
-        if (firstActive) {
-          const pId = Number(firstActive.publica_id || firstActive.publication_id || 1);
-          const r = getPubDefaultRate(pId, vrDateStr);
-          const copies = Number(firstActive.qty || 1);
-          setRows([{
-            publica_id: pId,
-            copies: copies,
-            rate: r,
-            amt: r * copies
-          }]);
-          const pub = pubList.find(p => p.publica_id === pId);
-          if (pub) {
-            setNarration(pub.public_name);
-          }
-        }
-      } else {
-        const defaultPubId = pubList[0]?.publica_id || 1;
-        const autoRate = getPubDefaultRate(defaultPubId, vrDateStr);
-        setRows([{
-          publica_id: defaultPubId,
-          copies: 1,
-          rate: autoRate,
-          amt: autoRate
-        }]);
-        setNarration('');
       }
     } catch (_) {}
 
@@ -369,7 +343,7 @@ export default function RetailSalePermanentForm({
       setSelectedCust(null);
       setCustomerSales([]);
       setSelectedSaleIdx(-1);
-      setRows([{ publica_id: 1, copies: 1, rate: 5.0, amt: 5.0 }]);
+      setRows([]); // Starts clean empty; added via F1 or Double Tap
       setNarration('');
       setStatusMsg(null);
       setShowSuggestions(false);
@@ -431,21 +405,37 @@ export default function RetailSalePermanentForm({
   };
 
   const handleAddRow = () => {
-    const defaultPubId = pubList[0]?.publica_id || 1;
+    let defaultPubId = pubList[0]?.publica_id || 1;
+    let defaultQty = 1;
+
+    if (selectedCust) {
+      const subs = (selectedCust as any)._subscriptions || [];
+      const existingPubIds = rows.map(r => r.publica_id);
+      const candidate = subs.find((s: any) => !existingPubIds.includes(Number(s.publica_id || s.publication_id)));
+      if (candidate) {
+        defaultPubId = Number(candidate.publica_id || candidate.publication_id);
+        defaultQty = Number(candidate.qty || 1);
+      } else if (subs.length > 0 && rows.length === 0) {
+        defaultPubId = Number(subs[0].publica_id || subs[0].publication_id || defaultPubId);
+        defaultQty = Number(subs[0].qty || 1);
+      }
+    }
+
     const autoRate = getPubDefaultRate(defaultPubId, vrDateStr);
     setRows(prev => [...prev, {
       publica_id: defaultPubId,
-      copies: 1,
+      copies: defaultQty,
       rate: autoRate,
-      amt: autoRate
+      amt: autoRate * defaultQty
     }]);
+
+    const pub = pubList.find(p => p.publica_id === defaultPubId);
+    if (pub && (!narration || rows.length === 0)) {
+      setNarration(pub.public_name);
+    }
   };
 
   const handleRemoveRow = (index: number) => {
-    if (rows.length <= 1) {
-      setRows([{ publica_id: pubList[0]?.publica_id || 1, copies: 1, rate: 5.0, amt: 5.0 }]);
-      return;
-    }
     setRows(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -456,7 +446,7 @@ export default function RetailSalePermanentForm({
       return;
     }
     if (rows.length === 0) {
-      setStatusMsg({ text: 'Please add at least one publication item.', isError: true });
+      setStatusMsg({ text: 'Please add at least one publication item (Press F1 or Double Tap).', isError: true });
       return;
     }
 
@@ -519,7 +509,7 @@ export default function RetailSalePermanentForm({
       });
       if (res.ok) {
         setStatusMsg({ text: `Deleted retail sale for ${vrDateStr}.`, isError: false });
-        setRows([{ publica_id: 1, copies: 1, rate: 5.0, amt: 5.0 }]);
+        setRows([]);
         setNarration('');
         const refRes = await fetch(`/api/retail-sale?customer_id=${selectedCust.customer_id}`);
         const refData = await refRes.json();
@@ -535,10 +525,54 @@ export default function RetailSalePermanentForm({
     setSelectedCust(null);
     setCustomerSales([]);
     setSelectedSaleIdx(-1);
-    setRows([{ publica_id: 1, copies: 1, rate: 5.0, amt: 5.0 }]);
+    setRows([]);
     setNarration('');
     setStatusMsg(null);
   };
+
+  // Keyboard shortcut listener (F1 to add row, Esc to close, Alt+S/U/D/F/C/E)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (isFindOpen) setIsFindOpen(false);
+        else if (isProcessModalOpen) setIsProcessModalOpen(false);
+        else if (showCautionClosed) setShowCautionClosed(false);
+        else if (showSuggestions) setShowSuggestions(false);
+        else onClose();
+        return;
+      }
+      if (e.key === 'F1') {
+        e.preventDefault();
+        handleAddRow();
+        return;
+      }
+      if (e.altKey) {
+        const k = e.key.toLowerCase();
+        if (k === 's' || k === 'u') {
+          e.preventDefault();
+          handleSave();
+        } else if (k === 'd') {
+          e.preventDefault();
+          handleDelete();
+        } else if (k === 'f') {
+          e.preventDefault();
+          setIsFindOpen(true);
+        } else if (k === 'c') {
+          e.preventDefault();
+          handleCancel();
+        } else if (k === 'e') {
+          e.preventDefault();
+          onClose();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isFindOpen, isProcessModalOpen, showCautionClosed, showSuggestions, selectedCust, rows, vrDateStr, narration]);
 
   if (!isOpen) return null;
 
@@ -679,7 +713,11 @@ export default function RetailSalePermanentForm({
           </div>
 
           {/* Row 4: The Main Grid Table matching screenshot_09.jpg */}
-          <div className="mx-1 border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-[#808080] shadow-inner">
+          <div 
+            onDoubleClick={handleAddRow}
+            className="mx-1 border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-[#808080] shadow-inner select-none cursor-pointer"
+            title="Double Click / Double Tap or Press [F1] to Add Publication"
+          >
             
             {/* Grid Header matching screenshot_09.jpg */}
             <table className="w-full text-xs border-collapse">
@@ -741,16 +779,17 @@ export default function RetailSalePermanentForm({
                           onChange={(e) => handleUpdateRow(idx, 'amt', e.target.value)}
                           className="w-full text-right font-mono font-bold text-blue-900 bg-transparent outline-none pr-1"
                         />
-                        {rows.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveRow(idx)}
-                            className="text-red-600 hover:text-red-900 font-bold px-1 cursor-pointer text-xs"
-                            title="Remove row"
-                          >
-                            ✕
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveRow(idx);
+                          }}
+                          className="text-red-600 hover:text-red-900 font-bold px-1 cursor-pointer text-xs"
+                          title="Remove row"
+                        >
+                          ✕
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -761,10 +800,18 @@ export default function RetailSalePermanentForm({
             {/* Empty gray grid canvas area matching screenshot_09.jpg */}
             <div 
               onClick={handleAddRow}
-              className="bg-[#808080] h-14 flex items-center justify-center text-slate-200 text-[11px] font-bold cursor-pointer hover:bg-[#737373] select-none"
-              title="Click here to add another newspaper row"
+              className={`bg-[#808080] ${rows.length === 0 ? 'h-24' : 'h-10'} flex flex-col items-center justify-center text-slate-200 text-xs font-bold cursor-pointer hover:bg-[#737373] transition-colors p-2 text-center select-none`}
+              title="Click or Double Tap or Press [F1] to add publication"
             >
-              + Click to add another publication row (or edit above)
+              <div className="text-yellow-200 text-xs font-bold flex items-center gap-1">
+                <span>➕</span>
+                <span>{rows.length === 0 ? 'Press [F1] or Double Tap to Add Publication' : '+ Press [F1] or Click to add another publication row'}</span>
+              </div>
+              {rows.length === 0 && (
+                <div className="text-[11px] text-slate-300 mt-0.5 font-normal">
+                  (अखबार या पत्रिका जोड़ने हेतु <strong>F1</strong> दबाएँ अथवा यहाँ <strong>डबल क्लिक</strong> करें)
+                </div>
+              )}
             </div>
           </div>
 
