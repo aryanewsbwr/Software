@@ -81,7 +81,6 @@ export default function ReportsForm({
   const [selectedMonth, setSelectedMonth] = useState<string>('September');
   const [selectedYear, setSelectedYear] = useState<string>('2026');
   const [targetCustId, setTargetCustId] = useState<string>('');
-  const [outputDest, setOutputDest] = useState<'preview' | 'direct_print'>('preview');
   const [billBatchLimit, setBillBatchLimit] = useState<number>(0);
   const [billPrintMode, setBillPrintMode] = useState<'detail' | 'simple'>('simple');
 
@@ -182,18 +181,7 @@ export default function ReportsForm({
   const printDateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${now.toLocaleTimeString()}`;
 
   const handleShowPreview = () => {
-    if (outputDest === 'direct_print') {
-      setViewMode('preview');
-      setTimeout(() => {
-        if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single') {
-          printBills4in1(reportData?.rows || [], currentMeta.title, billPrintMode);
-        } else {
-          window.print();
-        }
-      }, 800);
-    } else {
-      setViewMode('preview');
-    }
+    setViewMode('preview');
   };
 
   const handlePrint = () => {
@@ -421,31 +409,6 @@ export default function ReportsForm({
               </div>
             )}
 
-            {/* Output Mode Radio Buttons */}
-            <div className="pt-2 border-t border-[#808080] flex items-center justify-between text-xs">
-              <span className="font-bold text-slate-700">Output Mode:</span>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input 
-                    type="radio" 
-                    name="outputMode" 
-                    checked={outputDest === 'preview'} 
-                    onChange={() => setOutputDest('preview')} 
-                  />
-                  <span>Crystal Report Preview</span>
-                </label>
-                <label className="flex items-center gap-1 cursor-pointer">
-                  <input 
-                    type="radio" 
-                    name="outputMode" 
-                    checked={outputDest === 'direct_print'} 
-                    onChange={() => setOutputDest('direct_print')} 
-                  />
-                  <span>Direct Print</span>
-                </label>
-              </div>
-            </div>
-
           </div>
 
           {/* Classic Slanted / Beveled VB6 Action Buttons */}
@@ -461,7 +424,13 @@ export default function ReportsForm({
             <button 
               onClick={() => {
                 setViewMode('preview');
-                setTimeout(() => window.print(), 800);
+                setTimeout(() => {
+                  if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single') {
+                    printBills4in1(reportData?.rows || [], currentMeta.title, billPrintMode);
+                  } else {
+                    window.print();
+                  }
+                }, 800);
               }}
               className="px-4 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer flex items-center gap-1 text-xs font-bold text-black"
             >
