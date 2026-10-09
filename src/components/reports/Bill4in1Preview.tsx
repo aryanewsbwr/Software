@@ -159,27 +159,69 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                 
                 const minRows = 4;
                 const items = b.items || [];
-                const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
-                const totalDelivery = b.delivery_charge || 0;
 
-                const displayItems = items.map((it, idx) => {
-                  let itemDelivery = 0;
-                  if (printMode === 'simple') {
+                let displayItems: Array<{
+                  pub_name: string;
+                  qtyOrDays: number | string;
+                  rate: number | null;
+                  amount: number;
+                }> = [];
+
+                if (printMode === 'simple') {
+                  // Consolidate rows for the same publication into 1 line, sum quantities & amounts, and omit rate
+                  const pubConsolidatedMap = new Map<string, {
+                    pub_name: string;
+                    totalQty: number;
+                    totalAmount: number;
+                  }>();
+
+                  const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
+                  const totalDelivery = b.delivery_charge || 0;
+
+                  items.forEach((it, idx) => {
+                    const cleanPub = it.pub_name.trim();
+                    const pubKey = cleanPub.toLowerCase();
+                    const qty = Number(it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1));
+                    
+                    let itemDelivery = 0;
                     if (hasItemDelivery) {
                       itemDelivery = it.delivery_amount || 0;
                     } else if (totalDelivery > 0 && idx === 0) {
                       itemDelivery = totalDelivery;
                     }
-                  }
-                  const displayAmount = roundToFoxProRule(it.amount + itemDelivery);
-                  const qtyOrDays = it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1);
-                  return {
-                    pub_name: it.pub_name,
-                    qtyOrDays,
-                    rate: it.rate,
-                    amount: displayAmount
-                  };
-                });
+                    const itemAmt = roundToFoxProRule(it.amount + itemDelivery);
+
+                    const existing = pubConsolidatedMap.get(pubKey);
+                    if (existing) {
+                      existing.totalQty += qty;
+                      existing.totalAmount = roundToFoxProRule(existing.totalAmount + itemAmt);
+                    } else {
+                      pubConsolidatedMap.set(pubKey, {
+                        pub_name: cleanPub,
+                        totalQty: qty,
+                        totalAmount: itemAmt
+                      });
+                    }
+                  });
+
+                  displayItems = Array.from(pubConsolidatedMap.values()).map(entry => ({
+                    pub_name: entry.pub_name,
+                    qtyOrDays: entry.totalQty,
+                    rate: null, // Rate is omitted in simple mode
+                    amount: entry.totalAmount
+                  }));
+                } else {
+                  // Detail Mode: keep separate rate lines with pure paper rate & amounts
+                  displayItems = items.map(it => {
+                    const qtyOrDays = it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1);
+                    return {
+                      pub_name: it.pub_name,
+                      qtyOrDays,
+                      rate: it.rate,
+                      amount: roundToFoxProRule(it.amount)
+                    };
+                  });
+                }
 
                 const rowCount = Math.max(displayItems.length, minRows);
 
@@ -262,7 +304,7 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                                 <tr key={rIdx} className="h-4 leading-none">
                                   <td className="py-0.5 px-1 border-r border-black truncate font-medium">{it.pub_name}</td>
                                   <td className="py-0.5 px-0.5 border-r border-black text-center font-mono">{it.qtyOrDays}</td>
-                                  <td className="py-0.5 px-1 border-r border-black text-right font-mono">{formatMoney(it.rate)}</td>
+                                  <td className="py-0.5 px-1 border-r border-black text-right font-mono">{it.rate !== null && it.rate !== undefined ? formatMoney(it.rate) : ''}</td>
                                   <td className="py-0.5 px-1 text-right font-mono font-bold">{formatMoney(it.amount)}</td>
                                 </tr>
                               );
