@@ -91,6 +91,48 @@ async function saveAllotmentsToStorage(data: ReceiptAllotmentRecord[]) {
   } catch {}
 }
 
+function parseDateToTimestamp(dStr?: string | null): number {
+  if (!dStr) return 0;
+  if (dStr.includes('/')) {
+    const parts = dStr.split('/');
+    if (parts.length === 3) {
+      const dd = parts[0].padStart(2, '0');
+      const mm = parts[1].padStart(2, '0');
+      const yyyy = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+      return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0;
+    }
+  }
+  if (dStr.includes('-')) {
+    const parts = dStr.split('-');
+    if (parts.length === 3 && parts[0].length === 4) {
+      return new Date(dStr).getTime() || 0;
+    }
+  }
+  return 0;
+}
+
+function sortAndIndexAllotments(list: ReceiptAllotmentRecord[]): ReceiptAllotmentRecord[] {
+  const sorted = [...list].sort((a, b) => {
+    if ((a.collector_name || '').toLowerCase() !== (b.collector_name || '').toLowerCase()) {
+      return (a.collector_name || '').localeCompare(b.collector_name || '');
+    }
+    const tA = parseDateToTimestamp(a.allot_date);
+    const tB = parseDateToTimestamp(b.allot_date);
+    if (tA !== tB) return tA - tB;
+    return (a.receipt_from || 0) - (b.receipt_from || 0);
+  });
+
+  const collectorCounters: Record<string, number> = {};
+  return sorted.map(item => {
+    const cKey = (item.collector_name || '').toLowerCase();
+    collectorCounters[cKey] = (collectorCounters[cKey] || 0) + 1;
+    return {
+      ...item,
+      sno: collectorCounters[cKey]
+    };
+  });
+}
+
 /**
  * GET /api/receipt-allotment
  * Query Params:
@@ -101,7 +143,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const collectorName = searchParams.get('collector_name');
 
-    const [allotments, collectorsRes] = await Promise.all([
+    const [rawAllotments, collectorsRes] = await Promise.all([
       loadAllotmentsFromStorage(),
       supabase.from('collect').select('*').order('Collect_id', { ascending: true })
     ]);
@@ -110,6 +152,8 @@ export async function GET(req: NextRequest) {
       collect_id: c.Collect_id || c.collect_id || c.id,
       name: c.name || c.collector_name || `Collector #${c.Collect_id}`
     }));
+
+    const allotments = sortAndIndexAllotments(rawAllotments);
 
     let filtered = allotments;
     if (collectorName) {

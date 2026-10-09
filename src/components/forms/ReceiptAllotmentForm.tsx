@@ -98,6 +98,37 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Date parser for sorting
+  const parseDateToTimestamp = (dStr?: string | null): number => {
+    if (!dStr) return 0;
+    if (dStr.includes('/')) {
+      const parts = dStr.split('/');
+      if (parts.length === 3) {
+        const dd = parts[0].padStart(2, '0');
+        const mm = parts[1].padStart(2, '0');
+        const yyyy = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+        return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0;
+      }
+    }
+    if (dStr.includes('-')) {
+      const parts = dStr.split('-');
+      if (parts.length === 3 && parts[0].length === 4) {
+        return new Date(dStr).getTime() || 0;
+      }
+    }
+    return 0;
+  };
+
+  const sortAndIndexRows = (rows: AllotmentRow[]): AllotmentRow[] => {
+    const sorted = [...rows].sort((a, b) => {
+      const tA = parseDateToTimestamp(a.allot_date);
+      const tB = parseDateToTimestamp(b.allot_date);
+      if (tA !== tB) return tA - tB;
+      return (Number(a.receipt_from) || 0) - (Number(b.receipt_from) || 0);
+    });
+    return sorted.map((r, i) => ({ ...r, sno: i + 1 }));
+  };
+
   // When collector changes, filter/fetch allotments
   const handleSelectCollector = (name: string) => {
     setCollectorName(name);
@@ -107,10 +138,10 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
     setEditingSno(null);
     clearInputs();
     
-    // Instant in-memory filter
+    // Instant in-memory filter sorted by date
     if (name.trim()) {
       const matched = allAllotments.filter(a => (a.collector_name || '').toLowerCase() === name.trim().toLowerCase());
-      setAllotments(matched);
+      setAllotments(sortAndIndexRows(matched));
     } else {
       setAllotments([]);
     }
@@ -308,7 +339,7 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
                     setIsDropdownOpen(true);
                     if (val.trim()) {
                       const matched = allAllotments.filter(a => (a.collector_name || '').toLowerCase() === val.trim().toLowerCase());
-                      setAllotments(matched);
+                      setAllotments(sortAndIndexRows(matched));
                     } else {
                       setAllotments([]);
                     }
