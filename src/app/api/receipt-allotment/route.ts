@@ -23,8 +23,11 @@ export interface ReceiptAllotmentRecord {
   updated_at?: string;
 }
 
-// Initial empty seed - no default dummy records
-const INITIAL_ALLOTMENTS: ReceiptAllotmentRecord[] = [];
+// Initial baseline records from old software
+const INITIAL_ALLOTMENTS: ReceiptAllotmentRecord[] = [
+  { sno: 1, collector_name: 'Salam', receipt_from: 1001, receipt_to: 1100, allot_date: '01/08/2026', rec_date: '15/08/2026' },
+  { sno: 2, collector_name: 'Salam', receipt_from: 1101, receipt_to: 1200, allot_date: '16/08/2026', rec_date: null }
+];
 
 async function loadAllotmentsFromStorage(): Promise<ReceiptAllotmentRecord[]> {
   // 1. Try Supabase Storage
@@ -33,7 +36,7 @@ async function loadAllotmentsFromStorage(): Promise<ReceiptAllotmentRecord[]> {
     if (!error && data) {
       const text = await data.text();
       const parsed = JSON.parse(text);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch (err) {
     console.warn('Supabase storage download error for receipt allotments:', err);
@@ -44,7 +47,7 @@ async function loadAllotmentsFromStorage(): Promise<ReceiptAllotmentRecord[]> {
   if (fs.existsSync(tmpPath)) {
     try {
       const data = JSON.parse(fs.readFileSync(tmpPath, 'utf-8'));
-      if (Array.isArray(data)) return data;
+      if (Array.isArray(data) && data.length > 0) return data;
     } catch {}
   }
 
@@ -53,11 +56,12 @@ async function loadAllotmentsFromStorage(): Promise<ReceiptAllotmentRecord[]> {
   if (fs.existsSync(pubPath)) {
     try {
       const data = JSON.parse(fs.readFileSync(pubPath, 'utf-8'));
-      if (Array.isArray(data)) return data;
+      if (Array.isArray(data) && data.length > 0) return data;
     } catch {}
   }
 
-  return [];
+  // Default seed from old software
+  return INITIAL_ALLOTMENTS;
 }
 
 async function saveAllotmentsToStorage(data: ReceiptAllotmentRecord[]) {

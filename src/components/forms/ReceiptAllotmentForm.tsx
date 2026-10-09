@@ -106,6 +106,16 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
     setIsEditing(false);
     setEditingSno(null);
     clearInputs();
+    
+    // Instant in-memory filter
+    if (name.trim()) {
+      const matched = allAllotments.filter(a => (a.collector_name || '').toLowerCase() === name.trim().toLowerCase());
+      setAllotments(matched);
+    } else {
+      setAllotments([]);
+    }
+
+    // Also fetch fresh from server
     fetchAllotments(name);
     if (fromInputRef.current) {
       fromInputRef.current.focus();
@@ -293,13 +303,23 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
                   type="text" 
                   value={collectorName}
                   onChange={(e) => {
-                    setCollectorName(e.target.value);
+                    const val = e.target.value;
+                    setCollectorName(val);
                     setIsDropdownOpen(true);
+                    if (val.trim()) {
+                      const matched = allAllotments.filter(a => (a.collector_name || '').toLowerCase() === val.trim().toLowerCase());
+                      setAllotments(matched);
+                    } else {
+                      setAllotments([]);
+                    }
                   }}
                   onFocus={() => setIsDropdownOpen(true)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       setIsDropdownOpen(false);
+                      if (collectorName.trim()) {
+                        handleSelectCollector(collectorName.trim());
+                      }
                       if (fromInputRef.current) fromInputRef.current.focus();
                     }
                   }}

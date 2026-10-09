@@ -1,0 +1,18 @@
+[
+  {
+    "sno": 1,
+    "collector_name": "Salam",
+    "receipt_from": 1001,
+    "receipt_to": 1100,
+    "allot_date": "01/08/2026",
+    "rec_date": "15/08/2026"
+  },
+  {
+    "sno": 2,
+    "collector_name": "Salam",
+    "receipt_from": 1101,
+    "receipt_to": 1200,
+    "allot_date": "16/08/2026",
+    "rec_date": null
+  }
+]
