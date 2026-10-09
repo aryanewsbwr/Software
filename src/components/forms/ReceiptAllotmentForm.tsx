@@ -1,100 +1,486 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronDown, Plus, Trash2, CheckCircle2, AlertCircle, Calendar } from 'lucide-react';
 
 interface ReceiptAllotmentFormProps {
   onClose: () => void;
 }
 
-export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormProps) {
-  const [collectorName, setCollectorName] = useState('');
-  const [allotments, setAllotments] = useState<any[]>([
-    { sno: 1, from: '1001', to: '1100', allotDate: '01/08/2026', recDate: '15/08/2026' },
-    { sno: 2, from: '1101', to: '1200', allotDate: '16/08/2026', recDate: '' }
-  ]);
-  const [msg, setMsg] = useState('');
+interface AllotmentRow {
+  sno: number;
+  collector_name: string;
+  receipt_from: number;
+  receipt_to: number;
+  allot_date: string;
+  rec_date?: string | null;
+}
 
-  const handleSave = () => {
-    setMsg('Receipt book allotment saved successfully!');
-    setTimeout(() => setMsg(''), 3000);
+export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormProps) {
+  const [collectorName, setCollectorName] = useState('Salam');
+  const [collectors, setCollectors] = useState<any[]>([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+  // Allotments for selected collector
+  const [allotments, setAllotments] = useState<AllotmentRow[]>([]);
+  const [allAllotments, setAllAllotments] = useState<AllotmentRow[]>([]);
+  const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
+
+  // New Allotment Inputs
+  const [receiptFrom, setReceiptFrom] = useState('');
+  const [receiptTo, setReceiptTo] = useState('');
+  const [allotDate, setAllotDate] = useState('');
+  const [recDate, setRecDate] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingSno, setEditingSno] = useState<number | null>(null);
+
+  // Messages & Loading
+  const [statusMsg, setStatusMsg] = useState<{ text: string; isError?: boolean } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Default date format DD/MM/YYYY
+  const getTodayStr = () => {
+    const d = new Date();
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
   };
 
+  // 1. Initial Load: Fetch Collectors & Allotments
+  const fetchAllotments = async (targetCollector: string = collectorName) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/receipt-allotment?collector_name=${encodeURIComponent(targetCollector)}`);
+      const data = await res.json();
+      if (data.success) {
+        setAllotments(data.allotments || []);
+        setAllAllotments(data.all_allotments || []);
+        if (data.collectors && data.collectors.length > 0) {
+          setCollectors(data.collectors);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load allotments:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllotments('Salam');
+    setAllotDate(getTodayStr());
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // When collector changes, filter/fetch allotments
+  const handleSelectCollector = (name: string) => {
+    setCollectorName(name);
+    setIsDropdownOpen(false);
+    setSelectedRowIndex(null);
+    setIsEditing(false);
+    setEditingSno(null);
+    clearInputs();
+    fetchAllotments(name);
+  };
+
+  // Auto-calculate next receipt range
+  const handleSuggestNextRange = () => {
+    let maxTo = 1000;
+    if (allAllotments.length > 0) {
+      maxTo = Math.max(...allAllotments.map(a => Number(a.receipt_to) || 0), 1000);
+    }
+    const nextFrom = maxTo + 1;
+    const nextTo = nextFrom + 99; // 100-leaf receipt book
+    setReceiptFrom(String(nextFrom));
+    setReceiptTo(String(nextTo));
+    setAllotDate(getTodayStr());
+    setRecDate('');
+    setIsEditing(false);
+    setEditingSno(null);
+  };
+
+  const clearInputs = () => {
+    setReceiptFrom('');
+    setReceiptTo('');
+    setAllotDate(getTodayStr());
+    setRecDate('');
+    setIsEditing(false);
+    setEditingSno(null);
+  };
+
+  // Select row for editing or marking return date
+  const handleSelectRow = (row: AllotmentRow, idx: number) => {
+    setSelectedRowIndex(idx);
+    setReceiptFrom(String(row.receipt_from));
+    setReceiptTo(String(row.receipt_to));
+    setAllotDate(row.allot_date || getTodayStr());
+    setRecDate(row.rec_date || '');
+    setIsEditing(true);
+    setEditingSno(row.sno);
+  };
+
+  // Save Allotment
+  const handleSave = async () => {
+    if (!collectorName || !collectorName.trim()) {
+      setStatusMsg({ text: 'Please select or enter a Collector Name.', isError: true });
+      return;
+    }
+
+    if (!receiptFrom || !receiptTo) {
+      setStatusMsg({ text: 'Please enter Receipt From and Receipt To numbers.', isError: true });
+      return;
+    }
+
+    const fromNum = parseInt(receiptFrom, 10);
+    const toNum = parseInt(receiptTo, 10);
+
+    if (isNaN(fromNum) || isNaN(toNum) || fromNum <= 0 || toNum <= 0) {
+      setStatusMsg({ text: 'Please enter valid positive numbers for receipt range.', isError: true });
+      return;
+    }
+
+    if (toNum < fromNum) {
+      setStatusMsg({ text: 'Receipt To must be greater than or equal to Receipt From.', isError: true });
+      return;
+    }
+
+    setIsLoading(true);
+    setStatusMsg(null);
+
+    try {
+      const res = await fetch('/api/receipt-allotment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          collector_name: collectorName.trim(),
+          receipt_from: fromNum,
+          receipt_to: toNum,
+          allot_date: allotDate || getTodayStr(),
+          rec_date: recDate ? recDate.trim() : null,
+          edit_sno: isEditing ? editingSno : undefined
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setStatusMsg({ text: data.message || 'Receipt allotment saved successfully!' });
+        setAllotments(data.allotments || []);
+        setAllAllotments(data.all_allotments || []);
+        clearInputs();
+        setSelectedRowIndex(null);
+      } else {
+        setStatusMsg({ text: data.error || 'Failed to save allotment.', isError: true });
+      }
+    } catch (err: any) {
+      setStatusMsg({ text: err.message || 'Network error saving allotment.', isError: true });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Delete Allotment Row
+  const handleDeleteRow = async (sno: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Are you sure you want to delete allotment SNO #${sno} for ${collectorName}?`)) return;
+
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/receipt-allotment?collector_name=${encodeURIComponent(collectorName)}&sno=${sno}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.success) {
+        setStatusMsg({ text: 'Allotment deleted successfully!' });
+        setAllotments(data.allotments || []);
+        setAllAllotments(data.all_allotments || []);
+        clearInputs();
+      } else {
+        setStatusMsg({ text: data.error || 'Failed to delete allotment.', isError: true });
+      }
+    } catch (err: any) {
+      setStatusMsg({ text: err.message || 'Error deleting allotment.', isError: true });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Keyboard shortcut listener: Alt+S -> Save, Alt+X / Esc -> Exit
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.altKey && (e.key === 's' || e.key === 'S')) || (e.ctrlKey && e.key === 's')) {
+        e.preventDefault();
+        handleSave();
+      } else if (e.altKey && (e.key === 'x' || e.key === 'X')) {
+        e.preventDefault();
+        onClose();
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [collectorName, receiptFrom, receiptTo, allotDate, recDate, isEditing, editingSno]);
+
   return (
-    <div className="relative w-[540px] h-[400px] bg-white border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden">
+    <div className="relative w-[620px] max-w-[95vw] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto">
       
-      {/* Title Bar matching screenshot_12.jpg */}
-      <div className="bg-[#ECE9D8] border-b border-[#808080] px-2 py-1 flex items-center justify-between">
+      {/* 1. Classic Title Bar (Matching media_1791524917718_364a84c2.png) */}
+      <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-1 flex items-center justify-between font-bold text-xs shrink-0">
         <div className="flex items-center gap-1.5">
-          <img src="/legacy_images/paper.ico" alt="ico" className="w-4 h-4" onError={(e) => (e.currentTarget.style.display = 'none')} />
-          <span className="font-bold text-xs text-[#808080]">Receipt Allotment</span>
+          <img 
+            src="/legacy_images/paper.ico" 
+            alt="ico" 
+            className="w-4 h-4" 
+            onError={(e) => (e.currentTarget.style.display = 'none')} 
+          />
+          <span className="text-xs">Receipt Allotment</span>
         </div>
         <div className="flex items-center gap-1">
-          <button className="w-5 h-4 bg-[#ECE9D8] border border-[#808080] text-[10px] font-bold flex items-center justify-center hover:bg-white cursor-pointer">_</button>
-          <button className="w-5 h-4 bg-[#ECE9D8] border border-[#808080] text-[10px] font-bold flex items-center justify-center hover:bg-white cursor-pointer">□</button>
-          <button onClick={onClose} className="w-5 h-4 bg-[#ECE9D8] border border-[#808080] text-[10px] font-bold flex items-center justify-center hover:bg-red-600 hover:text-white cursor-pointer">✕</button>
+          <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">_</button>
+          <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">□</button>
+          <button onClick={onClose} className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-red-600 hover:text-white cursor-pointer">✕</button>
         </div>
       </div>
 
-      {/* Main Body matching screenshot_12.jpg */}
-      <div className="flex-1 bg-white p-4 flex flex-col justify-between">
+      {/* 2. Main Window Interior */}
+      <div className="bg-white p-5 flex flex-col gap-3">
         
-        {/* Top Controls: Name Input + Action Buttons on the right */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-2 flex-1 pt-1">
-            <label className="font-bold text-[#800000] text-xs shrink-0">Name</label>
-            <input 
-              type="text" 
-              value={collectorName}
-              onChange={(e) => setCollectorName(e.target.value)}
-              placeholder=""
-              className="flex-1 px-2 py-0.5 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none text-xs"
-            />
+        {/* Top Section: Name Combobox + Action Buttons */}
+        <div className="flex items-start justify-between gap-6">
+          
+          {/* Name Field with Combobox */}
+          <div className="flex items-center gap-3 flex-1 pt-1">
+            <label className="font-bold text-[#800000] text-sm shrink-0">Name</label>
+            
+            <div className="relative flex-1" ref={dropdownRef}>
+              <div className="flex items-center border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white">
+                <input 
+                  type="text" 
+                  value={collectorName}
+                  onChange={(e) => {
+                    setCollectorName(e.target.value);
+                    setIsDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsDropdownOpen(true)}
+                  placeholder="Select or enter Collector Name..."
+                  className="w-full px-2 py-1 font-bold text-black outline-none text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsDropdownOpen(prev => !prev)}
+                  className="px-1.5 py-1 bg-[#ECE9D8] hover:bg-[#D4D0C8] border-l border-[#808080] cursor-pointer text-slate-700"
+                >
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Collectors Autocomplete Dropdown Menu */}
+              {isDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-0.5 bg-white border-2 border-[#808080] shadow-xl max-h-48 overflow-y-auto z-50 text-xs">
+                  {collectors.length > 0 ? (
+                    collectors
+                      .filter(c => c.name.toLowerCase().includes(collectorName.toLowerCase()))
+                      .map((c, idx) => (
+                        <div 
+                          key={c.collect_id || idx}
+                          onClick={() => handleSelectCollector(c.name)}
+                          className="px-2 py-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer font-bold border-b border-slate-100 flex justify-between items-center"
+                        >
+                          <span>{c.name}</span>
+                          <span className="text-[10px] opacity-70 font-mono">ID: #{c.collect_id}</span>
+                        </div>
+                      ))
+                  ) : (
+                    <div className="p-2 text-slate-500 italic">No collectors found</div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Right Action Buttons */}
+          {/* Right Action Buttons (Matching slanted VB6 style) */}
           <div className="flex flex-col gap-2 shrink-0">
             <button 
               onClick={handleSave}
-              className="px-4 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-6 cursor-pointer flex items-center gap-1 text-xs font-bold text-black"
+              disabled={isLoading}
+              className="px-5 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer flex items-center justify-center gap-1 text-xs font-bold text-black disabled:opacity-50 min-w-[85px]"
             >
-              <span className="transform skew-x-6">💾 <u>S</u>ave</span>
+              <span className="transform skew-x-12 flex items-center gap-1">
+                💾 <u>S</u>ave
+              </span>
             </button>
             <button 
               onClick={onClose}
-              className="px-4 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-6 cursor-pointer flex items-center gap-1 text-xs font-bold text-black"
+              className="px-5 py-1 bg-gradient-to-b from-[#E0F7FA] to-[#B2EBF2] hover:from-[#B2EBF2] hover:to-[#80DEEA] border border-[#00838F] shadow-sm transform -skew-x-12 cursor-pointer flex items-center justify-center gap-1 text-xs font-bold text-black min-w-[85px]"
             >
-              <span className="transform skew-x-6 text-red-800">🛑 E<u>x</u>it</span>
+              <span className="transform skew-x-12 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-red-600 inline-block mr-0.5"></span>
+                E<u>x</u>it
+              </span>
             </button>
           </div>
+
         </div>
 
-        {/* Grid matching screenshot_12.jpg */}
-        <div className="flex-1 bg-[#808080] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white mt-3 flex flex-col overflow-hidden">
-          <div className="bg-[#E0E0E0] text-black text-xs font-bold grid grid-cols-5 border-b border-[#808080] py-1 text-center">
-            <span className="border-r border-[#808080]">SNO</span>
-            <span className="border-r border-[#808080]">Receipt From</span>
-            <span className="border-r border-[#808080]">Receipt To</span>
-            <span className="border-r border-[#808080]">Allot.Date</span>
-            <span>Rec.Date</span>
+        {/* 3. The Authentic Allotment Data Grid (Matching media_1791524917718_364a84c2.png) */}
+        <div className="border border-t-[#808080] border-l-[#808080] border-r-white border-b-white flex flex-col overflow-hidden">
+          
+          {/* Header Bar */}
+          <div className="bg-[#D8D8D8] text-black text-xs font-bold grid grid-cols-12 border-b border-[#808080] py-1 text-center shadow-xs">
+            <span className="col-span-2 border-r border-[#808080]">SNO</span>
+            <span className="col-span-3 border-r border-[#808080]">Receipt From</span>
+            <span className="col-span-3 border-r border-[#808080]">Receipt To</span>
+            <span className="col-span-2 border-r border-[#808080]">Allot.Date</span>
+            <span className="col-span-2">Rec.Date</span>
           </div>
 
-          <div className="flex-1 bg-[#808080] overflow-auto text-xs font-mono text-white">
-            {allotments.map((a, idx) => (
-              <div key={idx} className="grid grid-cols-5 border-b border-slate-600 text-center py-1 text-xs hover:bg-blue-600 cursor-pointer">
-                <span className="border-r border-slate-600">{a.sno}</span>
-                <span className="border-r border-slate-600 font-bold">{a.from}</span>
-                <span className="border-r border-slate-600 font-bold">{a.to}</span>
-                <span className="border-r border-slate-600">{a.allotDate}</span>
-                <span>{a.recDate || '-'}</span>
+          {/* Grid Rows with Dark Slate-Grey Backdrop */}
+          <div className="bg-[#607080] min-h-[160px] max-h-[220px] overflow-y-auto text-xs font-mono text-white">
+            {allotments.length > 0 ? (
+              allotments.map((a, idx) => {
+                const isSelected = selectedRowIndex === idx;
+                return (
+                  <div 
+                    key={idx} 
+                    onClick={() => handleSelectRow(a, idx)}
+                    className={`grid grid-cols-12 border-b border-[#4D5B68] text-center py-1.5 text-xs font-bold cursor-pointer transition-colors ${
+                      isSelected ? 'bg-[#0A246A] text-yellow-300 ring-1 ring-yellow-400' : 'hover:bg-[#4E5C6B]'
+                    }`}
+                    title="Click to edit or mark return date"
+                  >
+                    <span className="col-span-2 border-r border-[#4D5B68]">{a.sno}</span>
+                    <span className="col-span-3 border-r border-[#4D5B68] tracking-wider">{a.receipt_from}</span>
+                    <span className="col-span-3 border-r border-[#4D5B68] tracking-wider">{a.receipt_to}</span>
+                    <span className="col-span-2 border-r border-[#4D5B68]">{a.allot_date}</span>
+                    <span className="col-span-2 flex items-center justify-center gap-1">
+                      <span>{a.rec_date && a.rec_date !== '-' ? a.rec_date : '-'}</span>
+                      {isSelected && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteRow(a.sno, e)}
+                          className="text-red-400 hover:text-red-200 p-0.5 ml-1"
+                          title="Delete this allotment"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="p-8 text-center text-slate-300 italic">
+                No receipt books allotted to {collectorName || 'this collector'} yet.
               </div>
-            ))}
+            )}
           </div>
+
         </div>
 
-        {msg && (
-          <div className="text-center text-xs font-bold text-emerald-800 bg-emerald-50 py-0.5 border border-emerald-300 mt-2">
-            {msg}
+        {/* 4. Entry / Editor Controls Row */}
+        <div className="bg-[#ECE9D8] p-2.5 border border-[#808080] flex items-center justify-between gap-2 text-xs">
+          
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold text-[#000080]">
+              {isEditing ? `Edit Allotment #${editingSno}:` : 'New Allotment:'}
+            </span>
+
+            {/* Receipt From */}
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] font-bold text-slate-700">From:</span>
+              <input 
+                type="number"
+                value={receiptFrom}
+                onChange={(e) => setReceiptFrom(e.target.value)}
+                placeholder="1001"
+                className="w-16 px-1 py-0.5 border border-[#808080] bg-white font-mono font-bold text-black text-center text-xs"
+              />
+            </div>
+
+            {/* Receipt To */}
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] font-bold text-slate-700">To:</span>
+              <input 
+                type="number"
+                value={receiptTo}
+                onChange={(e) => setReceiptTo(e.target.value)}
+                placeholder="1100"
+                className="w-16 px-1 py-0.5 border border-[#808080] bg-white font-mono font-bold text-black text-center text-xs"
+              />
+            </div>
+
+            {/* Allot Date */}
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] font-bold text-slate-700">Allot:</span>
+              <input 
+                type="text"
+                value={allotDate}
+                onChange={(e) => setAllotDate(e.target.value)}
+                placeholder="DD/MM/YYYY"
+                className="w-20 px-1 py-0.5 border border-[#808080] bg-white font-mono font-bold text-black text-center text-xs"
+              />
+            </div>
+
+            {/* Return Date */}
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] font-bold text-slate-700">Return:</span>
+              <input 
+                type="text"
+                value={recDate}
+                onChange={(e) => setRecDate(e.target.value)}
+                placeholder="DD/MM/YYYY"
+                className="w-20 px-1 py-0.5 border border-[#808080] bg-white font-mono font-bold text-black text-center text-xs"
+                title="Leave blank until receipt book is returned"
+              />
+            </div>
+          </div>
+
+          {/* Quick Helper Button: Suggest Next Book */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={handleSuggestNextRange}
+              className="px-2 py-0.5 bg-white hover:bg-blue-50 border border-blue-600 text-blue-900 font-bold text-[11px] cursor-pointer flex items-center gap-0.5 shadow-xs"
+              title="Auto-calculate next available receipt book range (100 receipts)"
+            >
+              <Plus className="w-3 h-3" />
+              <span>Next Book</span>
+            </button>
+            {isEditing && (
+              <button
+                type="button"
+                onClick={clearInputs}
+                className="px-2 py-0.5 bg-white hover:bg-slate-100 border border-slate-500 font-bold text-[11px] cursor-pointer"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+
+        </div>
+
+        {/* Status Message Notification */}
+        {statusMsg && (
+          <div className={`text-center text-xs font-bold py-1 px-2 border flex items-center justify-center gap-1.5 ${
+            statusMsg.isError 
+              ? 'bg-rose-50 text-rose-800 border-rose-300' 
+              : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+          }`}>
+            {statusMsg.isError ? <AlertCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+            <span>{statusMsg.text}</span>
           </div>
         )}
 
