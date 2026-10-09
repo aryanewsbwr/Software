@@ -556,6 +556,36 @@ export default function ReportsForm({
 
           <div className="h-4 w-[1px] bg-[#808080]"></div>
 
+          {/* Bill Printing Format Switcher in Top Bar */}
+          {activeReport.includes('bill_print') && (
+            <div className="flex items-center bg-white p-0.5 border border-[#808080] rounded-xs text-[11px]">
+              <button
+                type="button"
+                onClick={() => setBillPrintMode('simple')}
+                className={`px-2 py-0.5 font-bold cursor-pointer transition-colors ${
+                  billPrintMode === 'simple'
+                    ? 'bg-blue-700 text-white'
+                    : 'text-slate-700 hover:bg-slate-100'
+                }`}
+                title="Simple Print: Delivery is merged directly into publication prices"
+              >
+                📄 Simple (सरल)
+              </button>
+              <button
+                type="button"
+                onClick={() => setBillPrintMode('detail')}
+                className={`px-2 py-0.5 font-bold cursor-pointer transition-colors ${
+                  billPrintMode === 'detail'
+                    ? 'bg-blue-700 text-white'
+                    : 'text-slate-700 hover:bg-slate-100'
+                }`}
+                title="Detail Print: Delivery charge is shown separately in the summary box"
+              >
+                📑 Detail (विस्तृत)
+              </button>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <button 
             onClick={handlePrint}
@@ -564,10 +594,10 @@ export default function ReportsForm({
                 ? 'bg-blue-700 hover:bg-blue-800 text-white border-blue-900 shadow-xs' 
                 : 'bg-white hover:bg-slate-100 border-[#808080]'
             }`}
-            title={activeReport.includes('bill_print') ? "Print 4-in-1 A4 Sheets / Save PDF" : "Print Report (Ctrl+P)"}
+            title={activeReport.includes('bill_print') ? `Print 4-in-1 A4 Sheets / Save PDF (${billPrintMode === 'simple' ? 'Simple' : 'Detail'})` : "Print Report (Ctrl+P)"}
           >
             <Printer className={`w-3.5 h-3.5 ${activeReport.includes('bill_print') ? 'text-white' : 'text-blue-900'}`} />
-            <span>{activeReport.includes('bill_print') ? 'Print 4 in 1 A4 / Save PDF' : 'Print'}</span>
+            <span>{activeReport.includes('bill_print') ? `Print 4 in 1 A4 (${billPrintMode === 'simple' ? 'Simple' : 'Detail'})` : 'Print'}</span>
           </button>
 
           <button 

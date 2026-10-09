@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Printer, ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react';
 import { 
   BillRecord, 
@@ -31,6 +31,13 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'single_sheet' | 'all_sheets'>('single_sheet');
   const [printMode, setPrintMode] = useState<BillPrintMode>(initialPrintMode);
+
+  // Sync printMode whenever parent initialPrintMode changes
+  useEffect(() => {
+    if (initialPrintMode) {
+      setPrintMode(initialPrintMode);
+    }
+  }, [initialPrintMode]);
 
   // Chunk bills into groups of 4 (each group = 1 A4 page with 2x2 quadrants: [0=TL, 1=TR, 2=BL, 3=BR])
   const a4Pages: BillRecord[][] = [];

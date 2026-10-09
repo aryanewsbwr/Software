@@ -991,35 +991,44 @@ export async function GET(request: NextRequest) {
       const bills = billingResult.bills.map((b) => {
         const c = pageCusts.find(cust => cust.customer_id === b.customer_id) || {};
 
-        const deliveryMap = new Map<string, number>();
+        const deliveryByPub = new Map<string, number>();
         (b.breakup || [])
           .filter(item => item.sort_order === 2)
           .forEach(item => {
             const cleanPub = item.item.replace(/ - Delivery$/i, '').trim().toLowerCase();
-            deliveryMap.set(cleanPub, (deliveryMap.get(cleanPub) || 0) + (item.amount || 0));
+            deliveryByPub.set(cleanPub, (deliveryByPub.get(cleanPub) || 0) + (item.amount || 0));
           });
 
-        const lineItems = (b.breakup || [])
-          .filter(item => item.sort_order === 1)
-          .map((item, idx) => {
-            const cleanName = item.item.trim().toLowerCase();
-            let delyAmt = deliveryMap.get(cleanName) || 0;
-            return {
-              sno: idx + 1,
-              pub_name: item.item,
-              circulation: 'Morning',
-              qty: item.qty || 1,
-              days: item.days_or_copies || item.qty || daysInMonth,
-              rate: item.rate,
-              amount: item.amount,
-              delivery_amount: delyAmt
-            };
-          });
+        const paperItems = (b.breakup || []).filter(item => item.sort_order === 1);
+        
+        // Find the last index for each publication in paperItems so delivery is added once per pub
+        const lastIndexByPub = new Map<string, number>();
+        paperItems.forEach((item, idx) => {
+          const cleanName = item.item.trim().toLowerCase();
+          lastIndexByPub.set(cleanName, idx);
+        });
 
-        // If line items didn't get delivery amount but b.delivery_amount exists, assign to first item
-        const totalLineDely = lineItems.reduce((acc, it) => acc + (it.delivery_amount || 0), 0);
-        if (totalLineDely === 0 && (b.delivery_amount || 0) > 0 && lineItems.length > 0) {
-          lineItems[0].delivery_amount = b.delivery_amount;
+        const lineItems = paperItems.map((item, idx) => {
+          const cleanName = item.item.trim().toLowerCase();
+          const isLastLineForPub = lastIndexByPub.get(cleanName) === idx;
+          const delyAmt = isLastLineForPub ? (deliveryByPub.get(cleanName) || 0) : 0;
+          return {
+            sno: idx + 1,
+            pub_name: item.item,
+            circulation: 'Morning',
+            qty: item.qty || 1,
+            days: item.days_or_copies || item.qty || daysInMonth,
+            rate: item.rate,
+            amount: item.amount,
+            delivery_amount: delyAmt
+          };
+        });
+
+        // If customer has delivery_amount > 0 but unassigned, assign to last line item
+        const totalAssignedDely = lineItems.reduce((acc, it) => acc + (it.delivery_amount || 0), 0);
+        const unassignedDely = (b.delivery_amount || 0) - totalAssignedDely;
+        if (unassignedDely > 0 && lineItems.length > 0) {
+          lineItems[lineItems.length - 1].delivery_amount = (lineItems[lineItems.length - 1].delivery_amount || 0) + unassignedDely;
         }
 
         const isGovtSupply = c.govt_supply === -1 || c.govt_supply === 1 || c.govt_supply === true || String(c.govt_supply) === '1' || String(c.govt_supply) === '-1';
