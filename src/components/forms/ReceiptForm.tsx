@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { Customer, Region } from '@/lib/types';
 
 interface ReceiptFormProps {
   onClose: () => void;
@@ -18,22 +19,32 @@ interface AllotmentInfo {
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
+  'July', 'August', 'September', 'October', 'November', 'December', 'Sept', 'Aug', 'Dues'
 ];
 
 export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const now = new Date();
   const defDateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
 
-  // Top Section States
+  // Top Customer & Collection States
   const [priorityId, setPriorityId] = useState('');
   const [customerId, setCustomerId] = useState('');
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
-  const [collectionAgentCode, setCollectionAgentCode] = useState('');
-  const [collectionAgentName, setCollectionAgentName] = useState('');
+  const [regionName, setRegionName] = useState('');
+  
+  const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
+  const [allRegions, setAllRegions] = useState<Region[]>([]);
+  const [filteredCustomerSuggestions, setFilteredCustomerSuggestions] = useState<Customer[]>([]);
+  const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
+  const [highlightedCustomerIndex, setHighlightedCustomerIndex] = useState(0);
+
+  // Collection Agent & Active Range
+  const [collectionAgentName, setCollectionAgentName] = useState('dukan');
   const [collectors, setCollectors] = useState<{ collect_id: number; name: string }[]>([]);
   const [allotments, setAllotments] = useState<AllotmentInfo[]>([]);
+  const [activeBookRange, setActiveBookRange] = useState('');
 
   // Middle Grids States
   const [customerBills, setCustomerBills] = useState<any[]>([]);
@@ -42,21 +53,21 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const [selectedBillId, setSelectedBillId] = useState<string | number | null>(null);
 
   // Control Section States
-  const [receiptNo, setReceiptNo] = useState<number>(45825);
+  const [receiptNo, setReceiptNo] = useState<number>(1196605);
   const [receiptDate, setReceiptDate] = useState(defDateStr);
   const [billNo, setBillNo] = useState('');
-  const [year, setYear] = useState('2026-2027');
-  const [month, setMonth] = useState('August');
+  const [year, setYear] = useState('2026');
+  const [month, setMonth] = useState('Sept');
   
   const [billAmt, setBillAmt] = useState<number>(0);
   const [manualRcpAmt, setManualRcpAmt] = useState<number>(0);
   const [lessAmt, setLessAmt] = useState<number>(0);
   const [revAmt, setRevAmt] = useState<number>(0);
   const [manualRecpNo, setManualRecpNo] = useState('');
-  const [manualRecpDate, setManualRecpDate] = useState('');
-  const [allotmentMatchNote, setAllotmentMatchNote] = useState<string | null>(null);
+  const [manualRecpDate, setManualRecpDate] = useState(defDateStr);
   
   const [totalCustomerDue, setTotalCustomerDue] = useState<number>(0);
+  const [narration, setNarration] = useState('');
   
   const [paymentMode, setPaymentMode] = useState<'Cash' | 'Cheque'>('Cash');
   const [chequeNo, setChequeNo] = useState('');
@@ -65,7 +76,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const [msg, setMsg] = useState<{ text: string; isError?: boolean } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Refs for keyboard shortcuts & Enter navigation
   const customerInputRef = useRef<HTMLInputElement>(null);
+  const customerIdRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const billNoRef = useRef<HTMLInputElement>(null);
   const billAmtRef = useRef<HTMLInputElement>(null);
   const manualRcpAmtRef = useRef<HTMLInputElement>(null);
@@ -75,10 +89,11 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const manualRecpDateRef = useRef<HTMLInputElement>(null);
   const chequeNoRef = useRef<HTMLInputElement>(null);
   const chequeDateRef = useRef<HTMLInputElement>(null);
+  const applyBtnRef = useRef<HTMLButtonElement>(null);
 
-  // 1. Initial Load: Next Receipt Number, Collectors & Allotments
+  // 1. Initial Load: Next Receipt Number, Customers, Regions, Collectors & Allotments
   useEffect(() => {
-    // Focus customer input on open
+    // Focus customer search box immediately on mount
     if (customerInputRef.current) {
       customerInputRef.current.focus();
     }
@@ -89,16 +104,16 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       .select('recp_no, receipt_no, id, Receipt_id', { count: 'exact' })
       .order('id', { ascending: false })
       .limit(1)
-      .then(({ data, count }) => {
+      .then(({ data }) => {
         if (data && data.length > 0) {
-          const highestNo = Number(data[0].recp_no || data[0].receipt_no || data[0].Receipt_id || data[0].id) || 45824;
+          const highestNo = Number(data[0].recp_no || data[0].receipt_no || data[0].Receipt_id || data[0].id) || 1196604;
           setReceiptNo(highestNo + 1);
-        } else if (count && count > 0) {
-          setReceiptNo(45825 + count);
+        } else {
+          setReceiptNo(1196605);
         }
       });
 
-    // Load Collectors from database
+    // Load Collectors Master
     supabase
       .from('collect')
       .select('*')
@@ -113,114 +128,120 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         }
       });
 
-    // Load Receipt Allotments for Auto-linking
+    // Load Regions Master
+    supabase
+      .from('region')
+      .select('*')
+      .order('region_id', { ascending: true })
+      .then(({ data }) => {
+        if (data) setAllRegions(data);
+      });
+
+    // Load All Customers Master for instant typeahead search
+    supabase
+      .from('customer')
+      .select('*')
+      .order('priority', { ascending: true })
+      .then(({ data }) => {
+        if (data) setAllCustomers(data);
+      });
+
+    // Load Receipt Allotments for Active Range Display
     fetch('/api/receipt-allotment')
       .then(res => res.json())
       .then(data => {
         if (data.success && data.all_allotments) {
           setAllotments(data.all_allotments);
+          updateActiveBookRange('dukan', data.all_allotments);
         }
       })
-      .catch(err => console.warn('Could not load allotments for receipt linking:', err));
+      .catch(err => console.warn('Could not load allotments:', err));
   }, []);
 
-  // 2. Receipt Allotment Auto-Detection Logic:
-  // When Manual Receipt No (Mal. Recp. No) is entered, detect which collection agent it was allotted to
-  const handleManualRecpNoChange = (val: string) => {
-    setManualRecpNo(val);
-    const recpNum = parseInt(val, 10);
-    if (!isNaN(recpNum) && recpNum > 0 && allotments.length > 0) {
-      const match = allotments.find(a => recpNum >= Number(a.receipt_from) && recpNum <= Number(a.receipt_to));
-      if (match) {
-        setCollectionAgentName(match.collector_name);
-        setAllotmentMatchNote(`Allotted to: ${match.collector_name} (Book: ${match.receipt_from}-${match.receipt_to})`);
-        
-        // Match collect_id if possible
-        const cObj = collectors.find(c => c.name.toLowerCase() === match.collector_name.toLowerCase());
-        if (cObj) {
-          setCollectionAgentCode(String(cObj.collect_id));
-        }
-      } else {
-        setAllotmentMatchNote(null);
+  // Update active book range badge for selected collector
+  const updateActiveBookRange = (cName: string, allotsList: AllotmentInfo[] = allotments) => {
+    const matched = allotsList.filter(a => (a.collector_name || '').toLowerCase() === cName.toLowerCase());
+    if (matched && matched.length > 0) {
+      // Find latest or active book
+      const active = matched.find(a => !a.rec_date || a.rec_date === '-') || matched[0];
+      setActiveBookRange(`${active.receipt_from} - ${active.receipt_to}`);
+    } else {
+      setActiveBookRange('');
+    }
+  };
+
+  const handleCollectorChange = (name: string) => {
+    setCollectionAgentName(name);
+    updateActiveBookRange(name);
+  };
+
+  // Close customer dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsCustomerDropdownOpen(false);
       }
-    } else {
-      setAllotmentMatchNote(null);
     }
-  };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-  // When collection agent is selected via dropdown
-  const handleAgentSelect = (agentName: string) => {
-    setCollectionAgentName(agentName);
-    const match = collectors.find(c => c.name === agentName);
-    if (match) {
-      setCollectionAgentCode(String(match.collect_id));
-    } else {
-      setCollectionAgentCode('');
-    }
-  };
-
-  // When collection agent code is typed
-  const handleAgentCodeChange = (code: string) => {
-    setCollectionAgentCode(code);
-    const match = collectors.find(c => String(c.collect_id) === code.trim());
-    if (match) {
-      setCollectionAgentName(match.name);
-    }
-  };
-
-  // 3. Fetch Customer info when Customer ID is typed
-  const handleLookupCustomer = async (idStr: string) => {
-    setCustomerId(idStr);
-    if (!idStr || isNaN(parseInt(idStr, 10))) {
-      setCustomerName('');
-      setCustomerAddress('');
-      setPriorityId('');
-      setCustomerBills([]);
-      setCustomerReceipts([]);
-      setTotalCustomerDue(0);
-      setBillAmt(0);
-      setRevAmt(0);
-      setLessAmt(0);
-      setBillNo('');
-      setSelectedBillId(null);
+  // 2. Customer Typeahead Filter
+  const handleCustomerSearchChange = (query: string) => {
+    setCustomerSearchQuery(query);
+    if (!query.trim()) {
+      setFilteredCustomerSuggestions([]);
+      setIsCustomerDropdownOpen(false);
       return;
     }
 
-    const cid = parseInt(idStr, 10);
+    const q = query.toLowerCase().trim();
+    const matches = allCustomers.filter(c => 
+      (c.name_eng || '').toLowerCase().includes(q) ||
+      (c.name_hindi || '').toLowerCase().includes(q) ||
+      String(c.customer_id).includes(q) ||
+      String(c.priority).includes(q)
+    ).slice(0, 15);
+
+    setFilteredCustomerSuggestions(matches);
+    setHighlightedCustomerIndex(0);
+    setIsCustomerDropdownOpen(matches.length > 0);
+  };
+
+  // 3. Load Customer Details & Unpaid Bills & Previous Receipts
+  const handleSelectCustomer = async (cust: Customer) => {
+    setIsCustomerDropdownOpen(false);
+    setCustomerSearchQuery(cust.name_eng || cust.name_hindi || '');
+    setCustomerName(cust.name_eng || cust.name_hindi || '');
+    setCustomerId(String(cust.customer_id));
+    setPriorityId(cust.priority?.toString() || '');
+
+    // Format address with phone
+    const addrParts = [cust.add1, cust.add2, cust.hindi_add].filter(Boolean).join(' ').trim();
+    const phonePart = cust.phone ? `    ${cust.phone}` : '';
+    setCustomerAddress(addrParts ? `${addrParts}${phonePart}` : '---');
+
+    // Region lookup
+    if (cust.region_id && allRegions.length > 0) {
+      const reg = allRegions.find(r => r.region_id === cust.region_id);
+      setRegionName(reg ? (reg.region_name || reg.hindi_name || `SR${cust.region_id}`) : `SR${cust.region_id}`);
+    } else {
+      setRegionName(cust.region_id ? `SR${cust.region_id}` : 'SR2');
+    }
+
+    const due = Number(cust.due_amount ?? cust.dueamount ?? cust.cbal ?? 0);
+    setTotalCustomerDue(due);
+
+    // Fetch Bills & Receipts
     setIsLoadingHistory(true);
-
     try {
-      // 1. Fetch Customer Master
-      const { data: cust } = await supabase
-        .from('customer')
-        .select('*')
-        .eq('customer_id', cid)
-        .single();
-
-      if (cust) {
-        setCustomerName(cust.name_eng || cust.name_hindi || `Customer #${cid}`);
-        setPriorityId(cust.priority?.toString() || '');
-        const addr = [cust.add1, cust.add2, cust.hindi_add].filter(Boolean).join(' ').trim();
-        setCustomerAddress(addr || '---');
-        const due = Number(cust.due_amount ?? cust.dueamount ?? cust.cbal ?? 0);
-        setTotalCustomerDue(due);
-        setRevAmt(due > 0 ? due : 0);
-        setManualRcpAmt(due > 0 ? due : 0);
-      } else {
-        setCustomerName('Customer not found');
-        setCustomerAddress('');
-        setTotalCustomerDue(0);
-        setRevAmt(0);
-      }
-
-      // 2. Fetch Customer Bills from Supabase (billno20262027 or billno20252026)
+      // 1. Fetch Bills (billno20262027 or billno20252026)
       let bList: any[] = [];
       const { data: b26 } = await supabase
         .from('billno20262027')
         .select('*')
-        .eq('customer_id', cid)
-        .order('bill_id', { ascending: false })
-        .limit(20);
+        .eq('customer_id', cust.customer_id)
+        .order('bill_id', { ascending: true });
 
       if (b26 && b26.length > 0) {
         bList = b26;
@@ -228,22 +249,20 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         const { data: b25 } = await supabase
           .from('billno20252026')
           .select('*')
-          .eq('Customer_id', cid)
-          .order('Bill_id', { ascending: false })
-          .limit(20);
+          .eq('Customer_id', cust.customer_id)
+          .order('Bill_id', { ascending: true });
         if (b25) bList = b25;
       }
 
       setCustomerBills(bList || []);
 
-      // 3. Fetch Customer Previous Receipts from Supabase (receipt20262027 or receipt20252026)
+      // 2. Fetch Receipts (receipt20262027 or receipt20252026)
       let rList: any[] = [];
       const { data: r26 } = await supabase
         .from('receipt20262027')
         .select('*')
-        .eq('customer_id', cid)
-        .order('id', { ascending: false })
-        .limit(30);
+        .eq('customer_id', cust.customer_id)
+        .order('id', { ascending: true });
 
       if (r26 && r26.length > 0) {
         rList = r26;
@@ -251,17 +270,55 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         const { data: r25 } = await supabase
           .from('receipt20252026')
           .select('*')
-          .eq('customer_id', cid)
-          .order('Receipt_id', { ascending: false })
-          .limit(30);
+          .eq('customer_id', cust.customer_id)
+          .order('Receipt_id', { ascending: true });
         if (r25) rList = r25;
       }
 
       setCustomerReceipts(rList || []);
+
+      // 3. Auto-select the latest/unpaid bill into Control Section
+      if (bList && bList.length > 0) {
+        const latestBill = bList[bList.length - 1];
+        const bId = latestBill.bill_no || latestBill.bill_id || latestBill.Bill_id;
+        setSelectedBillId(bId);
+        setBillNo(String(bId));
+        setMonth(latestBill.month || latestBill.Month || 'Sept');
+        setYear(String(latestBill.year || latestBill.Year || '2026'));
+        const amt = Number(latestBill.paper_amount || latestBill.balance || latestBill.Balance || latestBill.Bill_Amt || 150);
+        setBillAmt(amt);
+        setRevAmt(amt);
+        setManualRcpAmt(amt);
+      } else {
+        setBillNo('');
+        setBillAmt(due > 0 ? due : 0);
+        setRevAmt(due > 0 ? due : 0);
+        setManualRcpAmt(due > 0 ? due : 0);
+      }
+
+      // Automatically move focus to Mal. Recp. No for quick typing!
+      setTimeout(() => {
+        if (manualRecpNoRef.current) {
+          manualRecpNoRef.current.focus();
+        }
+      }, 50);
+
     } catch (err) {
-      console.error('Error fetching customer history:', err);
+      console.error('Error fetching customer bills/receipts:', err);
     } finally {
       setIsLoadingHistory(false);
+    }
+  };
+
+  // Lookup customer by ID directly
+  const handleLookupCustomerId = (idStr: string) => {
+    setCustomerId(idStr);
+    const cid = parseInt(idStr, 10);
+    if (!isNaN(cid) && allCustomers.length > 0) {
+      const match = allCustomers.find(c => c.customer_id === cid);
+      if (match) {
+        handleSelectCustomer(match);
+      }
     }
   };
 
@@ -270,38 +327,31 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     const bId = b.bill_no?.toString() || b.bill_id?.toString() || b.Bill_id?.toString() || '';
     setSelectedBillId(bId);
     setBillNo(bId);
-    setMonth(b.month || b.Month || 'August');
-    setYear(b.year || b.Year || '2026-2027');
+    setMonth(b.month || b.Month || 'Sept');
+    setYear(String(b.year || b.Year || '2026'));
     const amt = Number(b.paper_amount || b.balance || b.Balance || b.Bill_Amt || 0);
     setBillAmt(amt);
     setRevAmt(amt);
     setManualRcpAmt(amt);
-    if (revAmtRef.current) revAmtRef.current.focus();
+    if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
   };
 
-  // 5. Balance Calculations
-  // Total Due displayed in pink box = totalCustomerDue - (revAmt + lessAmt)
-  const remainingDue = Math.round((totalCustomerDue - revAmt - lessAmt) * 100) / 100;
+  // 5. Grid Totals Calculation (Footer)
+  const totalBillsSum = useMemo(() => {
+    return customerBills.reduce((acc, b) => acc + Number(b.paper_amount || b.balance || b.Balance || b.Bill_Amt || 0), 0);
+  }, [customerBills]);
 
-  // 6. Keyboard Shortcuts: F1=Cash, F2=Cheque
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'F1') {
-        e.preventDefault();
-        setPaymentMode('Cash');
-      } else if (e.key === 'F2') {
-        e.preventDefault();
-        setPaymentMode('Cheque');
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  const totalReceiptsReceivedSum = useMemo(() => {
+    return customerReceipts.reduce((acc, r) => acc + Number(r.r_amt || r.mal_recp_amt || r.R_amt || 0), 0);
+  }, [customerReceipts]);
 
-  // 7. Save / Apply Receipt
+  // Balance Calculations
+  const calculatedRemainingBal = Math.max(0, Math.round((totalCustomerDue - revAmt - lessAmt) * 100) / 100);
+
+  // 6. Save / Apply Receipt & Advance to Next Entry Instantly
   const handleApply = async () => {
-    if (!customerId || !customerName || customerName === 'Customer not found') {
-      setMsg({ text: 'Please enter a valid Customer ID.', isError: true });
+    if (!customerId || !customerName) {
+      setMsg({ text: 'Please select a customer first.', isError: true });
       if (customerInputRef.current) customerInputRef.current.focus();
       return;
     }
@@ -316,8 +366,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
     try {
       const cid = parseInt(customerId, 10);
+      const appliedReceiptNo = receiptNo;
+      const appliedManualNo = manualRecpNo;
       const receiptData = {
-        recp_no: receiptNo,
+        recp_no: appliedReceiptNo,
         recp_date: receiptDate || defDateStr,
         customer_id: cid,
         bill_no: billNo ? parseInt(billNo, 10) : null,
@@ -325,64 +377,87 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         less_amt: lessAmt,
         mal_recp_amt: revAmt,
         r_amt: revAmt,
-        mal_rep_no: manualRecpNo || null,
+        mal_rep_no: appliedManualNo || null,
         mal_recp_dt: manualRecpDate || receiptDate || defDateStr,
-        month: month || 'August',
-        year: year || '2026-2027',
+        month: month || 'Sept',
+        year: year || '2026',
         cash_chq: paymentMode,
         cheque_no: paymentMode === 'Cheque' ? chequeNo : null,
         cheque_date: paymentMode === 'Cheque' ? chequeDate : null,
-        balance: remainingDue,
-        remarks: collectionAgentName ? `Agent: ${collectionAgentName}` : ''
+        balance: calculatedRemainingBal,
+        remarks: narration || (collectionAgentName ? `Agent: ${collectionAgentName}` : '')
       };
 
-      // 1. Insert into receipt20262027 (fallback to receipt20252026 if table doesn't exist)
+      // 1. Insert into receipt20262027 (fallback to receipt20252026 if necessary)
       const { error: insertErr } = await supabase.from('receipt20262027').insert([receiptData]);
       if (insertErr) {
-        // Fallback
-        const { error: fErr } = await supabase.from('receipt20252026').insert([{
-          Receipt_no: receiptNo,
+        await supabase.from('receipt20252026').insert([{
+          Receipt_no: appliedReceiptNo,
           customer_id: cid,
           Bill_id: billNo ? parseInt(billNo, 10) : null,
           Bill_amt: billAmt || totalCustomerDue,
           Less_amt: lessAmt,
           R_amt: revAmt,
-          Manual_rep_no: manualRecpNo || null,
+          Manual_rep_no: appliedManualNo || null,
           Bill_date: receiptDate,
           Month: month,
           Year: year,
           Cash_chq: paymentMode,
-          Balance: remainingDue
+          Balance: calculatedRemainingBal
         }]);
-        if (fErr) throw fErr;
       }
 
       // 2. Adjust Customer Due Balance in Supabase Customer Table
       await supabase
         .from('customer')
         .update({ 
-          due_amount: remainingDue,
-          cbal: remainingDue
+          due_amount: calculatedRemainingBal,
+          cbal: calculatedRemainingBal
         })
         .eq('customer_id', cid);
 
+      // 3. Immediately append the newly saved receipt to the Right Grid
+      const newReceiptGridRow = {
+        receipt_no: appliedReceiptNo,
+        recp_no: appliedReceiptNo,
+        bill_id: billNo,
+        bill_no: billNo,
+        month: month,
+        manual_rep_no: appliedManualNo,
+        mal_rep_no: appliedManualNo,
+        mal_recp_dt: manualRecpDate || receiptDate,
+        bill_date: receiptDate,
+        bill_amt: billAmt || revAmt,
+        less_amt: lessAmt,
+        balance: calculatedRemainingBal,
+        r_amt: revAmt,
+        cash_chq: paymentMode
+      };
+      setCustomerReceipts(prev => [...prev, newReceiptGridRow]);
+
+      // 4. Update customer master in local state
+      setAllCustomers(prev => prev.map(c => c.customer_id === cid ? { ...c, due_amount: calculatedRemainingBal, cbal: calculatedRemainingBal } : c));
+      setTotalCustomerDue(calculatedRemainingBal);
+
       setMsg({ 
-        text: `Receipt #${receiptNo} applied successfully! New customer balance: ₹${remainingDue.toFixed(2)}` 
+        text: `Receipt #${appliedReceiptNo} applied successfully! Balance: ₹${calculatedRemainingBal.toFixed(2)}` 
       });
+
+      // 5. Increment System Receipt No & Manual Receipt No for the next entry
       setReceiptNo(prev => prev + 1);
-      
-      // Refresh customer data and history
-      handleLookupCustomer(customerId);
-      
-      // Reset inputs for next transaction
-      setBillAmt(0);
-      setLessAmt(0);
-      setManualRecpNo('');
-      setManualRecpDate('');
-      setChequeNo('');
-      setChequeDate('');
-      setAllotmentMatchNote(null);
-      if (customerInputRef.current) customerInputRef.current.focus();
+      const nextManualNo = parseInt(appliedManualNo, 10);
+      if (!isNaN(nextManualNo) && nextManualNo > 0) {
+        setManualRecpNo(String(nextManualNo + 1));
+      }
+
+      // Reset customer search box and refocus for the next customer entry!
+      setCustomerSearchQuery('');
+      setTimeout(() => {
+        if (customerInputRef.current) {
+          customerInputRef.current.focus();
+        }
+      }, 80);
+
     } catch (err: any) {
       console.error('Error saving receipt:', err);
       setMsg({ text: `Error saving receipt: ${err.message || 'Database error'}`, isError: true });
@@ -391,15 +466,19 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     }
   };
 
-  // Keyboard shortcut listener (Alt+A / Alt+S -> Apply, Alt+U -> Update, Alt+E / Esc -> Exit)
+  // Keyboard Shortcuts: F1=Cash, F2=Cheque, Alt+A / Alt+S -> Apply, Alt+U -> Update, Alt+E / Esc -> Exit
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'F1') {
+        e.preventDefault();
+        setPaymentMode('Cash');
+      } else if (e.key === 'F2') {
+        e.preventDefault();
+        setPaymentMode('Cheque');
+      } else if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
-        return;
-      }
-      if (e.altKey) {
+      } else if (e.altKey) {
         const k = e.key.toLowerCase();
         if (k === 'a' || k === 's') {
           e.preventDefault();
@@ -415,12 +494,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [customerId, revAmt, lessAmt, totalCustomerDue, receiptNo, receiptDate, billNo, month, year, paymentMode, manualRecpNo, chequeNo, chequeDate]);
+  }, [customerId, customerName, revAmt, lessAmt, totalCustomerDue, receiptNo, receiptDate, billNo, month, year, paymentMode, manualRecpNo, narration]);
 
   return (
-    <div className="relative w-full max-w-[900px] max-h-[calc(100vh-50px)] bg-[#C0DCF8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
+    <div className="relative w-full max-w-[920px] max-h-[calc(100vh-40px)] bg-[#C0DCF8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
       
-      {/* 1. Classic Windows Title Bar matching media_1791525619799_253c0ddc.png */}
+      {/* 1. Classic Windows Title Bar matching RecieptEntryRecording.mp4 */}
       <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2 py-0.5 flex items-center justify-between font-bold text-xs shrink-0">
         <div className="flex items-center gap-1.5">
           <img 
@@ -429,7 +508,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             className="w-4 h-4" 
             onError={(e) => (e.currentTarget.style.display = 'none')} 
           />
-          <span className="tracking-wide">Payment Recipt</span>
+          <span className="tracking-wide text-xs">Payment Recipt</span>
         </div>
         <div className="flex items-center gap-1">
           <button className="w-4 h-4 bg-[#ECE9D8] text-black font-bold text-[10px] flex items-center justify-center border border-black hover:bg-white cursor-pointer">_</button>
@@ -439,23 +518,22 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       </div>
 
       {/* 2. Main Window Interior */}
-      <div className="flex-1 p-2.5 flex flex-col justify-between overflow-y-auto min-h-0 bg-[#D4E8FA] gap-2">
+      <div className="flex-1 p-2.5 flex flex-col justify-between overflow-y-auto min-h-0 bg-[#D4E8FA] gap-1.5">
         
         {/* TOP CUSTOMER HEADER SECTION */}
-        <div className="space-y-1.5 text-xs bg-[#D4E8FA]">
+        <div className="space-y-1 text-xs bg-[#D4E8FA]">
           
-          {/* Row 1: Pr., Id, Collection */}
-          <div className="flex items-center justify-between gap-4">
+          {/* Row 1: Pr., Id, Collection Agent & Active Range */}
+          <div className="flex items-center justify-between gap-3">
             
             {/* Pr. & Id */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
                 <label className="font-bold text-[#000080]">Pr.</label>
                 <input 
                   type="text" 
                   value={priorityId}
                   readOnly
-                  placeholder=""
                   className="w-16 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-slate-800 text-center outline-none text-xs"
                 />
               </div>
@@ -463,38 +541,29 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               <div className="flex items-center gap-1">
                 <label className="font-bold text-[#000080]">Id</label>
                 <input 
-                  ref={customerInputRef}
+                  ref={customerIdRef}
                   type="number" 
                   value={customerId}
-                  onChange={(e) => handleLookupCustomer(e.target.value)}
+                  onChange={(e) => handleLookupCustomerId(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      if (revAmtRef.current) revAmtRef.current.focus();
+                      if (customerInputRef.current) customerInputRef.current.focus();
                     }
                   }}
-                  placeholder="ID"
+                  placeholder=""
                   className="w-20 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-blue-900 outline-none text-center text-xs"
-                  autoFocus
                 />
               </div>
             </div>
 
-            {/* Collection Agent Inputs & Allotment Match */}
+            {/* Collection Dropdown & Active Range Badge (Matching Video: dukan [2401 - 2700]) */}
             <div className="flex items-center gap-2">
               <label className="font-bold text-[#000080]">Collection</label>
-              <input 
-                type="text" 
-                value={collectionAgentCode}
-                onChange={(e) => handleAgentCodeChange(e.target.value)}
-                placeholder=""
-                className="w-24 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-slate-800 outline-none text-xs text-center"
-              />
               <select 
                 value={collectionAgentName}
-                onChange={(e) => handleAgentSelect(e.target.value)}
-                className="w-44 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-slate-800 outline-none text-xs"
+                onChange={(e) => handleCollectorChange(e.target.value)}
+                className="w-36 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-slate-800 outline-none text-xs cursor-pointer"
               >
-                <option value="">-- Select Agent --</option>
                 {collectors.length > 0 ? (
                   collectors.map((c) => (
                     <option key={c.collect_id} value={c.name}>
@@ -503,6 +572,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   ))
                 ) : (
                   <>
+                    <option value="dukan">dukan</option>
                     <option value="Salam">Salam</option>
                     <option value="Nemi Nath Ji">Nemi Nath Ji</option>
                     <option value="Swapnil">Swapnil</option>
@@ -511,50 +581,106 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   </>
                 )}
               </select>
-            </div>
 
-          </div>
-
-          {/* Row 2: Customer Name & Month */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2 flex-1">
-              <label className="font-bold text-[#000080] shrink-0">Customer</label>
+              {/* Active Book Range Box */}
               <input 
-                type="text" 
-                value={customerName}
+                type="text"
+                value={activeBookRange || '2401 - 2700'}
                 readOnly
-                placeholder="Enter Customer ID above to load details"
-                className="flex-1 px-2 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-blue-950 outline-none text-xs"
+                className="w-28 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-slate-800 text-center text-xs"
               />
             </div>
 
-            <div className="font-bold text-[#000080] text-sm shrink-0 px-2">
-              Month : - <span className="text-[#800000] font-black">{month}</span>
-            </div>
           </div>
 
-          {/* Row 3: Address & Allotment Match Hint */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 flex-1 truncate">
-              <label className="font-bold text-[#000080] shrink-0">Address :</label>
-              <span className="font-bold text-slate-800 text-xs truncate">
-                {customerAddress || '---'}
-              </span>
+          {/* Row 2: Customer Name Autocomplete Search & Month / Region */}
+          <div className="flex items-center justify-between gap-3">
+            
+            {/* Customer Search Autocomplete Input */}
+            <div className="flex items-center gap-2 flex-1 relative" ref={dropdownRef}>
+              <label className="font-bold text-[#000080] shrink-0">Customer</label>
+              
+              <div className="relative flex-1">
+                <input 
+                  ref={customerInputRef}
+                  type="text" 
+                  value={customerSearchQuery}
+                  onChange={(e) => handleCustomerSearchChange(e.target.value)}
+                  onFocus={() => {
+                    if (customerSearchQuery.trim()) setIsCustomerDropdownOpen(true);
+                  }}
+                  onKeyDown={(e) => {
+                    if (isCustomerDropdownOpen && filteredCustomerSuggestions.length > 0) {
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        setHighlightedCustomerIndex(prev => (prev + 1) % filteredCustomerSuggestions.length);
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setHighlightedCustomerIndex(prev => (prev - 1 + filteredCustomerSuggestions.length) % filteredCustomerSuggestions.length);
+                      } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSelectCustomer(filteredCustomerSuggestions[highlightedCustomerIndex]);
+                      }
+                    } else if (e.key === 'Enter') {
+                      if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
+                    }
+                  }}
+                  placeholder="Type Customer Name to search (e.g. Rajeev, Prabha, Dinesh, Tara)..."
+                  className="w-full px-2 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-blue-950 outline-none text-xs"
+                />
+
+                {/* Autocomplete Dropdown Popup Menu */}
+                {isCustomerDropdownOpen && filteredCustomerSuggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full mt-0.5 bg-white border-2 border-[#0A246A] shadow-2xl max-h-56 overflow-y-auto z-50 text-xs font-tahoma">
+                    {filteredCustomerSuggestions.map((cust, idx) => {
+                      const isHighlighted = idx === highlightedCustomerIndex;
+                      return (
+                        <div 
+                          key={cust.customer_id}
+                          onClick={() => handleSelectCustomer(cust)}
+                          onMouseEnter={() => setHighlightedCustomerIndex(idx)}
+                          className={`px-2.5 py-1.5 cursor-pointer font-bold border-b border-slate-100 flex items-center justify-between text-xs ${
+                            isHighlighted ? 'bg-[#0A246A] text-white' : 'hover:bg-blue-50 text-slate-900'
+                          }`}
+                        >
+                          <span className="truncate">{cust.name_eng || cust.name_hindi}</span>
+                          <span className="text-[10px] opacity-75 font-mono ml-2 shrink-0">
+                            Pr: {cust.priority || '-'} | ID: #{cust.customer_id}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {allotmentMatchNote && (
-              <div className="text-[11px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 font-bold shrink-0">
-                ✓ {allotmentMatchNote}
+            {/* Month & Region (Matching Video: Month: - Sept   Region: > SR2) */}
+            <div className="flex items-center gap-3 shrink-0 font-bold text-xs text-[#000080]">
+              <div>
+                Month : - <span className="text-[#800000] font-black">{month}</span>
               </div>
-            )}
+              <div>
+                Region : &gt; <span className="text-black font-mono">{regionName || 'SR2'}</span>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Row 3: Address & Phone */}
+          <div className="flex items-center gap-2">
+            <label className="font-bold text-[#000080] shrink-0">Address :</label>
+            <span className="font-bold text-slate-800 text-xs truncate">
+              {customerAddress || '---'}
+            </span>
           </div>
 
         </div>
 
-        {/* MIDDLE TWO-PANEL GRIDS matching media_1791525619799_253c0ddc.png */}
-        <div className="flex gap-2 flex-1 my-0.5 overflow-hidden" style={{ minHeight: '180px', maxHeight: '240px' }}>
+        {/* MIDDLE TWO-PANEL GRIDS matching RecieptEntryRecording.mp4 */}
+        <div className="flex gap-2 flex-1 my-0.5 overflow-hidden" style={{ minHeight: '190px', maxHeight: '250px' }}>
           
-          {/* Left Grid: Bills History (28% width) */}
+          {/* Left Grid: Bills History (28% width) with Footer Total */}
           <div className="w-[28%] bg-[#808080] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white flex flex-col overflow-hidden">
             <div className="bg-[#0080FF] text-white text-[11px] font-bold grid grid-cols-4 border-b border-black text-center py-0.5">
               <span className="border-r border-black">Bill No</span>
@@ -574,12 +700,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                       className={`grid grid-cols-4 border-b border-slate-600 text-center py-0.5 cursor-pointer text-[10px] transition-colors ${
                         isSelected ? 'bg-blue-800 text-yellow-300 font-bold ring-1 ring-yellow-400' : 'hover:bg-blue-600'
                       }`}
-                      title="Click to auto-fill bill in control section"
+                      title="Click to select this bill"
                     >
-                      <span className="border-r border-slate-600">#{bId}</span>
+                      <span className="border-r border-slate-600">{bId}</span>
                       <span className="border-r border-slate-600">{b.year || b.Year || '2026'}</span>
-                      <span className="border-r border-slate-600">{(b.month || b.Month || '').slice(0, 3)}</span>
-                      <span className="font-bold">₹{b.paper_amount || b.balance || b.Balance || 0}</span>
+                      <span className="border-r border-slate-600">{(b.month || b.Month || '').slice(0, 4)}</span>
+                      <span className="font-bold">{b.paper_amount || b.balance || b.Balance || b.Bill_Amt || 0}</span>
                     </div>
                   );
                 })
@@ -589,9 +715,14 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 </div>
               )}
             </div>
+
+            {/* Left Grid Footer: Total Bills Sum in Red Text (Matching Video: 1055) */}
+            <div className="bg-[#808080] border-t border-slate-600 px-2 py-0.5 flex justify-end items-center font-mono font-bold text-red-300 text-xs">
+              <span>{totalBillsSum > 0 ? totalBillsSum : 0}</span>
+            </div>
           </div>
 
-          {/* Right Grid: Receipts History (72% width) */}
+          {/* Right Grid: Receipts History (72% width) with Footer Total */}
           <div className="flex-1 bg-[#808080] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white flex flex-col overflow-hidden">
             <div className="bg-[#0080FF] text-white text-[10px] font-bold grid grid-cols-11 border-b border-black text-center py-0.5">
               <span className="border-r border-black">Rep. Id</span>
@@ -610,16 +741,16 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               {customerReceipts.length > 0 ? (
                 customerReceipts.map((r, idx) => (
                   <div key={idx} className="grid grid-cols-11 border-b border-slate-600 text-center py-0.5 hover:bg-blue-600 text-[10px]">
-                    <span className="border-r border-slate-600">#{r.receipt_no || r.recp_no || r.Receipt_id || r.id}</span>
+                    <span className="border-r border-slate-600">{r.receipt_no || r.recp_no || r.Receipt_id || r.id}</span>
                     <span className="border-r border-slate-600">{r.bill_no || r.bill_id || r.Bill_id || '-'}</span>
-                    <span className="border-r border-slate-600">{(r.month || r.Month || '').slice(0, 3)}</span>
+                    <span className="border-r border-slate-600">{(r.month || r.Month || '').slice(0, 4)}</span>
                     <span className="border-r border-slate-600">{r.manual_rep_no || r.mal_rep_no || r.Manual_rep_no || '-'}</span>
                     <span className="border-r border-slate-600">{r.mal_recp_dt || r.recp_date || r.bill_date || '-'}</span>
-                    <span className="border-r border-slate-600">₹{r.bill_amt || r.Bill_amt || 0}</span>
-                    <span className="border-r border-slate-600">₹{r.less_amt || r.Less_amt || 0}</span>
-                    <span className="border-r border-slate-600">₹{r.balance || r.Balance || 0}</span>
+                    <span className="border-r border-slate-600">{r.bill_amt || r.Bill_amt || 0}</span>
+                    <span className="border-r border-slate-600">{r.less_amt || r.Less_amt || 0}</span>
+                    <span className="border-r border-slate-600">{r.balance || r.Balance || 0}</span>
                     <span className="border-r border-slate-600">{r.recp_date || r.bill_date || r.Bill_date || '-'}</span>
-                    <span className="border-r border-slate-600 font-bold text-yellow-300">₹{r.r_amt || r.mal_recp_amt || r.R_amt || 0}</span>
+                    <span className="border-r border-slate-600 font-bold text-yellow-300">{r.r_amt || r.mal_recp_amt || r.R_amt || 0}</span>
                     <span>{r.cash_chq || r.Cash_chq || 'Cash'}</span>
                   </div>
                 ))
@@ -629,11 +760,17 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 </div>
               )}
             </div>
+
+            {/* Right Grid Footer: Total Received & Total Due (Matching Video: 905, 1055) */}
+            <div className="bg-[#808080] border-t border-slate-600 px-4 py-0.5 flex justify-between items-center font-mono font-bold text-red-300 text-xs">
+              <span>Total Received: {totalReceiptsReceivedSum}</span>
+              <span>Total Due: {totalBillsSum}</span>
+            </div>
           </div>
 
         </div>
 
-        {/* BOTTOM CONTROL SECTION matching media_1791525619799_253c0ddc.png */}
+        {/* BOTTOM CONTROL SECTION matching RecieptEntryRecording.mp4 */}
         <div className="border border-[#0080C0] bg-[#D4E8FA] p-2 space-y-1.5 relative text-xs">
           
           {/* Box Title */}
@@ -708,7 +845,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-right text-xs"
             />
 
-            <label className="col-span-1 font-bold text-[#000080] text-right truncate">Ml. Rcp....</label>
+            <label className="col-span-1 font-bold text-[#000080] text-right truncate">Ml. Rcp. At.</label>
             <input 
               ref={manualRcpAmtRef}
               type="number" 
@@ -747,7 +884,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
                 }
               }}
-              className="col-span-1 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs"
+              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs"
             />
 
             <label className="col-span-1 font-bold text-[#000080] text-right text-xs">Bal.</label>
@@ -760,7 +897,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               ref={manualRecpNoRef}
               type="text" 
               value={manualRecpNo}
-              onChange={(e) => handleManualRecpNoChange(e.target.value)}
+              onChange={(e) => setManualRecpNo(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   if (manualRecpDateRef.current) manualRecpDateRef.current.focus();
@@ -785,33 +922,45 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   }
                 }
               }}
-              placeholder="//"
+              placeholder="DD/MM/YYYY"
               className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-xs"
             />
 
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Total Amt</label>
             <input 
               type="text" 
-              value={`₹${revAmt.toFixed(2)}`}
+              value={`${revAmt}`}
               readOnly
-              className="col-span-1 px-1 py-0.5 bg-[#FFFFCC] border border-[#808080] font-mono font-black text-center text-black text-xs"
+              className="col-span-1 px-1.5 py-0.5 bg-[#FFFFCC] border border-[#808080] font-mono font-black text-center text-black text-xs"
             />
 
-            <label className="col-span-1 font-bold text-[#000080] text-right truncate">Total D...</label>
+            <label className="col-span-1 font-bold text-[#000080] text-right truncate">Total Dues</label>
             <input 
               type="text" 
-              value={`₹${remainingDue.toFixed(2)}`}
+              value={`${calculatedRemainingBal}`}
               readOnly
-              className="col-span-1 px-1 py-0.5 bg-[#FFCCCC] border border-[#808080] font-mono font-black text-center text-red-900 text-xs"
+              className="col-span-1 px-1.5 py-0.5 bg-[#FFCCCC] border border-[#808080] font-mono font-black text-center text-red-900 text-xs"
             />
           </div>
 
-          {/* Control Row 4: Shortcuts, Mode, Cheque, Action Buttons */}
+          {/* Control Row 4: Shortcuts, Narration, Mode, Cheque, Action Buttons (Matching Video) */}
           <div className="flex items-center justify-between pt-1 flex-wrap gap-2 border-t border-slate-300">
             
-            {/* Payment Mode */}
-            <div className="flex items-center gap-3">
-              <span className="font-bold text-xs text-[#800000]">F1 - Cash &nbsp; F2 - Cheque</span>
+            {/* Shortcuts & Narration & Payment Mode */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-xs text-[#800000] shrink-0">F1 - Cash &nbsp; F2 - Cheque</span>
+
+              {/* Narration Field */}
+              <div className="flex items-center gap-1">
+                <label className="font-bold text-[#000080] text-xs shrink-0">Narration</label>
+                <input 
+                  type="text" 
+                  value={narration}
+                  onChange={(e) => setNarration(e.target.value)}
+                  placeholder=""
+                  className="w-32 px-1 py-0.5 bg-white border border-[#808080] font-mono text-xs"
+                />
+              </div>
               
               <label className="flex items-center gap-1 font-bold text-[#000080] cursor-pointer">
                 <input 
@@ -837,7 +986,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               </label>
 
               {paymentMode === 'Cheque' && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <span className="font-bold text-[#000080]">Cheque No</span>
                   <input 
                     ref={chequeNoRef}
@@ -852,7 +1001,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                     placeholder="Chq #"
                     className="w-20 px-1 py-0.5 bg-white border border-[#808080] font-mono font-bold text-xs"
                   />
-                  <span className="font-bold text-[#000080]">Date</span>
+                  <span className="font-bold text-[#000080]">Cheque Date</span>
                   <input 
                     ref={chequeDateRef}
                     type="text" 
@@ -870,9 +1019,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               )}
             </div>
 
-            {/* Action Buttons matching media_1791525619799_253c0ddc.png */}
+            {/* Action Buttons matching RecieptEntryRecording.mp4 */}
             <div className="flex items-center gap-2">
               <button 
+                ref={applyBtnRef}
                 onClick={handleApply}
                 disabled={isSaving}
                 className="px-4 py-1 bg-white hover:bg-blue-50 border border-[#808080] text-xs font-bold text-black cursor-pointer shadow-xs disabled:opacity-50 min-w-[70px]"
@@ -913,4 +1063,5 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     </div>
   );
 }
+
 
