@@ -123,8 +123,8 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
     const sorted = [...rows].sort((a, b) => {
       const tA = parseDateToTimestamp(a.allot_date);
       const tB = parseDateToTimestamp(b.allot_date);
-      if (tA !== tB) return tA - tB;
-      return (Number(a.receipt_from) || 0) - (Number(b.receipt_from) || 0);
+      if (tA !== tB) return tB - tA; // Latest date first
+      return (Number(b.receipt_from) || 0) - (Number(a.receipt_from) || 0);
     });
     return sorted.map((r, i) => ({ ...r, sno: i + 1 }));
   };

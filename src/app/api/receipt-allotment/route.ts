@@ -118,8 +118,8 @@ function sortAndIndexAllotments(list: ReceiptAllotmentRecord[]): ReceiptAllotmen
     }
     const tA = parseDateToTimestamp(a.allot_date);
     const tB = parseDateToTimestamp(b.allot_date);
-    if (tA !== tB) return tA - tB;
-    return (a.receipt_from || 0) - (b.receipt_from || 0);
+    if (tA !== tB) return tB - tA; // Latest date first
+    return (b.receipt_from || 0) - (a.receipt_from || 0);
   });
 
   const collectorCounters: Record<string, number> = {};
