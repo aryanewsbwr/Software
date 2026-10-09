@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Printer, ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react';
 import { 
   BillRecord, 
+  BillPrintMode,
   BOY_LOGO_B64, 
   SIGNATURE_GLYPH_B64, 
   printBills4in1 
@@ -13,6 +14,7 @@ interface Bill4in1PreviewProps {
   bills: BillRecord[];
   title?: string;
   zoomLevel?: number;
+  initialPrintMode?: BillPrintMode;
 }
 
 function formatMoney(n: number | undefined | null): string {
@@ -23,10 +25,12 @@ function formatMoney(n: number | undefined | null): string {
 export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
   bills,
   title = 'Region Wise Bill Printing (4 in 1 A4)',
-  zoomLevel = 100
+  zoomLevel = 100,
+  initialPrintMode = 'simple'
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'single_sheet' | 'all_sheets'>('single_sheet');
+  const [printMode, setPrintMode] = useState<BillPrintMode>(initialPrintMode);
 
   // Chunk bills into groups of 4 (each group = 1 A4 page with 2x2 quadrants: [0=TL, 1=TR, 2=BL, 3=BR])
   const a4Pages: BillRecord[][] = [];
@@ -40,7 +44,7 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
     : a4Pages;
 
   const handlePrint = () => {
-    printBills4in1(bills, title);
+    printBills4in1(bills, title, printMode);
   };
 
   return (
@@ -53,6 +57,32 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
           <span className="text-slate-300">
             {bills.length} bills across {totalPages} A4 page{totalPages > 1 ? 's' : ''}
           </span>
+        </div>
+
+        {/* Print Mode Selector: Simple (Delivery merged) vs Detail (Delivery separate) */}
+        <div className="flex items-center bg-slate-900/90 p-0.5 rounded border border-slate-700">
+          <button
+            onClick={() => setPrintMode('simple')}
+            className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+              printMode === 'simple'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700'
+            }`}
+            title="Simple Print: Delivery is merged directly into publication prices (e.g. ₹100 + ₹10 = ₹110)"
+          >
+            📄 Simple Print (सरल)
+          </button>
+          <button
+            onClick={() => setPrintMode('detail')}
+            className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+              printMode === 'detail'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700'
+            }`}
+            title="Detail Print: Delivery charge is shown separately in the summary box"
+          >
+            📑 Detail Print (विस्तृत)
+          </button>
         </div>
 
         {/* Page Nav */}
@@ -97,7 +127,7 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
             title="Open Dedicated 4-in-1 Print & PDF Export Window"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Print 4-in-1 / Save PDF</span>
+            <span>Print 4-in-1 / Save PDF ({printMode === 'simple' ? 'Simple' : 'Detail'})</span>
           </button>
         </div>
       </div>
@@ -122,7 +152,37 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                 
                 const minRows = 4;
                 const items = b.items || [];
-                const rowCount = Math.max(items.length, minRows);
+                const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
+                const totalDelivery = b.delivery_charge || 0;
+
+                const displayItems = items.map((it, idx) => {
+                  let itemDelivery = 0;
+                  if (printMode === 'simple') {
+                    if (hasItemDelivery) {
+                      itemDelivery = it.delivery_amount || 0;
+                    } else if (totalDelivery > 0 && idx === 0) {
+                      itemDelivery = totalDelivery;
+                    }
+                  }
+                  const displayAmount = roundToFoxProRule(it.amount + itemDelivery);
+                  const qtyOrDays = it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1);
+                  return {
+                    pub_name: it.pub_name,
+                    qtyOrDays,
+                    rate: it.rate,
+                    amount: displayAmount
+                  };
+                });
+
+                const rowCount = Math.max(displayItems.length, minRows);
+
+                const summaryPaperTotal = printMode === 'simple'
+                  ? roundToFoxProRule(b.paper_amount + (b.delivery_charge || 0))
+                  : roundToFoxProRule(b.paper_amount);
+
+                const summaryDelivery = printMode === 'simple'
+                  ? 0
+                  : roundToFoxProRule(b.delivery_charge || 0);
 
                 return (
                   <div 
@@ -189,13 +249,12 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                         </thead>
                         <tbody>
                           {Array.from({ length: rowCount }).map((_, rIdx) => {
-                            if (rIdx < items.length) {
-                              const it = items[rIdx];
-                              const qtyOrDays = it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1);
+                            if (rIdx < displayItems.length) {
+                              const it = displayItems[rIdx];
                               return (
                                 <tr key={rIdx} className="h-4 leading-none">
                                   <td className="py-0.5 px-1 border-r border-black truncate font-medium">{it.pub_name}</td>
-                                  <td className="py-0.5 px-0.5 border-r border-black text-center font-mono">{qtyOrDays}</td>
+                                  <td className="py-0.5 px-0.5 border-r border-black text-center font-mono">{it.qtyOrDays}</td>
                                   <td className="py-0.5 px-1 border-r border-black text-right font-mono">{formatMoney(it.rate)}</td>
                                   <td className="py-0.5 px-1 text-right font-mono font-bold">{formatMoney(it.amount)}</td>
                                 </tr>
@@ -254,11 +313,11 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                       <div className="w-[37%] flex flex-col justify-between text-[8px]">
                         <div className="flex justify-between items-center py-1 px-1.5 border-b border-black">
                           <span className="text-slate-800">Total</span>
-                          <span className="font-mono font-bold text-[9px]">{formatMoney(roundToFoxProRule(b.paper_amount))}</span>
+                          <span className="font-mono font-bold text-[9px]">{formatMoney(summaryPaperTotal)}</span>
                         </div>
                         <div className="flex justify-between items-center py-1 px-1.5 border-b border-black">
                           <span className="text-slate-800">Delivery Charge</span>
-                          <span className="font-mono font-bold text-[9px]">{formatMoney(roundToFoxProRule(b.delivery_charge))}</span>
+                          <span className="font-mono font-bold text-[9px]">{formatMoney(summaryDelivery)}</span>
                         </div>
                         <div className="flex justify-between items-center py-1 px-1.5 border-b border-black">
                           <span className="text-slate-800">Previous Balance</span>

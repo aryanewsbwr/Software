@@ -83,6 +83,7 @@ export default function ReportsForm({
   const [targetCustId, setTargetCustId] = useState<string>('');
   const [outputDest, setOutputDest] = useState<'preview' | 'direct_print'>('preview');
   const [billBatchLimit, setBillBatchLimit] = useState<number>(0);
+  const [billPrintMode, setBillPrintMode] = useState<'detail' | 'simple'>('simple');
 
   // Report Data
   const [reportData, setReportData] = useState<any>(null);
@@ -185,7 +186,7 @@ export default function ReportsForm({
       setViewMode('preview');
       setTimeout(() => {
         if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single') {
-          printBills4in1(reportData?.rows || [], currentMeta.title);
+          printBills4in1(reportData?.rows || [], currentMeta.title, billPrintMode);
         } else {
           window.print();
         }
@@ -197,7 +198,7 @@ export default function ReportsForm({
 
   const handlePrint = () => {
     if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single') {
-      printBills4in1(reportData?.rows || [], currentMeta.title);
+      printBills4in1(reportData?.rows || [], currentMeta.title, billPrintMode);
     } else {
       window.print();
     }
@@ -388,6 +389,35 @@ export default function ReportsForm({
                   <option value={200}>200 Bills (50 A4 Sheets)</option>
                   <option value={20}>20 Bills (5 A4 Sheets)</option>
                 </select>
+              </div>
+            )}
+
+            {/* Bill Print Format Option: Simple vs Detail */}
+            {(activeReport === 'bill_print_region' || activeReport === 'bill_print_single') && (
+              <div className="flex items-center justify-between p-2 bg-[#FFF9E6] border border-[#E0C060] rounded-xs text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-[#000080]">Format (बिल प्रारूप):</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800">
+                    <input 
+                      type="radio" 
+                      name="billPrintModeCriteria" 
+                      checked={billPrintMode === 'simple'} 
+                      onChange={() => setBillPrintMode('simple')} 
+                    />
+                    <span>📄 Simple (सरल - Delivery Merged)</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800">
+                    <input 
+                      type="radio" 
+                      name="billPrintModeCriteria" 
+                      checked={billPrintMode === 'detail'} 
+                      onChange={() => setBillPrintMode('detail')} 
+                    />
+                    <span>📑 Detail (विस्तृत - Delivery Separate)</span>
+                  </label>
+                </div>
               </div>
             )}
 
@@ -719,6 +749,7 @@ export default function ReportsForm({
                   bills={reportData.rows || []} 
                   title={currentMeta.title} 
                   zoomLevel={zoomLevel} 
+                  initialPrintMode={billPrintMode}
                 />
               )}
 

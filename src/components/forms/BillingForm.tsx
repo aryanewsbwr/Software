@@ -53,6 +53,7 @@ export default function BillingForm({ onClose }: BillingFormProps) {
 
   // Single Customer Print Slip Dialog
   const [selectedBillForPrint, setSelectedBillForPrint] = useState<any | null>(null);
+  const [slipPrintMode, setSlipPrintMode] = useState<'detail' | 'simple'>('simple');
 
   // Load regions
   useEffect(() => {
@@ -505,6 +506,31 @@ export default function BillingForm({ onClose }: BillingFormProps) {
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 font-mono">
           <div className="w-full max-w-md bg-white border-2 border-black p-4 text-xs shadow-2xl space-y-3">
             
+            {/* Format Selector on top of Slip */}
+            <div className="flex items-center justify-between bg-slate-100 p-1.5 border border-slate-300 print:hidden text-[11px]">
+              <span className="font-bold text-slate-800">Format (प्रारूप):</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSlipPrintMode('simple')}
+                  className={`px-2 py-0.5 font-bold cursor-pointer rounded-xs ${
+                    slipPrintMode === 'simple' ? 'bg-blue-700 text-white' : 'bg-white border text-slate-700'
+                  }`}
+                >
+                  Simple (सरल)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSlipPrintMode('detail')}
+                  className={`px-2 py-0.5 font-bold cursor-pointer rounded-xs ${
+                    slipPrintMode === 'detail' ? 'bg-blue-700 text-white' : 'bg-white border text-slate-700'
+                  }`}
+                >
+                  Detail (विस्तृत)
+                </button>
+              </div>
+            </div>
+
             {/* Part 1: Customer Invoice */}
             <div className="border-b-2 border-dashed border-black pb-3 space-y-1">
               <div className="text-center pb-1 border-b">
@@ -529,12 +555,18 @@ export default function BillingForm({ onClose }: BillingFormProps) {
                 </div>
                 <div className="flex justify-between">
                   <span>Current Papers (चालू माह):</span>
-                  <span>₹{selectedBillForPrint.paper_amount?.toFixed(2)}</span>
+                  <span>
+                    ₹{slipPrintMode === 'simple' 
+                      ? ((selectedBillForPrint.paper_amount || 0) + (selectedBillForPrint.delivery_amount || 0)).toFixed(2)
+                      : selectedBillForPrint.paper_amount?.toFixed(2)}
+                  </span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Delivery Charges:</span>
-                  <span>₹{selectedBillForPrint.delivery_amount?.toFixed(2)}</span>
-                </div>
+                {slipPrintMode === 'detail' && (
+                  <div className="flex justify-between">
+                    <span>Delivery Charges:</span>
+                    <span>₹{selectedBillForPrint.delivery_amount?.toFixed(2)}</span>
+                  </div>
+                )}
                 {selectedBillForPrint.discount_amount > 0 && (
                   <div className="flex justify-between text-rose-700">
                     <span>Discount:</span>

@@ -6,6 +6,8 @@ export const BOY_LOGO_B64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACMAA
 
 export const SIGNATURE_GLYPH_B64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACIAAAATCAYAAAD1Yd/KAAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAAAEOklEQVR4nM2Wa0ybZRTH/0/7ti+9cJPrBlNEWmSwAh23MYiMAmOggCBhsH1gmOgHZzT6wS8m+smYuH0yhsRkxmSOTDAMcTDG/SKjdGNjRJgMWhjj2gJtZV1LafsYXmLd0mh0YOL59p7zf8/55Tznfc9DKKX4PxjzT0Q9N+/R4aFBzD3QwWp5DJeTID4uHjFxMTihSiV7AUL+riON3SO0s6sbOq0WxOVCjDwS4fvDsG4ww2g0wbC6jleyj+KdmjLyn3Xkk3MX6JBmFLNzDxAaEoCUZCXOffzuUwXf/+hL2tOnhsjbh9aU55I9BWntGqHXuwZwra0TDCtGVKQcByJCIGAZXGhspW+WFnAF66+O0A2rFRMTOlBeH7yEXrSqOJPsGciAWg39yiqkUikSE5QoqyhFwdEo0qK+Q8fHf8EX31yi1CXAjG4e/sGB8A8MgFY7g8H+QVQVZz4rB3hPPnz46efUBSeSUuMhiwpHQX4mB7EdK0xLJNtdaWz+Ed0/9yM2MR7pGWmIiAyH6lg6eMSFi3VX6K5Bvr54md65OwplshISsQCpKQqUFRx5qtUiiQ+cRIhDCck4W64ik9P3IJUKUFiYC7nsBYyNjWLXIB0dXQjdH4aKvAwyMzuNfaEBHuKpyUVIRaGQy+LRMDBF5xfmcCQ9CdkpchIY4A2tVotdzch331+hBoMBH9S8xTk3zEZUlhR6DN5tzTicfBazMw+xuDCLmKgDqC7e+VocDgesVuvuQGa0OkTL5CjKSiaN7TeokBF4CFt6J+ia3ozlVSN4FIiNfRFJh5XuuH5lHWKJ7+5ALJYNKOMTOIft0QZ+M5k9hIVZB8lnUjE1mUyQRYahtDgf2QkR7q7N6BYRe1DxrwHaOzuo3W7fAWFZFiIxywX8fMVwOWweLzT8pKb+3iwOF6lQVJoLlfJPiPqmG/T+1EMUvprj1rf1DFOb5RFW1/QwGo3csTm3HHA6nSCEghHwIRKy8BIxkEgkOyASkQhmo4lLUKDKJFebm+m3lxto9clyrlhdUztt7+yHzW5GUrICOUnRbojrA7dob/8Afr0/CUkfD/qVObq5aQPD8MBnCCwWCwR8Hvdf8vPzQVBQEE5XvuExfxxIzMuHoNFo3M6cvAJs75ju3iEaEBwERsDCsLaMLecm2trbobl1m7q2HFjRL2F5cYkrUH2mAkmJcfBi+chTZZBnXnrnz39FI2VReL3oOJeka3CMzi8swfc5X5TkpJGm7iG6vKyHUCCGzUoxPHwTGvUwIl96HqerylBZcmxXu8YNUnepng4NqxElj8Z7Z9/+y6Q/tPbTsbsT0E7PIjgwCPkncnE8S0H29BpQW1tLtbpZUMpDUMg+8Bkh7Fs22J12OBxbsFgew+kgYPgsFIoEnDn12p7cRTxA/rCWlmt01bAOy/akOx1wERdYVgBvb2+cqji5Z8WftN8BEKm5grAeqA0AAAAASUVORK5CYII=';
 
+export type BillPrintMode = 'detail' | 'simple';
+
 export interface BillItem {
   sno: number;
   pub_name: string;
@@ -14,6 +16,7 @@ export interface BillItem {
   days?: number;
   rate: number;
   amount: number;
+  delivery_amount?: number;
 }
 
 export interface BillRecord {
@@ -46,8 +49,10 @@ function formatMoney(n: number | undefined | null): string {
 /**
  * Generates the HTML for one single bill quadrant (1/4 of A4)
  * Exactly matching media_1790483652507.jpg
+ * In 'simple' mode: Delivery charge is merged directly into publication item prices, delivery row is 0.00
+ * In 'detail' mode: Paper prices are pure and delivery charge is shown separately in the summary box
  */
-export function renderSingleBillHtml(b: BillRecord, qIndex: number): string {
+export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: BillPrintMode = 'simple'): string {
   const displayHindi = cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name);
   
   // Format items: display actual rows, and pad with empty rows up to 4 items so layout stays 100% aligned
@@ -55,14 +60,35 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number): string {
   const items = b.items || [];
   const rowsHtml: string[] = [];
 
-  for (let i = 0; i < Math.max(items.length, minRows); i++) {
-    if (i < items.length) {
-      const it = items[i];
-      const qtyOrDays = it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1);
+  const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
+  const totalDelivery = b.delivery_charge || 0;
+
+  const displayItems = items.map((it, idx) => {
+    let itemDelivery = 0;
+    if (printMode === 'simple') {
+      if (hasItemDelivery) {
+        itemDelivery = it.delivery_amount || 0;
+      } else if (totalDelivery > 0 && idx === 0) {
+        itemDelivery = totalDelivery;
+      }
+    }
+    const displayAmount = roundToFoxProRule(it.amount + itemDelivery);
+    const qtyOrDays = it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1);
+    return {
+      pub_name: it.pub_name,
+      qtyOrDays,
+      rate: it.rate,
+      amount: displayAmount
+    };
+  });
+
+  for (let i = 0; i < Math.max(displayItems.length, minRows); i++) {
+    if (i < displayItems.length) {
+      const it = displayItems[i];
       rowsHtml.push(`
         <tr class="item-row">
           <td class="col-part">${it.pub_name}</td>
-          <td class="col-qty">${qtyOrDays}</td>
+          <td class="col-qty">${it.qtyOrDays}</td>
           <td class="col-rate">${formatMoney(it.rate)}</td>
           <td class="col-amt">${formatMoney(it.amount)}</td>
         </tr>
@@ -84,6 +110,14 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number): string {
   const isLeft = qIndex % 2 === 0;
   const isTop = qIndex < 2;
   const quadrantClass = `bill-quadrant ${isLeft ? 'quad-left' : 'quad-right'} ${isTop ? 'quad-top' : 'quad-bottom'}`;
+
+  const summaryPaperTotal = printMode === 'simple'
+    ? roundToFoxProRule(b.paper_amount + (b.delivery_charge || 0))
+    : roundToFoxProRule(b.paper_amount);
+
+  const summaryDelivery = printMode === 'simple'
+    ? 0
+    : roundToFoxProRule(b.delivery_charge || 0);
 
   return `
     <div class="${quadrantClass}">
@@ -186,11 +220,11 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number): string {
             <tbody>
               <tr>
                 <td class="sum-lbl">Total</td>
-                <td class="sum-val">${formatMoney(roundToFoxProRule(b.paper_amount))}</td>
+                <td class="sum-val">${formatMoney(summaryPaperTotal)}</td>
               </tr>
               <tr>
                 <td class="sum-lbl">Delivery Charge</td>
-                <td class="sum-val">${formatMoney(roundToFoxProRule(b.delivery_charge))}</td>
+                <td class="sum-val">${formatMoney(summaryDelivery)}</td>
               </tr>
               <tr>
                 <td class="sum-lbl">Previous Balance</td>
@@ -212,8 +246,8 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number): string {
 /**
  * Generates an A4 sheet containing up to 4 bills in a 2x2 grid
  */
-export function renderA4Page(fourBills: BillRecord[]): string {
-  const quadrantsHtml = fourBills.map((b, idx) => renderSingleBillHtml(b, idx)).join('');
+export function renderA4Page(fourBills: BillRecord[], printMode: BillPrintMode = 'simple'): string {
+  const quadrantsHtml = fourBills.map((b, idx) => renderSingleBillHtml(b, idx, printMode)).join('');
   return `
     <div class="a4-sheet">
       ${quadrantsHtml}
@@ -224,14 +258,14 @@ export function renderA4Page(fourBills: BillRecord[]): string {
 /**
  * Returns complete, self-contained HTML for printing or saving as PDF
  */
-export function generateFullPrintHtml(bills: BillRecord[], title: string = 'Aryan News Agency - Bills'): string {
+export function generateFullPrintHtml(bills: BillRecord[], title: string = 'Aryan News Agency - Bills', printMode: BillPrintMode = 'simple'): string {
   // Chunk bills into groups of 4 (each group = 1 A4 page with 2x2 quadrants: [0=TL, 1=TR, 2=BL, 3=BR])
   const pages: BillRecord[][] = [];
   for (let i = 0; i < bills.length; i += 4) {
     pages.push(bills.slice(i, i + 4));
   }
 
-  const pagesHtml = pages.map(p => renderA4Page(p)).join('\n');
+  const pagesHtml = pages.map(p => renderA4Page(p, printMode)).join('\n');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -665,6 +699,9 @@ export function generateFullPrintHtml(bills: BillRecord[], title: string = 'Arya
   <div class="print-toolbar no-print">
     <div class="toolbar-title">
       <span>🖨️ Aryan News Agency - 4 in 1 A4 Bill Print Preview</span>
+      <span style="opacity: 0.8; font-weight: normal; background: #334155; padding: 2px 8px; border-radius: 4px; font-size: 11px;">
+        ${printMode === 'simple' ? '📄 Simple Print (सरल - Delivery Merged)' : '📑 Detail Print (विस्तृत - Delivery Separate)'}
+      </span>
       <span style="opacity: 0.7; font-weight: normal;">(${bills.length} bills / ${pages.length} A4 pages)</span>
     </div>
     <div class="toolbar-actions">
@@ -698,13 +735,13 @@ export function generateFullPrintHtml(bills: BillRecord[], title: string = 'Arya
 /**
  * Triggers a clean print window with 4-in-1 A4 sheets
  */
-export function printBills4in1(bills: BillRecord[], title: string = 'Aryan News Agency - Bills'): void {
+export function printBills4in1(bills: BillRecord[], title: string = 'Aryan News Agency - Bills', printMode: BillPrintMode = 'simple'): void {
   if (!bills || bills.length === 0) {
     alert('No bills available to print.');
     return;
   }
 
-  const html = generateFullPrintHtml(bills, title);
+  const html = generateFullPrintHtml(bills, title, printMode);
   const printWindow = window.open('', '_blank');
   if (printWindow) {
     printWindow.document.open();
