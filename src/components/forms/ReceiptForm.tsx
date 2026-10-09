@@ -66,9 +66,23 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const [isSaving, setIsSaving] = useState(false);
 
   const customerInputRef = useRef<HTMLInputElement>(null);
+  const billNoRef = useRef<HTMLInputElement>(null);
+  const billAmtRef = useRef<HTMLInputElement>(null);
+  const manualRcpAmtRef = useRef<HTMLInputElement>(null);
+  const lessAmtRef = useRef<HTMLInputElement>(null);
+  const revAmtRef = useRef<HTMLInputElement>(null);
+  const manualRecpNoRef = useRef<HTMLInputElement>(null);
+  const manualRecpDateRef = useRef<HTMLInputElement>(null);
+  const chequeNoRef = useRef<HTMLInputElement>(null);
+  const chequeDateRef = useRef<HTMLInputElement>(null);
 
   // 1. Initial Load: Next Receipt Number, Collectors & Allotments
   useEffect(() => {
+    // Focus customer input on open
+    if (customerInputRef.current) {
+      customerInputRef.current.focus();
+    }
+
     // Load next receipt number
     supabase
       .from('receipt20262027')
@@ -262,6 +276,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     setBillAmt(amt);
     setRevAmt(amt);
     setManualRcpAmt(amt);
+    if (revAmtRef.current) revAmtRef.current.focus();
   };
 
   // 5. Balance Calculations
@@ -287,10 +302,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const handleApply = async () => {
     if (!customerId || !customerName || customerName === 'Customer not found') {
       setMsg({ text: 'Please enter a valid Customer ID.', isError: true });
+      if (customerInputRef.current) customerInputRef.current.focus();
       return;
     }
     if (revAmt <= 0 && lessAmt <= 0) {
       setMsg({ text: 'Please enter a valid Received Amount (Rev.Amt).', isError: true });
+      if (revAmtRef.current) revAmtRef.current.focus();
       return;
     }
 
@@ -365,6 +382,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       setChequeNo('');
       setChequeDate('');
       setAllotmentMatchNote(null);
+      if (customerInputRef.current) customerInputRef.current.focus();
     } catch (err: any) {
       console.error('Error saving receipt:', err);
       setMsg({ text: `Error saving receipt: ${err.message || 'Database error'}`, isError: true });
@@ -397,7 +415,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [customerId, revAmt, lessAmt, totalCustomerDue, receiptNo, receiptDate, billNo, month, year, paymentMode, manualRecpNo]);
+  }, [customerId, revAmt, lessAmt, totalCustomerDue, receiptNo, receiptDate, billNo, month, year, paymentMode, manualRecpNo, chequeNo, chequeDate]);
 
   return (
     <div className="relative w-full max-w-[900px] max-h-[calc(100vh-50px)] bg-[#C0DCF8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
@@ -449,6 +467,11 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   type="number" 
                   value={customerId}
                   onChange={(e) => handleLookupCustomer(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (revAmtRef.current) revAmtRef.current.focus();
+                    }
+                  }}
                   placeholder="ID"
                   className="w-20 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-blue-900 outline-none text-center text-xs"
                   autoFocus
@@ -638,9 +661,15 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Bill No</label>
             <input 
+              ref={billNoRef}
               type="text" 
               value={billNo}
               onChange={(e) => setBillNo(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (billAmtRef.current) billAmtRef.current.focus();
+                }
+              }}
               placeholder=""
               className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
             />
@@ -667,34 +696,58 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Bill Amt</label>
             <input 
+              ref={billAmtRef}
               type="number" 
               value={billAmt}
               onChange={(e) => setBillAmt(parseFloat(e.target.value) || 0)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
+                }
+              }}
               className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-right text-xs"
             />
 
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Ml. Rcp....</label>
             <input 
+              ref={manualRcpAmtRef}
               type="number" 
               value={manualRcpAmt}
               onChange={(e) => setManualRcpAmt(parseFloat(e.target.value) || 0)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (lessAmtRef.current) lessAmtRef.current.focus();
+                }
+              }}
               className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-xs"
             />
 
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Ls. Amt</label>
             <input 
+              ref={lessAmtRef}
               type="number" 
               value={lessAmt}
               onChange={(e) => setLessAmt(parseFloat(e.target.value) || 0)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (revAmtRef.current) revAmtRef.current.focus();
+                }
+              }}
               className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-red-700 font-bold text-xs"
             />
 
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Rev.Amt</label>
             <input 
+              ref={revAmtRef}
               type="number" 
               value={revAmt}
               onChange={(e) => setRevAmt(parseFloat(e.target.value) || 0)}
-              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
+                }
+              }}
+              className="col-span-1 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs"
             />
 
             <label className="col-span-1 font-bold text-[#000080] text-right text-xs">Bal.</label>
@@ -704,18 +757,34 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           <div className="grid grid-cols-12 gap-2 items-center">
             <label className="col-span-2 font-bold text-[#000080] truncate">Mal. Recp. No</label>
             <input 
+              ref={manualRecpNoRef}
               type="text" 
               value={manualRecpNo}
               onChange={(e) => handleManualRecpNoChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (manualRecpDateRef.current) manualRecpDateRef.current.focus();
+                }
+              }}
               placeholder=""
               className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
             />
 
             <label className="col-span-2 font-bold text-[#000080] text-right truncate">Mal. Recp. Dt.</label>
             <input 
+              ref={manualRecpDateRef}
               type="text" 
               value={manualRecpDate}
               onChange={(e) => setManualRecpDate(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (paymentMode === 'Cheque') {
+                    if (chequeNoRef.current) chequeNoRef.current.focus();
+                  } else {
+                    handleApply();
+                  }
+                }
+              }}
               placeholder="//"
               className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-xs"
             />
@@ -757,7 +826,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 <input 
                   type="checkbox" 
                   checked={paymentMode === 'Cheque'}
-                  onChange={() => setPaymentMode('Cheque')}
+                  onChange={() => {
+                    setPaymentMode('Cheque');
+                    setTimeout(() => {
+                      if (chequeNoRef.current) chequeNoRef.current.focus();
+                    }, 50);
+                  }}
                 />
                 <span>Cheque</span>
               </label>
@@ -766,17 +840,29 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-[#000080]">Cheque No</span>
                   <input 
+                    ref={chequeNoRef}
                     type="text" 
                     value={chequeNo}
                     onChange={(e) => setChequeNo(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        if (chequeDateRef.current) chequeDateRef.current.focus();
+                      }
+                    }}
                     placeholder="Chq #"
                     className="w-20 px-1 py-0.5 bg-white border border-[#808080] font-mono font-bold text-xs"
                   />
                   <span className="font-bold text-[#000080]">Date</span>
                   <input 
+                    ref={chequeDateRef}
                     type="text" 
                     value={chequeDate}
                     onChange={(e) => setChequeDate(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleApply();
+                      }
+                    }}
                     placeholder="//"
                     className="w-16 px-1 py-0.5 bg-white border border-[#808080] font-mono text-center text-xs"
                   />

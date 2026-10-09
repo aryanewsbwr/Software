@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Plus, Trash2, CheckCircle2, AlertCircle, Calendar } from 'lucide-react';
+import { ChevronDown, Plus, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface ReceiptAllotmentFormProps {
   onClose: () => void;
@@ -17,7 +17,8 @@ interface AllotmentRow {
 }
 
 export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormProps) {
-  const [collectorName, setCollectorName] = useState('Salam');
+  // Starts 100% empty - no default collector pre-selected
+  const [collectorName, setCollectorName] = useState('');
   const [collectors, setCollectors] = useState<any[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
@@ -26,7 +27,7 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
   const [allAllotments, setAllAllotments] = useState<AllotmentRow[]>([]);
   const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
 
-  // New Allotment Inputs
+  // Inputs
   const [receiptFrom, setReceiptFrom] = useState('');
   const [receiptTo, setReceiptTo] = useState('');
   const [allotDate, setAllotDate] = useState('');
@@ -38,7 +39,13 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
   const [statusMsg, setStatusMsg] = useState<{ text: string; isError?: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Refs for keyboard shortcuts & Enter navigation
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const collectorInputRef = useRef<HTMLInputElement>(null);
+  const fromInputRef = useRef<HTMLInputElement>(null);
+  const toInputRef = useRef<HTMLInputElement>(null);
+  const allotDateInputRef = useRef<HTMLInputElement>(null);
+  const recDateInputRef = useRef<HTMLInputElement>(null);
 
   // Default date format DD/MM/YYYY
   const getTodayStr = () => {
@@ -49,11 +56,14 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
     return `${dd}/${mm}/${yyyy}`;
   };
 
-  // 1. Initial Load: Fetch Collectors & Allotments
-  const fetchAllotments = async (targetCollector: string = collectorName) => {
+  // 1. Initial Load: Fetch Collectors & Allotments (starts empty)
+  const fetchAllotments = async (targetCollector: string = '') => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/receipt-allotment?collector_name=${encodeURIComponent(targetCollector)}`);
+      const url = targetCollector 
+        ? `/api/receipt-allotment?collector_name=${encodeURIComponent(targetCollector)}` 
+        : '/api/receipt-allotment';
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
         setAllotments(data.allotments || []);
@@ -70,8 +80,11 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
   };
 
   useEffect(() => {
-    fetchAllotments('Salam');
+    fetchAllotments('');
     setAllotDate(getTodayStr());
+    if (collectorInputRef.current) {
+      collectorInputRef.current.focus();
+    }
   }, []);
 
   // Close dropdown on outside click
@@ -94,6 +107,9 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
     setEditingSno(null);
     clearInputs();
     fetchAllotments(name);
+    if (fromInputRef.current) {
+      fromInputRef.current.focus();
+    }
   };
 
   // Auto-calculate next receipt range
@@ -110,6 +126,7 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
     setRecDate('');
     setIsEditing(false);
     setEditingSno(null);
+    if (allotDateInputRef.current) allotDateInputRef.current.focus();
   };
 
   const clearInputs = () => {
@@ -136,11 +153,14 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
   const handleSave = async () => {
     if (!collectorName || !collectorName.trim()) {
       setStatusMsg({ text: 'Please select or enter a Collector Name.', isError: true });
+      if (collectorInputRef.current) collectorInputRef.current.focus();
       return;
     }
 
     if (!receiptFrom || !receiptTo) {
       setStatusMsg({ text: 'Please enter Receipt From and Receipt To numbers.', isError: true });
+      if (!receiptFrom && fromInputRef.current) fromInputRef.current.focus();
+      else if (toInputRef.current) toInputRef.current.focus();
       return;
     }
 
@@ -181,6 +201,7 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
         setAllAllotments(data.all_allotments || []);
         clearInputs();
         setSelectedRowIndex(null);
+        if (fromInputRef.current) fromInputRef.current.focus();
       } else {
         setStatusMsg({ text: data.error || 'Failed to save allotment.', isError: true });
       }
@@ -268,6 +289,7 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
             <div className="relative flex-1" ref={dropdownRef}>
               <div className="flex items-center border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white">
                 <input 
+                  ref={collectorInputRef}
                   type="text" 
                   value={collectorName}
                   onChange={(e) => {
@@ -275,6 +297,12 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
                     setIsDropdownOpen(true);
                   }}
                   onFocus={() => setIsDropdownOpen(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setIsDropdownOpen(false);
+                      if (fromInputRef.current) fromInputRef.current.focus();
+                    }
+                  }}
                   placeholder="Select or enter Collector Name..."
                   className="w-full px-2 py-1 font-bold text-black outline-none text-xs"
                 />
@@ -292,7 +320,7 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
                 <div className="absolute left-0 right-0 top-full mt-0.5 bg-white border-2 border-[#808080] shadow-xl max-h-48 overflow-y-auto z-50 text-xs">
                   {collectors.length > 0 ? (
                     collectors
-                      .filter(c => c.name.toLowerCase().includes(collectorName.toLowerCase()))
+                      .filter(c => (c.name || '').toLowerCase().includes(collectorName.toLowerCase()))
                       .map((c, idx) => (
                         <div 
                           key={c.collect_id || idx}
@@ -382,8 +410,8 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
                 );
               })
             ) : (
-              <div className="p-8 text-center text-slate-300 italic">
-                No receipt books allotted to {collectorName || 'this collector'} yet.
+              <div className="p-8 text-center text-slate-300 italic text-xs">
+                {collectorName ? `No receipt books allotted to ${collectorName} yet.` : 'No collector selected. Please select or enter a Collector Name above.'}
               </div>
             )}
           </div>
@@ -402,10 +430,16 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
             <div className="flex items-center gap-1">
               <span className="text-[11px] font-bold text-slate-700">From:</span>
               <input 
+                ref={fromInputRef}
                 type="number"
                 value={receiptFrom}
                 onChange={(e) => setReceiptFrom(e.target.value)}
-                placeholder="1001"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (toInputRef.current) toInputRef.current.focus();
+                  }
+                }}
+                placeholder=""
                 className="w-16 px-1 py-0.5 border border-[#808080] bg-white font-mono font-bold text-black text-center text-xs"
               />
             </div>
@@ -414,10 +448,16 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
             <div className="flex items-center gap-1">
               <span className="text-[11px] font-bold text-slate-700">To:</span>
               <input 
+                ref={toInputRef}
                 type="number"
                 value={receiptTo}
                 onChange={(e) => setReceiptTo(e.target.value)}
-                placeholder="1100"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (allotDateInputRef.current) allotDateInputRef.current.focus();
+                  }
+                }}
+                placeholder=""
                 className="w-16 px-1 py-0.5 border border-[#808080] bg-white font-mono font-bold text-black text-center text-xs"
               />
             </div>
@@ -426,9 +466,15 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
             <div className="flex items-center gap-1">
               <span className="text-[11px] font-bold text-slate-700">Allot:</span>
               <input 
+                ref={allotDateInputRef}
                 type="text"
                 value={allotDate}
                 onChange={(e) => setAllotDate(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (recDateInputRef.current) recDateInputRef.current.focus();
+                  }
+                }}
                 placeholder="DD/MM/YYYY"
                 className="w-20 px-1 py-0.5 border border-[#808080] bg-white font-mono font-bold text-black text-center text-xs"
               />
@@ -438,9 +484,15 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
             <div className="flex items-center gap-1">
               <span className="text-[11px] font-bold text-slate-700">Return:</span>
               <input 
+                ref={recDateInputRef}
                 type="text"
                 value={recDate}
                 onChange={(e) => setRecDate(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSave();
+                  }
+                }}
                 placeholder="DD/MM/YYYY"
                 className="w-20 px-1 py-0.5 border border-[#808080] bg-white font-mono font-bold text-black text-center text-xs"
                 title="Leave blank until receipt book is returned"
@@ -489,3 +541,4 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
     </div>
   );
 }
+
