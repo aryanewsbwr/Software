@@ -8,21 +8,27 @@ export const KNOWN_PUBLICATIONS_HINDI: Record<string, string> = {
   'hindustan times': 'हिंदुस्तान टाइम्स',
   'rajasthan patrika': 'राजस्थान पत्रिका',
   'dainik bhaskar': 'दैनिक भास्कर',
-  'zindia today hindi': 'इंडिया टुडे',
+  'zindia today hindi': 'इंडिया टुडे (हिंदी)',
+  'india today hindi': 'इंडिया टुडे (हिंदी)',
   'india today': 'इंडिया टुडे',
   'employment news': 'एम्प्लॉयमेंट न्यूज़',
   'rojgar samachar': 'रोजगार समाचार',
   'zindia today english': 'इंडिया टुडे (इंग्लिश)',
+  'india today english': 'इंडिया टुडे (इंग्लिश)',
   'today hindi': 'टुडे हिन्दी',
   'ztoday hindi': 'टुडे हिन्दी',
+  'today eng': 'टुडे इंग्लिश',
+  'today english': 'टुडे इंग्लिश',
   'meri saheli': 'मेरी सहेली',
   'grihashobha': 'गृहशोभा',
   'the economic times': 'द इकोनॉमिक टाइम्स',
   'economic times': 'इकोनॉमिक टाइम्स',
+  'et budget special': 'ईटी बजट स्पेशल',
   'vanita': 'वनिता',
   'wisdom': 'विजडम',
   'magic pot': 'मैजिक पॉट',
   'aha zindgi': 'अहा ज़िंदगी',
+  'aha zindagi': 'अहा ज़िंदगी',
   'sarita': 'सरिता',
   'saras salil': 'सरस सलिल',
   'punjab kesari': 'पंजाब केसरी',
@@ -33,15 +39,19 @@ export const KNOWN_PUBLICATIONS_HINDI: Record<string, string> = {
   'pratiyogita darpan': 'प्रतियोगिता दर्पण',
   'champak': 'चंपक',
   'champak(h)': 'चंपक (हिंदी)',
+  'champak(e)': 'चंपक (इंग्लिश)',
   'inside outside': 'इनसाइड आउटसाइड',
   'lotpot': 'लोटपोट',
+  'outlook': 'आउटलुक',
   'outlook(e)': 'आउटलुक (इंग्लिश)',
   'outlook(h)': 'आउटलुक (हिंदी)',
+  'outlook business': 'आउटलुक बिजनेस',
   'vyapar': 'व्यापार',
   'business world': 'बिजनेस वर्ल्ड',
   'balhans': 'बालहंस',
   'rojgar sandesh': 'रोजगार संदेश',
   'balbhaskar': 'बाल भास्कर',
+  'bal bhaskar': 'बाल भास्कर',
   'chotumotu': 'छोटू मोटू',
   'dalal street': 'दलाल स्ट्रीट',
   'femina': 'फेमिना',
@@ -49,12 +59,14 @@ export const KNOWN_PUBLICATIONS_HINDI: Record<string, string> = {
   'womens era': 'वुमन्स एरा',
   'business today': 'बिजनेस टुडे',
   'grihalaxmi': 'गृहलक्ष्मी',
+  'grihalakshmi': 'गृहलक्ष्मी',
   'vigyan pragati': 'विज्ञान प्रगति',
   'suman saurabh': 'सुमन सौरभ',
   'nandan': 'नंदन',
   'yojna': 'योजना',
   'mukta': 'मुक्ता',
   'kurushetra': 'कुरुक्षेत्र',
+  'kurukshetra': 'कुरुक्षेत्र',
   'awishkar': 'आविष्कार',
   'full tansion': 'फुल टेंशन',
   'current gk chronology': 'करंट जीके क्रोनोलॉजी',
@@ -127,11 +139,12 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'mr': 'श्री',
   'mrs': 'श्रीमती',
   'smt': 'श्रीमती',
+  'miss': 'सुश्री',
   'dr': 'डॉ.',
   'doctor': 'डॉक्टर',
   'ji': 'जी',
   'jee': 'जी',
-  'advocate': 'अधिवक्ता',
+  'advocate': 'एडवोकेट',
   'adv': 'एडवोकेट',
   'er': 'इंजीनियर',
   'ca': 'सी.ए.',
@@ -151,10 +164,12 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'manish': 'मनीष',
   'sandeep': 'संदीप',
   'deepak': 'दीपक',
+  'deepu': 'दीपू',
   'sunil': 'सुनील',
   'anil': 'अनिल',
   'vinay': 'विनय',
   'vikas': 'विकास',
+  'vivek': 'विवेक',
   'pankaj': 'पंकज',
   'pintu': 'पिंटू',
   'mohan': 'मोहन',
@@ -170,6 +185,7 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'prasad': 'प्रसाद',
   'chand': 'चंद',
   'chandra': 'चन्द्र',
+  'chandradev': 'चन्द्रदेव',
   'bhagwati': 'भगवती',
   'yogesh': 'योगेश',
   'yogendra': 'योगेन्द्र',
@@ -199,10 +215,15 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'kailash': 'कैलाश',
   'prakash': 'प्रकाश',
   'om': 'ओम',
+  'omsingh': 'ओमसिंह',
   'narayan': 'नारायण',
+  'ravinarayan': 'रविनारायण',
   'satya': 'सत्य',
+  'satyam': 'सत्यम',
   'santosh': 'संतोष',
   'subhash': 'सुभाष',
+  'subodh': 'सुबोध',
+  'kaushik': 'कौशिक',
   'vinod': 'विनोद',
   'vishnu': 'विष्णु',
   'brijesh': 'बृजेश',
@@ -220,6 +241,19 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'anita': 'अनीता',
   'geeta': 'गीता',
   'seema': 'सीमा',
+  'deepika': 'दीपिका',
+  'kamla': 'कमला',
+  'charan': 'चारण',
+  'pramod': 'प्रमोद',
+  'kunal': 'कुणाल',
+  'samanta': 'सामंत',
+  'ritesh': 'रीतेश',
+  'dhuniya': 'धूनिया',
+  'upadhyay': 'उपाध्याय',
+  'parashar': 'पाराशर',
+  'jijyasu': 'जिज्ञासु',
+  'saurabh': 'सौरभ',
+  'pragyan': 'प्रज्ञान',
 
   // Common Surnames & Castes
   'agarwal': 'अग्रवाल',
@@ -248,8 +282,17 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'gehlot': 'गेहलोत',
   'yadav': 'यादव',
   'mishra': 'मिश्रा',
+  'sankhla': 'सांखला',
+  'saxena': 'सक्सेना',
+  'kumawat': 'कुमावत',
+  'dadich': 'दाधीच',
+  'dadhich': 'दाधीच',
+  'solanki': 'सोलंकी',
+  'purohit': 'पुरोहित',
+  'shrivastava': 'श्रीवास्तव',
+  'srivastava': 'श्रीवास्तव',
 
-  // Institutions, Banks & Common Words
+  // Institutions, Banks, Businesses & Common Words
   'state': 'स्टेट',
   'bank': 'बैंक',
   'of': 'ऑफ',
@@ -266,7 +309,6 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'bansal': 'बंसल',
   'khandelwal': 'खंडेलवाल',
   'maheshwari': 'माहेश्वरी',
-  'parashar': 'पाराशर',
   'meena': 'मीना',
   'rawat': 'रावत',
   'lodha': 'लोढ़ा',
@@ -278,7 +320,6 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'mohit': 'मोहित',
   'rahul': 'राहुल',
   'manoj': 'मनोज',
-  'pramod': 'प्रमोद',
   'pradeep': 'प्रदीप',
   'kuldeep': 'कुलदीप',
   'naveen': 'नवीन',
@@ -295,9 +336,6 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'kapoor': 'कपूर',
   'khanna': 'खन्ना',
   'mehta': 'मेहता',
-  'dadhich': 'दाधीच',
-  'solanki': 'सोलंकी',
-  'purohit': 'पुरोहित',
   'ojha': 'ओझा',
   'bissa': 'बिस्सा',
   'chhangani': 'छंगाणी',
@@ -322,20 +360,16 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'jnv': 'जेएनवी',
   'pawanpuri': 'पवनपुरी',
 
-  // Business, Places & Address Terms
+  // Places, Addresses & Commercial Terms
   'hotel': 'होटल',
   'shop': 'दुकान',
   'guest': 'गेस्ट',
   'house': 'हाउस',
-  'ambuja': 'अम्बुजा',
-  'vip': 'वीआईपी',
-  'beawar': 'ब्यावर',
-  'ajmer': 'अजमेर',
-  'jaipur': 'जयपुर',
-  'rajasthan': 'राजस्थान',
-  'bengali': 'बंगाली',
-  'cloth': 'क्लॉथ',
+  'electric': 'इलेक्ट्रिक',
+  'electricals': 'इलेक्ट्रिकल्स',
+  'provision': 'प्रोविजन',
   'store': 'स्टोर',
+  'stores': 'स्टोर्स',
   'market': 'मार्केट',
   'bazar': 'बाजार',
   'road': 'रोड',
@@ -347,6 +381,8 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'circle': 'सर्कल',
   'gate': 'गेट',
   'near': 'पास',
+  'pass': 'पास',
+  'ke': 'के',
   'opp': 'सामने',
   'behind': 'पीछे',
   'sector': 'सेक्टर',
@@ -370,10 +406,24 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'india': 'इंडिया',
   'daily': 'दैनिक',
   'morning': 'प्रातःकालीन',
-  'evening': 'सायंकालीन'
+  'evening': 'सायंकालीन',
+  'ambuja': 'अम्बुजा',
+  'vip': 'वीआईपी',
+  'beawar': 'ब्यावर',
+  'ajmer': 'अजमेर',
+  'jaipur': 'जयपुर',
+  'rajasthan': 'राजस्थान',
+  'bengali': 'बंगाली',
+  'cloth': 'क्लॉथ',
+  'ok': 'ओके',
+  'plus': 'प्लस',
+  'bob': 'बीओबी',
+  'sbbj': 'एसबीबीजे',
+  'sbi': 'एसबीआई',
+  'pnb': 'पीएनबी'
 };
 
-// 4. English Initials
+// 4. English Single Letters / Initials (Capital and lowercase)
 const ENGLISH_INITIALS: Record<string, string> = {
   'a': 'ए', 'b': 'बी', 'c': 'सी', 'd': 'डी', 'e': 'ई', 'f': 'एफ',
   'g': 'जी', 'h': 'एच', 'i': 'आई', 'j': 'जे', 'k': 'के', 'l': 'एल',
@@ -382,8 +432,8 @@ const ENGLISH_INITIALS: Record<string, string> = {
   'y': 'वाई', 'z': 'ज़ेड'
 };
 
-// 5. Susha 05 Exact Regex Sub-Replacements
-const SUSHA_PRE_RULES: [RegExp, string][] = [
+// 5. Authentic Susha 05 Decoding Dictionary & Regex Replacements
+const SUSHA_PATTERNS: [RegExp, string][] = [
   [/vaIAa[\x00-\xFF]?pI/gi, 'वीआईपी'],
   [/vaIAapI/gi, 'वीआईपी'],
   [/ha\]sa/gi, 'हाउस'],
@@ -392,6 +442,7 @@ const SUSHA_PRE_RULES: [RegExp, string][] = [
   [/yaaogaond`/g, 'योगेन्द्र'],
   [/naond`/g, 'नेन्द्र'],
   [/dovand`/g, 'देवेन्द्र'],
+  [/dova/g, 'देव'],
   [/sauryand`/g, 'सुरेन्द्र'],
   [/ijatond`/g, 'जितेन्द्र'],
   [/ivapond`/g, 'विपेन्द्र'],
@@ -414,6 +465,8 @@ const SUSHA_PRE_RULES: [RegExp, string][] = [
   [/inagama/g, 'निगम'],
   [/jaOna/g, 'जैन'],
   [/dIpk/g, 'दीपक'],
+  [/dIpU/g, 'दीपू'],
+  [/dIpIka/g, 'दीपिका'],
   [/jaaoSaI/g, 'जोशी'],
   [/sauinala/g, 'सुनील'],
   [/raoyala/g, 'रोयल'],
@@ -445,6 +498,39 @@ const SUSHA_PRE_RULES: [RegExp, string][] = [
   [/jaI/g, 'जी'],
   [/Da\./g, 'डॉ.'],
   [/Da\s+/g, 'डॉ '],
+  [/kmpnaI/g, 'कम्पनी'],
+  [/\]paQyaaya/g, 'उपाध्याय'],
+  [/sa%yama/g, 'सत्यम'],
+  [/saaMKlaa/g, 'सांखला'],
+  [/eDvaaokoT/g, 'एडवोकेट'],
+  [/Plasa/g, 'प्लस'],
+  [/Aaoko/g, 'ओके'],
+  [/\[laOi@T.*?k/g, 'इलेक्ट्रिक'],
+  [/\[laOi@Tk/g, 'इलेक्ट्रिक'],
+  [/kmalaa/g, 'कमला'],
+  [/p``aoivajana/g, 'प्रोविजन'],
+  [/p`aoivajana/g, 'प्रोविजन'],
+  [/p``/g, 'प्र'],
+  [/p`/g, 'प्र'],
+  [/d``/g, 'द्र'],
+  [/cand``/g, 'चन्द्र'],
+  [/cand`/g, 'चन्द्र'],
+  [/saksaonaa/g, 'सक्सेना'],
+  [/saubaaoQa/g, 'सुबोध'],
+  [/kaOiSak/g, 'कौशिक'],
+  [/kuNaala/g, 'कुणाल'],
+  [/saamanta/g, 'सामंत'],
+  [/dadIca/g, 'दाधीच'],
+  [/AaomaisaMh/g, 'ओमसिंह'],
+  [/caarNa/g, 'चारण'],
+  [/EaIvaastva/g, 'श्रीवास्तव'],
+  [/EaI/g, 'श्री'],
+  [/ko\s+pasa/g, 'के पास'],
+  [/baIAaobaI/g, 'बीओबी'],
+  [/ef(\d+)?/gi, 'एफ$1'],
+  [/DI(\d+)?/g, 'डी$1'],
+  [/saI(\d+)?/g, 'सी$1'],
+  [/baI(\d+)?/g, 'बी$1'],
   [/ema\s+ko/g, 'एम के'],
   [/esa\s+ko/g, 'एस के'],
   [/ko\s+ko/g, 'के के'],
@@ -453,9 +539,6 @@ const SUSHA_PRE_RULES: [RegExp, string][] = [
   [/ema\s+esa/g, 'एम एस'],
   [/ema\s+Aar/g, 'एम आर'],
   [/manaaoja/g, 'मनोज'],
-  [/DI(\d+)?/g, 'डी$1'],
-  [/saI(\d+)?/g, 'सी$1'],
-  [/baI(\d+)?/g, 'बी$1'],
   [/vaI/g, 'वी'],
   [/pI/g, 'पी'],
   [/ko/g, 'के'],
@@ -465,11 +548,12 @@ const SUSHA_PRE_RULES: [RegExp, string][] = [
 ];
 
 const SUSHA_CHARS: [string, string][] = [
+  ['EaI', 'श्री'], ['Ea', 'श्र'],
   ['Aao', 'ओ'], ['AaO', 'औ'], ['Aa', 'आ'], ['A', 'अ'],
   ['ena', 'एन'], ['esa', 'एस'], ['ema', 'एम'], ['Aar', 'आर'],
   ['ko', 'के'], ['DI', 'डी'], ['saI', 'सी'], ['baI', 'बी'],
   ['e', 'ए'], ['E', 'ऐ'], ['aao', 'ो'], ['ao', 'ो'], ['o', 'े'], ['O', 'ै'],
-  ['aa', 'ा'], ['aaO', 'ौ'], ['aO', 'ौ'],
+  ['aaO', 'ौ'], ['aO', 'ौ'], ['aa', 'ा'],
   ['a', ''], ['I', 'ी'], ['u', 'ु'], ['U', 'ू'],
   ['k', 'क'], ['K', 'ख'], ['g', 'ग'], ['G', 'घ'],
   ['c', 'च'], ['C', 'छ'], ['j', 'ज'], ['J', 'झ'],
@@ -478,30 +562,35 @@ const SUSHA_CHARS: [string, string][] = [
   ['p', 'प'], ['P', 'फ'], ['b', 'ब'], ['B', 'भ'], ['m', 'म'],
   ['y', 'य'], ['r', 'र'], ['l', 'ल'], ['v', 'व'], ['w', 'व'],
   ['S', 'श'], ['Y', 'ष'], ['s', 'स'], ['h', 'ह'],
-  ['M', 'ं'], ['^', 'ँ'], [':', 'ः'], ['`', '्र'], ['-', 'र्']
+  ['~', 'त्र'], ['&', 'ज्ञ'], ['@', 'क्'], ['%', 'त्'],
+  ['$', 'रु'], ['`', '्र'], ['-', 'र्'], [':', 'ः'], ['^', 'ँ'], ['M', 'ं'],
+  ['[', 'इ'], ['{', 'ई'], [']', 'उ'], ['}', 'ऊ']
 ];
 
 /**
- * Decodes legacy 2008 Susha 05 ASCII font strings to Unicode Devanagari Hindi
+ * Decodes legacy 2008 Susha 05 ASCII font strings to clean Unicode Devanagari Hindi
  */
 export function sushaToUnicode(text: string): string {
   if (!text) return '';
   if (/[\u0900-\u097F]/.test(text)) return text;
 
   let s = text.replace(/[\x00-\x1f\x7f-\xff\uFFFD]/g, '');
-  s = s.replace(/vaIAa.*?pI/gi, 'वीआईपी');
-  for (const [pattern, rep] of SUSHA_PRE_RULES) {
+  for (const [pattern, rep] of SUSHA_PATTERNS) {
     s = s.replace(pattern, rep);
   }
 
   const words = s.split(' ');
   const outWords = words.map(w => {
     if (!w || /[\u0900-\u097F]/.test(w)) return w;
-    let cw = w.replace(/i([kKgGcCjJTzZDZNtqdnpPmbBmyrlvwsSYh])/g, '$1ि');
+    let cw = w.replace(/i([kKgGcCjJTzZDZNtqdnpPmbBmyrlvwsSYh@%]+)/g, '$1ि');
     let res = '';
     let i = 0;
     while (i < cw.length) {
       if (cw.charCodeAt(i) >= 0x0900 && cw.charCodeAt(i) <= 0x097F) {
+        res += cw[i++];
+        continue;
+      }
+      if (/[0-9\s.,\/#!$%\^&\*;:{}=\-_~() ]/.test(cw[i]) && !SUSHA_CHARS.some(([k]) => k === cw[i])) {
         res += cw[i++];
         continue;
       }
@@ -525,14 +614,14 @@ export function sushaToUnicode(text: string): string {
 }
 
 /**
- * Phonetic transliteration from English to Hindi Unicode
+ * High-Accuracy Phonetic transliteration from English to Hindi Unicode
  */
 export function englishToHindiPhonetic(str: any): string {
   const s = typeof str === 'string' ? str : (str != null ? String(str) : '');
   if (!s || !s.trim()) return '';
   const trimmed = s.trim().toLowerCase();
   
-  // Check known publications
+  // Check known publications first
   if (KNOWN_PUBLICATIONS_HINDI[trimmed]) {
     return KNOWN_PUBLICATIONS_HINDI[trimmed];
   }
@@ -547,7 +636,7 @@ export function englishToHindiPhonetic(str: any): string {
     // Digits
     if (/^\d+$/.test(clean)) return clean;
 
-    // Single English initial (e.g. N -> एन, K -> के, C -> सी)
+    // Single English initial (e.g. N -> एन, K -> के, C -> सी, F -> एफ)
     if (clean.length === 1 && ENGLISH_INITIALS[clean]) {
       return ENGLISH_INITIALS[clean];
     }
@@ -557,11 +646,17 @@ export function englishToHindiPhonetic(str: any): string {
       return HINDI_DICTIONARY[clean];
     }
 
-    // Compound like C17 or D25 or 5RHB
-    if (/^[a-z]\d+$/i.test(w)) {
-      const charPart = w[0].toLowerCase();
-      const numPart = w.slice(1);
+    // Compound like C17 or D25 or F4 or 5RHB
+    if (/^[a-z]\d+$/i.test(clean)) {
+      const charPart = clean[0];
+      const numPart = clean.slice(1);
       return (ENGLISH_INITIALS[charPart] || charPart) + numPart;
+    }
+    if (/^\d+[a-z]+$/i.test(clean)) {
+      const numMatch = clean.match(/^\d+/)?.[0] || '';
+      const textPart = clean.slice(numMatch.length);
+      const translitText = HINDI_DICTIONARY[textPart] || transliterateSingleWord(textPart) || textPart;
+      return numMatch + ' ' + translitText;
     }
 
     return transliterateSingleWord(clean) || w;
@@ -584,8 +679,13 @@ function transliterateSingleWord(w: string): string {
   if (lower.endsWith('lal')) return transliterateSingleWord(lower.slice(0, -3)) + ' लाल';
   if (lower.endsWith('chand')) return transliterateSingleWord(lower.slice(0, -5)) + ' चंद';
   if (lower.endsWith('prasad')) return transliterateSingleWord(lower.slice(0, -6)) + ' प्रसाद';
+  if (lower.endsWith('ji') && lower.length > 2) return transliterateSingleWord(lower.slice(0, -2)) + ' जी';
+  if (lower.endsWith('jee') && lower.length > 3) return transliterateSingleWord(lower.slice(0, -3)) + ' जी';
 
   let res = lower
+    .replace(/electric/g, 'इलेक्ट्रिक')
+    .replace(/provision/g, 'प्रोविजन')
+    .replace(/stores?/g, 'स्टोर')
     .replace(/shh/g, 'ष्')
     .replace(/sh/g, 'श')
     .replace(/chh/g, 'छ')
@@ -624,6 +724,11 @@ function transliterateSingleWord(w: string): string {
     .replace(/au/g, 'ौ')
     .replace(/av/g, 'ौ')
     .replace(/k/g, 'क')
+    .replace(/ck/g, 'क')
+    .replace(/c(?=[eiy])/g, 'स')
+    .replace(/c/g, 'क')
+    .replace(/q/g, 'क')
+    .replace(/x/g, 'क्स')
     .replace(/g/g, 'ग')
     .replace(/j/g, 'ज')
     .replace(/t/g, 'त')
@@ -667,6 +772,7 @@ function transliterateSingleWord(w: string): string {
 
 const KNOWN_PHRASES_MAP: Record<string, string> = {
   'whatsapp sample': 'व्हाट्सएप सैम्पल',
+  'whatsapp sample 4': 'व्हाट्सएप सैम्पल',
   'whatsapp': 'व्हाट्सएप',
   'sample': 'सैम्पल',
   'aryan news agency': 'आर्यन न्यूज़ एजेंसी',
@@ -691,7 +797,7 @@ const KNOWN_PHRASES_MAP: Record<string, string> = {
   'central bank of india': 'सेंट्रल बैंक ऑफ इंडिया',
   'union bank of india': 'यूनियन बैंक ऑफ इंडिया',
   'canara bank': 'केनरा बैंक',
-  'uco bank': 'यूको बैंक',
+  'uco bank': 'यूको बैंक'
 };
 
 /**
@@ -705,6 +811,7 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
   const engNoTrailingNum = engLower.replace(/\s+\d+$/, '').trim();
   const rawHindiTrimmed = rawHindiStr.trim();
 
+  // 1. Check exact known phrases
   if (KNOWN_PHRASES_MAP[engLower]) {
     return KNOWN_PHRASES_MAP[engLower];
   }
@@ -712,7 +819,7 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
     return KNOWN_PHRASES_MAP[engNoTrailingNum];
   }
 
-  // Check known publications
+  // 2. Check known publications
   if (KNOWN_PUBLICATIONS_HINDI[engLower]) {
     return KNOWN_PUBLICATIONS_HINDI[engLower];
   }
@@ -720,31 +827,28 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
     return KNOWN_PUBLICATIONS_HINDI[engNoTrailingNum];
   }
 
-  // Specific check for Whatsapp in rawHindi or English
-  if (engLower.includes('whatsapp') || (rawHindiTrimmed && (rawHindiTrimmed.includes('vyaaTsePp') || rawHindiTrimmed.includes('वयाटस')))) {
-    return 'व्हाट्सएप सैम्पल';
-  }
-
-  // If already contains genuine Unicode Hindi characters and no replacement characters
+  // 3. If rawHindi is already genuine Unicode Hindi without replacement characters, preserve it!
   if (rawHindiTrimmed && /[\u0900-\u097F]/.test(rawHindiTrimmed) && !rawHindiTrimmed.includes('\ufffd')) {
-    return rawHindiTrimmed;
+    // If it has only Hindi or Hindi + numbers, return directly
+    if (!/[a-zA-Z]/.test(rawHindiTrimmed)) {
+      return rawHindiTrimmed;
+    }
   }
 
-  // Check Kruti Dev map
+  // 4. Check Kruti Dev map
   if (rawHindiTrimmed && KRUTI_DEV_MAP[rawHindiTrimmed]) {
     return KRUTI_DEV_MAP[rawHindiTrimmed];
   }
 
-  // Check Susha font decoding if rawHindi looks like Susha ASCII
+  // 5. Check Susha font decoding if rawHindi has legacy Susha ASCII characters
   if (rawHindiTrimmed && rawHindiTrimmed.length > 0 && !rawHindiTrimmed.includes('\ufffd')) {
     const decoded = sushaToUnicode(rawHindiTrimmed);
-    // Only accept if decoded has Hindi and doesn't have leftover unmapped English letters
     if (decoded && /[\u0900-\u097F]/.test(decoded) && !/[a-zA-Z]/.test(decoded)) {
       return decoded;
     }
   }
 
-  // Check English phonetic transliteration
+  // 6. Check English phonetic transliteration
   if (engTrimmed.length > 0) {
     return englishToHindiPhonetic(engTrimmed);
   }
