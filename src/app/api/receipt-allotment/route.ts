@@ -84,44 +84,6 @@ function parseDateToTimestamp(dStr?: string | null): number {
   return 0;
 }
 
-function isCurrentFinancialYear(dateStr?: string | null): boolean {
-  if (!dateStr || typeof dateStr !== 'string') return false;
-  const trimmed = dateStr.trim();
-  if (!trimmed || trimmed === '-') return false;
-
-  let day = 0, month = 0, year = 0;
-
-  if (trimmed.includes('/')) {
-    const parts = trimmed.split('/');
-    if (parts.length === 3) {
-      day = parseInt(parts[0], 10);
-      month = parseInt(parts[1], 10);
-      year = parts[2].length === 2 ? 2000 + parseInt(parts[2], 10) : parseInt(parts[2], 10);
-    }
-  } else if (trimmed.includes('-')) {
-    const parts = trimmed.split('-');
-    if (parts.length === 3) {
-      if (parts[0].length === 4) {
-        year = parseInt(parts[0], 10);
-        month = parseInt(parts[1], 10);
-        day = parseInt(parts[2], 10);
-      } else {
-        day = parseInt(parts[0], 10);
-        month = parseInt(parts[1], 10);
-        year = parts[2].length === 2 ? 2000 + parseInt(parts[2], 10) : parseInt(parts[2], 10);
-      }
-    }
-  }
-
-  if (isNaN(year) || isNaN(month) || year === 0 || month === 0) return false;
-
-  // Indian Financial Year 2026-2027:
-  // Starts: 01 April 2026 (2026-04-01)
-  // Ends: 31 March 2027 (2027-03-31)
-  if (year === 2026 && month >= 4) return true;
-  if (year === 2027 && month <= 3) return true;
-  return false;
-}
 
 function sortAndIndexAllotments(list: ReceiptAllotmentRecord[]): ReceiptAllotmentRecord[] {
   const sorted = [...list].sort((a, b) => {
@@ -242,46 +204,9 @@ export async function GET(req: NextRequest) {
       console.warn('Could not query receiptissue20252026 from Supabase:', e);
     }
 
-    // Combine storage records and db records, strictly filtering to Current Financial Year (2026-2027)
-    const combined = [...storageRecords, ...dbRecords];
-    const currentFYMap = new Map<string, ReceiptAllotmentRecord>();
-    for (const item of combined) {
-      if (isCurrentFinancialYear(item.allot_date)) {
-        const key = `${(item.collector_name || '').toLowerCase()}_${item.receipt_from}_${item.receipt_to}`;
-        if (!currentFYMap.has(key)) {
-          currentFYMap.set(key, item);
-        }
-      }
-    }
-
-    let currentFYRecords = Array.from(currentFYMap.values());
-
-    // Fallback seed if totally empty for FY 2026-2027 (matching authentic records from media_1791524917718_364a84c2.png)
-    if (currentFYRecords.length === 0) {
-      currentFYRecords = [
-        {
-          sno: 1,
-          collect_id: 7,
-          collector_name: 'dukan',
-          receipt_from: 1001,
-          receipt_to: 1100,
-          allot_date: '01/08/2026',
-          rec_date: '15/08/2026'
-        },
-        {
-          sno: 2,
-          collect_id: 7,
-          collector_name: 'dukan',
-          receipt_from: 1101,
-          receipt_to: 1200,
-          allot_date: '16/08/2026',
-          rec_date: null
-        }
-      ];
-      await saveAllotmentsToStorage(currentFYRecords);
-    }
-
-    const allotments = sortAndIndexAllotments(currentFYRecords);
+    // 3. Combine database records and storage records (active table receiptissue20252026)
+    const combined = dbRecords.length > 0 ? dbRecords : storageRecords;
+    const allotments = sortAndIndexAllotments(combined);
 
     let filtered: ReceiptAllotmentRecord[] = [];
     if (collectorName && collectorName.trim()) {
@@ -338,8 +263,8 @@ export async function POST(req: NextRequest) {
     const matchedCol = (cols || []).find((c: any) => (c.name || '').toLowerCase() === cleanName.toLowerCase());
     const collectId = matchedCol ? (matchedCol.Collect_id || matchedCol.collect_id || matchedCol.id) : null;
 
-    // Load existing allotments for validation (strictly current FY 2026-2027)
-    let allotments = (await loadAllotmentsFromStorage()).filter(a => isCurrentFinancialYear(a.allot_date));
+    // Load existing allotments for validation
+    let allotments = await loadAllotmentsFromStorage();
 
     // Check for range overlap with other allotments
     for (const item of allotments) {
@@ -426,7 +351,7 @@ export async function POST(req: NextRequest) {
       updatedAllotments.push(newRecord);
     }
 
-    const sortedAll = sortAndIndexAllotments(updatedAllotments.filter(a => isCurrentFinancialYear(a.allot_date)));
+    const sortedAll = sortAndIndexAllotments(updatedAllotments);
     await saveAllotmentsToStorage(sortedAll);
 
     const collectorFiltered = sortedAll.filter(a => 
@@ -480,7 +405,7 @@ export async function DELETE(req: NextRequest) {
       console.warn('Database delete error on receiptissue20252026:', dbErr);
     }
 
-    const allotments = (await loadAllotmentsFromStorage()).filter(a => isCurrentFinancialYear(a.allot_date));
+    const allotments = await loadAllotmentsFromStorage();
     const filtered = allotments.filter(a => 
       !(a.collector_name.toLowerCase() === cleanName.toLowerCase() && a.sno === sno)
     );
