@@ -37,6 +37,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
+  const [customerRegion, setCustomerRegion] = useState('');
   
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [allRegions, setAllRegions] = useState<Region[]>([]);
@@ -99,10 +100,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const chequeDateRef = useRef<HTMLInputElement>(null);
   const applyBtnRef = useRef<HTMLButtonElement>(null);
   const collectionSelectRef = useRef<HTMLSelectElement>(null);
-  const collectionNoRef = useRef<HTMLInputElement>(null);
   const bookSelectRef = useRef<HTMLSelectElement>(null);
-
-  const [collectionNo, setCollectionNo] = useState<string>('');
 
   // Allotted Books for chosen Collector
   const collectorBooks = useMemo(() => {
@@ -164,28 +162,31 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         if (data) setAllCustomers(data);
       });
 
-    // Load Receipt Allotments (starts empty, user selects collector)
+    // Load Receipt Allotments (auto-selects dukan matching original video)
     fetch('/api/receipt-allotment')
       .then(res => res.json())
       .then(data => {
         if (data.success && data.all_allotments) {
           setAllotments(data.all_allotments);
+          const dukanAllots = data.all_allotments.filter((a: any) => (a.collector_name || '').toLowerCase() === 'dukan');
+          if (dukanAllots.length > 0) {
+            handleCollectorChange('dukan', data.all_allotments);
+          }
         }
       })
       .catch(err => console.warn('Could not load allotments:', err));
   }, []);
 
   // Update active book range badge for selected collector
-  const handleCollectorChange = (name: string) => {
+  const handleCollectorChange = (name: string, customAllotments?: AllotmentInfo[]) => {
     setCollectionAgentName(name);
-    const col = collectors.find(c => (c.name || '').toLowerCase() === (name || '').toLowerCase());
-    setCollectionNo(col ? String(col.collect_id) : '');
     if (!name) {
       setActiveBookRange('');
       setSelectedBookRange('');
       return;
     }
-    const matched = allotments.filter(a => (a.collector_name || '').toLowerCase() === name.toLowerCase());
+    const source = customAllotments || allotments;
+    const matched = source.filter(a => (a.collector_name || '').toLowerCase() === name.toLowerCase());
     if (matched && matched.length > 0) {
       const active = matched.find(a => !a.rec_date || a.rec_date === '-') || matched[0];
       const rangeStr = `${active.receipt_from} - ${active.receipt_to}`;
@@ -195,14 +196,6 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     } else {
       setActiveBookRange('');
       setSelectedBookRange('');
-    }
-  };
-
-  const handleCollectionNoChange = (noStr: string) => {
-    setCollectionNo(noStr);
-    const col = collectors.find(c => String(c.collect_id) === noStr.trim());
-    if (col) {
-      handleCollectorChange(col.name);
     }
   };
 
@@ -262,6 +255,9 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     const addrParts = [cust.add1, cust.add2, cust.hindi_add].filter(Boolean).join(' ').trim();
     const phonePart = cust.phone ? `    ${cust.phone}` : '';
     setCustomerAddress(addrParts ? `${addrParts}${phonePart}` : '---');
+
+    const reg = allRegions.find(r => r.region_id === cust.region_id);
+    setCustomerRegion(reg ? (reg.region_name || `SR${reg.region_id}`) : (cust.region_id ? `SR${cust.region_id}` : ''));
 
     const due = Math.max(0, Number(cust.due_amount ?? cust.dueamount ?? cust.cbal ?? 0));
     setTotalCustomerDue(due);
@@ -613,7 +609,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               </div>
             </div>
 
-            {/* Collection Dropdown, Collection No & Allotted Book Range Dropdown (Matching screenshot_13.jpg) */}
+            {/* Collection Section: Exactly 2 controls matching video (Collection Name & Collection No. / Book Range) */}
             <div className="flex items-center gap-2">
               <label className="font-bold text-[#000080]">Collection</label>
 
@@ -625,7 +621,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 onKeyDown={(e) => {
                   if (e.key === 'Tab' || e.key === 'Enter') {
                     e.preventDefault();
-                    if (collectionNoRef.current) collectionNoRef.current.focus();
+                    if (bookSelectRef.current) bookSelectRef.current.focus();
                     else if (customerInputRef.current) customerInputRef.current.focus();
                   }
                 }}
@@ -639,55 +635,33 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 ))}
               </select>
 
-              {/* 2. Collection No Input (matches screenshot_13.jpg) */}
-              <input 
-                ref={collectionNoRef}
-                type="text"
-                value={collectionNo}
-                onChange={(e) => handleCollectionNoChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Tab') {
-                    e.preventDefault();
-                    if (e.shiftKey) {
-                      if (collectionSelectRef.current) collectionSelectRef.current.focus();
-                    } else {
-                      if (customerInputRef.current) customerInputRef.current.focus();
-                    }
-                  } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (customerInputRef.current) customerInputRef.current.focus();
-                  }
-                }}
-                placeholder="No"
-                title="Collection Agent Number / Code"
-                className="w-12 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-blue-900 outline-none text-center text-xs"
-              />
-
-              {/* 3. Allotted Books Dropdown for chosen Collector */}
+              {/* 2. Collection No. / Allotted Books Dropdown (Matching video: 2401 - 2700) */}
               <select
                 ref={bookSelectRef}
                 value={selectedBookRange}
                 onChange={(e) => handleBookRangeChange(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Tab' || e.key === 'Enter') {
+                  if (e.key === 'Tab' && e.shiftKey) {
+                    e.preventDefault();
+                    if (collectionSelectRef.current) collectionSelectRef.current.focus();
+                  } else if (e.key === 'Tab' || e.key === 'Enter') {
                     e.preventDefault();
                     if (customerInputRef.current) customerInputRef.current.focus();
                   }
                 }}
-                className="w-32 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-slate-800 outline-none text-xs cursor-pointer"
+                className="w-36 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-slate-800 outline-none text-xs cursor-pointer"
               >
                 {collectorBooks.length > 0 ? (
                   collectorBooks.map((b, idx) => {
                     const rangeStr = `${b.receipt_from} - ${b.receipt_to}`;
-                    const isCurrent = !b.rec_date || b.rec_date === '-';
                     return (
                       <option key={idx} value={rangeStr}>
-                        {rangeStr} {isCurrent ? '(Active)' : `(${b.allot_date})`}
+                        {rangeStr}
                       </option>
                     );
                   })
                 ) : (
-                  <option value="">{collectionAgentName ? '-- No Allotted Books --' : '-- Allotted Books --'}</option>
+                  <option value="">{selectedBookRange || (collectionAgentName ? '' : '-- Allotted Books --')}</option>
                 )}
               </select>
             </div>
@@ -713,7 +687,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   onKeyDown={(e) => {
                     if (e.key === 'Tab' && e.shiftKey) {
                       e.preventDefault();
-                      if (collectionNoRef.current) collectionNoRef.current.focus();
+                      if (bookSelectRef.current) bookSelectRef.current.focus();
                       else if (collectionSelectRef.current) collectionSelectRef.current.focus();
                     } else if (e.key === 'Tab') {
                       if (isCustomerDropdownOpen && filteredCustomerSuggestions.length > 0) {
@@ -769,11 +743,16 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               </div>
             </div>
 
-            {/* Month (Matching screenshot_13.jpg: Month : - <Month>, NO Region!) */}
-            <div className="flex items-center gap-2 shrink-0 font-bold text-xs text-[#000080]">
+            {/* Month & Region (Matching video: Month : - Sept  Region :- SR2) */}
+            <div className="flex items-center gap-3 shrink-0 font-bold text-xs text-[#000080]">
               <div>
                 Month : - <span className="text-[#800000] font-black">{month}</span>
               </div>
+              {customerRegion && (
+                <div>
+                  Region :- <span className="text-[#800000] font-black">{customerRegion}</span>
+                </div>
+              )}
             </div>
 
           </div>
