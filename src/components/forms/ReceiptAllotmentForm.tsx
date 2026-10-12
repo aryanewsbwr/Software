@@ -131,13 +131,7 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
   };
 
   const sortAndIndexRows = (rows: AllotmentRow[]): AllotmentRow[] => {
-    const sorted = [...rows].sort((a, b) => {
-      const tA = parseDateToTimestamp(a.allot_date);
-      const tB = parseDateToTimestamp(b.allot_date);
-      if (tA !== tB) return tB - tA; // Latest date first
-      return (Number(b.receipt_from) || 0) - (Number(a.receipt_from) || 0);
-    });
-    return sorted.map((r, i) => ({ ...r, sno: i + 1 }));
+    return [...rows].sort((a, b) => (Number(a.sno) || 0) - (Number(b.sno) || 0));
   };
 
   // When collector changes, filter/fetch allotments

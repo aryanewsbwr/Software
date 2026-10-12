@@ -86,24 +86,11 @@ function parseDateToTimestamp(dStr?: string | null): number {
 
 
 function sortAndIndexAllotments(list: ReceiptAllotmentRecord[]): ReceiptAllotmentRecord[] {
-  const sorted = [...list].sort((a, b) => {
+  return [...list].sort((a, b) => {
     if ((a.collector_name || '').toLowerCase() !== (b.collector_name || '').toLowerCase()) {
       return (a.collector_name || '').localeCompare(b.collector_name || '', undefined, { sensitivity: 'base' });
     }
-    const tA = parseDateToTimestamp(a.allot_date);
-    const tB = parseDateToTimestamp(b.allot_date);
-    if (tA !== tB) return tB - tA; // Latest date first
-    return (b.receipt_from || 0) - (a.receipt_from || 0);
-  });
-
-  const collectorCounters: Record<string, number> = {};
-  return sorted.map(item => {
-    const cKey = (item.collector_name || '').toLowerCase();
-    collectorCounters[cKey] = (collectorCounters[cKey] || 0) + 1;
-    return {
-      ...item,
-      sno: collectorCounters[cKey]
-    };
+    return (Number(a.sno) || 0) - (Number(b.sno) || 0);
   });
 }
 
