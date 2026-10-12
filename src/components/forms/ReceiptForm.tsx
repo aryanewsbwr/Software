@@ -162,16 +162,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         if (data) setAllCustomers(data);
       });
 
-    // Load Receipt Allotments (auto-selects dukan matching original video)
+    // Load Receipt Allotments (starts empty, user selects collector)
     fetch('/api/receipt-allotment')
       .then(res => res.json())
       .then(data => {
         if (data.success && data.all_allotments) {
           setAllotments(data.all_allotments);
-          const dukanAllots = data.all_allotments.filter((a: any) => (a.collector_name || '').toLowerCase() === 'dukan');
-          if (dukanAllots.length > 0) {
-            handleCollectorChange('dukan', data.all_allotments);
-          }
         }
       })
       .catch(err => console.warn('Could not load allotments:', err));
