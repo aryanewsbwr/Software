@@ -21,6 +21,7 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
   const [collectorName, setCollectorName] = useState('');
   const [collectors, setCollectors] = useState<any[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
   
   // Allotments for selected collector
   const [allotments, setAllotments] = useState<AllotmentRow[]>([]);
@@ -66,7 +67,11 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
-        setAllotments(data.allotments || []);
+        if (targetCollector.trim()) {
+          setAllotments(sortAndIndexRows(data.allotments || []));
+        } else {
+          setAllotments([]); // Clean & empty: no default entries shown until searched
+        }
         setAllAllotments(data.all_allotments || []);
         if (data.collectors && data.collectors.length > 0) {
           setCollectors(data.collectors);
@@ -133,6 +138,7 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
   const handleSelectCollector = (name: string) => {
     setCollectorName(name);
     setIsDropdownOpen(false);
+    setHighlightedIndex(-1);
     setSelectedRowIndex(null);
     setIsEditing(false);
     setEditingSno(null);
@@ -336,7 +342,8 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
                   onChange={(e) => {
                     const val = e.target.value;
                     setCollectorName(val);
-                    setIsDropdownOpen(true);
+                    setHighlightedIndex(-1);
+                    setIsDropdownOpen(val.trim().length > 0);
                     if (val.trim()) {
                       const matched = allAllotments.filter(a => (a.collector_name || '').toLowerCase() === val.trim().toLowerCase());
                       setAllotments(sortAndIndexRows(matched));
@@ -344,14 +351,26 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
                       setAllotments([]);
                     }
                   }}
-                  onFocus={() => setIsDropdownOpen(true)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      setIsDropdownOpen(false);
-                      if (collectorName.trim()) {
+                    const filtered = collectors.filter(c => (c.name || '').toLowerCase().includes(collectorName.toLowerCase()));
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      setIsDropdownOpen(true);
+                      setHighlightedIndex(prev => (prev < filtered.length - 1 ? prev + 1 : 0));
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      setHighlightedIndex(prev => (prev > 0 ? prev - 1 : filtered.length - 1));
+                    } else if (e.key === 'Enter') {
+                      if (isDropdownOpen && highlightedIndex >= 0 && filtered[highlightedIndex]) {
+                        e.preventDefault();
+                        handleSelectCollector(filtered[highlightedIndex].name);
+                      } else if (collectorName.trim()) {
+                        setIsDropdownOpen(false);
                         handleSelectCollector(collectorName.trim());
+                        if (fromInputRef.current) fromInputRef.current.focus();
                       }
-                      if (fromInputRef.current) fromInputRef.current.focus();
+                    } else if (e.key === 'Escape') {
+                      setIsDropdownOpen(false);
                     }
                   }}
                   placeholder="Select or enter Collector Name..."
@@ -359,8 +378,13 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
                 />
                 <button
                   type="button"
-                  onClick={() => setIsDropdownOpen(prev => !prev)}
+                  onClick={() => {
+                    setIsDropdownOpen(prev => !prev);
+                    setHighlightedIndex(-1);
+                  }}
+                  tabIndex={-1}
                   className="px-1.5 py-1 bg-[#ECE9D8] hover:bg-[#D4D0C8] border-l border-[#808080] cursor-pointer text-slate-700"
+                  title="Show collectors list"
                 >
                   <ChevronDown className="w-3.5 h-3.5" />
                 </button>
@@ -369,19 +393,25 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
               {/* Collectors Autocomplete Dropdown Menu */}
               {isDropdownOpen && (
                 <div className="absolute left-0 right-0 top-full mt-0.5 bg-white border-2 border-[#808080] shadow-xl max-h-48 overflow-y-auto z-50 text-xs">
-                  {collectors.length > 0 ? (
+                  {collectors.filter(c => (c.name || '').toLowerCase().includes(collectorName.toLowerCase())).length > 0 ? (
                     collectors
                       .filter(c => (c.name || '').toLowerCase().includes(collectorName.toLowerCase()))
-                      .map((c, idx) => (
-                        <div 
-                          key={c.collect_id || idx}
-                          onClick={() => handleSelectCollector(c.name)}
-                          className="px-2 py-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer font-bold border-b border-slate-100 flex justify-between items-center"
-                        >
-                          <span>{c.name}</span>
-                          <span className="text-[10px] opacity-70 font-mono">ID: #{c.collect_id}</span>
-                        </div>
-                      ))
+                      .map((c, idx) => {
+                        const isHighlighted = highlightedIndex === idx;
+                        return (
+                          <div 
+                            key={c.collect_id || idx}
+                            onClick={() => handleSelectCollector(c.name)}
+                            onMouseEnter={() => setHighlightedIndex(idx)}
+                            className={`px-2 py-1.5 cursor-pointer font-bold border-b border-slate-100 flex justify-between items-center ${
+                              isHighlighted ? 'bg-[#0A246A] text-white' : 'hover:bg-[#0A246A] hover:text-white'
+                            }`}
+                          >
+                            <span>{c.name}</span>
+                            <span className="text-[10px] opacity-70 font-mono">ID: #{c.collect_id}</span>
+                          </div>
+                        );
+                      })
                   ) : (
                     <div className="p-2 text-slate-500 italic">No collectors found</div>
                   )}
@@ -462,7 +492,7 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
               })
             ) : (
               <div className="p-8 text-center text-slate-300 italic text-xs">
-                {collectorName ? `No receipt books allotted to ${collectorName} yet.` : 'No collector selected. Please select or enter a Collector Name above.'}
+                {collectorName.trim() ? `No receipt books allotted to "${collectorName}" yet.` : 'No collector selected. Search or select a Collector Name above.'}
               </div>
             )}
           </div>

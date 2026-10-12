@@ -155,10 +155,10 @@ export async function GET(req: NextRequest) {
 
     const allotments = sortAndIndexAllotments(rawAllotments);
 
-    let filtered = allotments;
-    if (collectorName) {
+    let filtered: ReceiptAllotmentRecord[] = [];
+    if (collectorName && collectorName.trim()) {
       filtered = allotments.filter(a => 
-        (a.collector_name || '').toLowerCase() === collectorName.toLowerCase()
+        (a.collector_name || '').toLowerCase() === collectorName.trim().toLowerCase()
       );
     }
 
