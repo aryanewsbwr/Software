@@ -19,8 +19,13 @@ interface AllotmentInfo {
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December', 'Sept', 'Aug', 'Dues'
+  'July', 'August', 'September', 'October', 'November', 'December', 'Dues'
 ];
+
+const getCurrentMonthName = () => {
+  const mIndex = new Date().getMonth();
+  return MONTHS[mIndex] || 'October';
+};
 
 export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const now = new Date();
@@ -32,7 +37,6 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
-  const [regionName, setRegionName] = useState('');
   
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
   const [allRegions, setAllRegions] = useState<Region[]>([]);
@@ -40,8 +44,9 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
   const [highlightedCustomerIndex, setHighlightedCustomerIndex] = useState(0);
 
-  // Collection Agent & Active Range
-  const [collectionAgentName, setCollectionAgentName] = useState('dukan');
+  // Collection Agent & Allotted Book Range (No default pre-selected)
+  const [collectionAgentName, setCollectionAgentName] = useState('');
+  const [selectedBookRange, setSelectedBookRange] = useState('');
   const [collectors, setCollectors] = useState<{ collect_id: number; name: string }[]>([]);
   const [allotments, setAllotments] = useState<AllotmentInfo[]>([]);
   const [activeBookRange, setActiveBookRange] = useState('');
@@ -56,13 +61,14 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const [receiptNo, setReceiptNo] = useState<number>(1196605);
   const [receiptDate, setReceiptDate] = useState(defDateStr);
   const [billNo, setBillNo] = useState('');
-  const [year, setYear] = useState('2026');
-  const [month, setMonth] = useState('Sept');
+  const [year, setYear] = useState(String(now.getFullYear()));
+  const [month, setMonth] = useState(getCurrentMonthName());
   
-  const [billAmt, setBillAmt] = useState<number>(0);
-  const [manualRcpAmt, setManualRcpAmt] = useState<number>(0);
-  const [lessAmt, setLessAmt] = useState<number>(0);
-  const [revAmt, setRevAmt] = useState<number>(0);
+  const [billAmt, setBillAmt] = useState<number | string>('');
+  const [manualRcpAmt, setManualRcpAmt] = useState<number | string>('');
+  const [lessAmt, setLessAmt] = useState<number | string>('');
+  const [revAmt, setRevAmt] = useState<number | string>('');
+  const [balAmt, setBalAmt] = useState<number | string>('');
   const [manualRecpNo, setManualRecpNo] = useState('');
   const [manualRecpDate, setManualRecpDate] = useState(defDateStr);
   
@@ -76,20 +82,30 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const [msg, setMsg] = useState<{ text: string; isError?: boolean } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Refs for keyboard shortcuts & Enter navigation
+  // Refs for keyboard shortcuts & Enter/Tab navigation
   const customerInputRef = useRef<HTMLInputElement>(null);
   const customerIdRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const monthSelectRef = useRef<HTMLSelectElement>(null);
   const billNoRef = useRef<HTMLInputElement>(null);
   const billAmtRef = useRef<HTMLInputElement>(null);
   const manualRcpAmtRef = useRef<HTMLInputElement>(null);
   const lessAmtRef = useRef<HTMLInputElement>(null);
   const revAmtRef = useRef<HTMLInputElement>(null);
+  const balRef = useRef<HTMLInputElement>(null);
   const manualRecpNoRef = useRef<HTMLInputElement>(null);
   const manualRecpDateRef = useRef<HTMLInputElement>(null);
   const chequeNoRef = useRef<HTMLInputElement>(null);
   const chequeDateRef = useRef<HTMLInputElement>(null);
   const applyBtnRef = useRef<HTMLButtonElement>(null);
+  const collectionSelectRef = useRef<HTMLSelectElement>(null);
+  const bookSelectRef = useRef<HTMLSelectElement>(null);
+
+  // Allotted Books for chosen Collector
+  const collectorBooks = useMemo(() => {
+    if (!collectionAgentName) return [];
+    return allotments.filter(a => (a.collector_name || '').toLowerCase() === collectionAgentName.toLowerCase());
+  }, [collectionAgentName, allotments]);
 
   // 1. Initial Load: Next Receipt Number, Customers, Regions, Collectors & Allotments
   useEffect(() => {
@@ -146,33 +162,47 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         if (data) setAllCustomers(data);
       });
 
-    // Load Receipt Allotments for Active Range Display
+    // Load Receipt Allotments (starts empty, user selects collector)
     fetch('/api/receipt-allotment')
       .then(res => res.json())
       .then(data => {
         if (data.success && data.all_allotments) {
           setAllotments(data.all_allotments);
-          updateActiveBookRange('dukan', data.all_allotments);
         }
       })
       .catch(err => console.warn('Could not load allotments:', err));
   }, []);
 
   // Update active book range badge for selected collector
-  const updateActiveBookRange = (cName: string, allotsList: AllotmentInfo[] = allotments) => {
-    const matched = allotsList.filter(a => (a.collector_name || '').toLowerCase() === cName.toLowerCase());
+  const handleCollectorChange = (name: string) => {
+    setCollectionAgentName(name);
+    if (!name) {
+      setActiveBookRange('');
+      setSelectedBookRange('');
+      return;
+    }
+    const matched = allotments.filter(a => (a.collector_name || '').toLowerCase() === name.toLowerCase());
     if (matched && matched.length > 0) {
-      // Find latest or active book
       const active = matched.find(a => !a.rec_date || a.rec_date === '-') || matched[0];
-      setActiveBookRange(`${active.receipt_from} - ${active.receipt_to}`);
+      const rangeStr = `${active.receipt_from} - ${active.receipt_to}`;
+      setActiveBookRange(rangeStr);
+      setSelectedBookRange(rangeStr);
+      setManualRecpNo(String(active.receipt_from));
     } else {
       setActiveBookRange('');
+      setSelectedBookRange('');
     }
   };
 
-  const handleCollectorChange = (name: string) => {
-    setCollectionAgentName(name);
-    updateActiveBookRange(name);
+  const handleBookRangeChange = (rangeStr: string) => {
+    setSelectedBookRange(rangeStr);
+    setActiveBookRange(rangeStr);
+    if (rangeStr) {
+      const parts = rangeStr.split('-').map(s => s.trim());
+      if (parts[0]) {
+        setManualRecpNo(parts[0]);
+      }
+    }
   };
 
   // Close customer dropdown on outside click
@@ -221,16 +251,19 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     const phonePart = cust.phone ? `    ${cust.phone}` : '';
     setCustomerAddress(addrParts ? `${addrParts}${phonePart}` : '---');
 
-    // Region lookup
-    if (cust.region_id && allRegions.length > 0) {
-      const reg = allRegions.find(r => r.region_id === cust.region_id);
-      setRegionName(reg ? (reg.region_name || reg.hindi_name || `SR${cust.region_id}`) : `SR${cust.region_id}`);
-    } else {
-      setRegionName(cust.region_id ? `SR${cust.region_id}` : 'SR2');
-    }
-
-    const due = Number(cust.due_amount ?? cust.dueamount ?? cust.cbal ?? 0);
+    const due = Math.max(0, Number(cust.due_amount ?? cust.dueamount ?? cust.cbal ?? 0));
     setTotalCustomerDue(due);
+
+    // Keep control section clean & empty / default 0 (matches old software screenshot_13.jpg)
+    setBillNo('');
+    setYear(String(new Date().getFullYear()));
+    setMonth(getCurrentMonthName());
+    setBillAmt(0);
+    setManualRcpAmt(0);
+    setLessAmt(0);
+    setRevAmt(0);
+    setBalAmt(due);
+    setNarration('');
 
     // Fetch Bills & Receipts
     setIsLoadingHistory(true);
@@ -277,29 +310,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
       setCustomerReceipts(rList || []);
 
-      // 3. Auto-select the latest/unpaid bill into Control Section
-      if (bList && bList.length > 0) {
-        const latestBill = bList[bList.length - 1];
-        const bId = latestBill.bill_no || latestBill.bill_id || latestBill.Bill_id;
-        setSelectedBillId(bId);
-        setBillNo(String(bId));
-        setMonth(latestBill.month || latestBill.Month || 'Sept');
-        setYear(String(latestBill.year || latestBill.Year || '2026'));
-        const amt = Number(latestBill.paper_amount || latestBill.balance || latestBill.Balance || latestBill.Bill_Amt || 150);
-        setBillAmt(amt);
-        setRevAmt(amt);
-        setManualRcpAmt(amt);
-      } else {
-        setBillNo('');
-        setBillAmt(due > 0 ? due : 0);
-        setRevAmt(due > 0 ? due : 0);
-        setManualRcpAmt(due > 0 ? due : 0);
-      }
-
-      // Automatically move focus to Mal. Recp. No for quick typing!
+      // Focus directly to Month dropdown as requested by workflow
       setTimeout(() => {
-        if (manualRecpNoRef.current) {
-          manualRecpNoRef.current.focus();
+        if (monthSelectRef.current) {
+          monthSelectRef.current.focus();
         }
       }, 50);
 
@@ -346,7 +360,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   }, [customerReceipts]);
 
   // Balance Calculations
-  const calculatedRemainingBal = Math.max(0, Math.round((totalCustomerDue - revAmt - lessAmt) * 100) / 100);
+  const numRevAmt = Number(revAmt) || 0;
+  const numLessAmt = Number(lessAmt) || 0;
+  const numBillAmt = Number(billAmt) || 0;
+  const calculatedRemainingBal = Math.max(0, Math.round((totalCustomerDue - numRevAmt - numLessAmt) * 100) / 100);
 
   // 6. Save / Apply Receipt & Advance to Next Entry Instantly
   const handleApply = async () => {
@@ -355,7 +372,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       if (customerInputRef.current) customerInputRef.current.focus();
       return;
     }
-    if (revAmt <= 0 && lessAmt <= 0) {
+    if (numRevAmt <= 0 && numLessAmt <= 0) {
       setMsg({ text: 'Please enter a valid Received Amount (Rev.Amt).', isError: true });
       if (revAmtRef.current) revAmtRef.current.focus();
       return;
@@ -373,10 +390,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         recp_date: receiptDate || defDateStr,
         customer_id: cid,
         bill_no: billNo ? parseInt(billNo, 10) : null,
-        bill_amt: billAmt || totalCustomerDue,
-        less_amt: lessAmt,
-        mal_recp_amt: revAmt,
-        r_amt: revAmt,
+        bill_amt: numBillAmt || totalCustomerDue,
+        less_amt: numLessAmt,
+        mal_recp_amt: numRevAmt,
+        r_amt: numRevAmt,
         mal_rep_no: appliedManualNo || null,
         mal_recp_dt: manualRecpDate || receiptDate || defDateStr,
         month: month || 'Sept',
@@ -395,9 +412,9 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           Receipt_no: appliedReceiptNo,
           customer_id: cid,
           Bill_id: billNo ? parseInt(billNo, 10) : null,
-          Bill_amt: billAmt || totalCustomerDue,
-          Less_amt: lessAmt,
-          R_amt: revAmt,
+          Bill_amt: numBillAmt || totalCustomerDue,
+          Less_amt: numLessAmt,
+          R_amt: numRevAmt,
           Manual_rep_no: appliedManualNo || null,
           Bill_date: receiptDate,
           Month: month,
@@ -427,10 +444,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         mal_rep_no: appliedManualNo,
         mal_recp_dt: manualRecpDate || receiptDate,
         bill_date: receiptDate,
-        bill_amt: billAmt || revAmt,
-        less_amt: lessAmt,
+        bill_amt: numBillAmt || numRevAmt,
+        less_amt: numLessAmt,
         balance: calculatedRemainingBal,
-        r_amt: revAmt,
+        r_amt: numRevAmt,
         cash_chq: paymentMode
       };
       setCustomerReceipts(prev => [...prev, newReceiptGridRow]);
@@ -556,44 +573,49 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               </div>
             </div>
 
-            {/* Collection Dropdown & Active Range Badge (Matching Video: dukan [2401 - 2700]) */}
+            {/* Collection Dropdown & Allotted Book Range Dropdown (Matching screenshot_13.jpg) */}
             <div className="flex items-center gap-2">
               <label className="font-bold text-[#000080]">Collection</label>
               <select 
+                ref={collectionSelectRef}
                 value={collectionAgentName}
                 onChange={(e) => handleCollectorChange(e.target.value)}
                 className="w-36 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-slate-800 outline-none text-xs cursor-pointer"
               >
-                {collectors.length > 0 ? (
-                  collectors.map((c) => (
-                    <option key={c.collect_id} value={c.name}>
-                      {c.name}
-                    </option>
-                  ))
-                ) : (
-                  <>
-                    <option value="dukan">dukan</option>
-                    <option value="Salam">Salam</option>
-                    <option value="Nemi Nath Ji">Nemi Nath Ji</option>
-                    <option value="Swapnil">Swapnil</option>
-                    <option value="Jagdish">Jagdish</option>
-                    <option value="bharat">bharat</option>
-                  </>
-                )}
+                <option value="">-- Select Collection --</option>
+                {collectors.map((c) => (
+                  <option key={c.collect_id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
               </select>
 
-              {/* Active Book Range Box */}
-              <input 
-                type="text"
-                value={activeBookRange || '2401 - 2700'}
-                readOnly
-                className="w-28 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-slate-800 text-center text-xs"
-              />
+              {/* Allotted Books Dropdown for chosen Collector */}
+              <select
+                ref={bookSelectRef}
+                value={selectedBookRange}
+                onChange={(e) => handleBookRangeChange(e.target.value)}
+                className="w-36 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-slate-800 outline-none text-xs cursor-pointer"
+              >
+                {collectorBooks.length > 0 ? (
+                  collectorBooks.map((b, idx) => {
+                    const rangeStr = `${b.receipt_from} - ${b.receipt_to}`;
+                    const isCurrent = !b.rec_date || b.rec_date === '-';
+                    return (
+                      <option key={idx} value={rangeStr}>
+                        {rangeStr} {isCurrent ? '(Active)' : `(${b.allot_date})`}
+                      </option>
+                    );
+                  })
+                ) : (
+                  <option value="">{collectionAgentName ? '-- No Allotted Books --' : '-- Allotted Books --'}</option>
+                )}
+              </select>
             </div>
 
           </div>
 
-          {/* Row 2: Customer Name Autocomplete Search & Month / Region */}
+          {/* Row 2: Customer Name Autocomplete Search & Month */}
           <div className="flex items-center justify-between gap-3">
             
             {/* Customer Search Autocomplete Input */}
@@ -610,7 +632,15 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                     if (customerSearchQuery.trim()) setIsCustomerDropdownOpen(true);
                   }}
                   onKeyDown={(e) => {
-                    if (isCustomerDropdownOpen && filteredCustomerSuggestions.length > 0) {
+                    if (e.key === 'Tab') {
+                      if (isCustomerDropdownOpen && filteredCustomerSuggestions.length > 0) {
+                        e.preventDefault();
+                        handleSelectCustomer(filteredCustomerSuggestions[highlightedCustomerIndex]);
+                      } else {
+                        e.preventDefault();
+                        if (monthSelectRef.current) monthSelectRef.current.focus();
+                      }
+                    } else if (isCustomerDropdownOpen && filteredCustomerSuggestions.length > 0) {
                       if (e.key === 'ArrowDown') {
                         e.preventDefault();
                         setHighlightedCustomerIndex(prev => (prev + 1) % filteredCustomerSuggestions.length);
@@ -622,7 +652,8 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                         handleSelectCustomer(filteredCustomerSuggestions[highlightedCustomerIndex]);
                       }
                     } else if (e.key === 'Enter') {
-                      if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
+                      e.preventDefault();
+                      if (monthSelectRef.current) monthSelectRef.current.focus();
                     }
                   }}
                   placeholder="Type Customer Name to search (e.g. Rajeev, Prabha, Dinesh, Tara)..."
@@ -655,13 +686,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               </div>
             </div>
 
-            {/* Month & Region (Matching Video: Month: - Sept   Region: > SR2) */}
-            <div className="flex items-center gap-3 shrink-0 font-bold text-xs text-[#000080]">
+            {/* Month (Matching screenshot_13.jpg: Month : - <Month>, NO Region!) */}
+            <div className="flex items-center gap-2 shrink-0 font-bold text-xs text-[#000080]">
               <div>
                 Month : - <span className="text-[#800000] font-black">{month}</span>
-              </div>
-              <div>
-                Region : &gt; <span className="text-black font-mono">{regionName || 'SR2'}</span>
               </div>
             </div>
 
@@ -821,12 +849,32 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           </div>
 
           {/* Control Row 2 */}
-          <div className="grid grid-cols-12 gap-2 items-center">
+          <div className="grid grid-cols-12 gap-1.5 items-center">
             <label className="col-span-1 font-bold text-[#000080]">Month</label>
             <select 
+              ref={monthSelectRef}
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="col-span-2 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-xs"
+              onKeyDown={(e) => {
+                const currentIndex = MONTHS.indexOf(month);
+                if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  const nextIdx = (currentIndex + 1) % MONTHS.length;
+                  setMonth(MONTHS[nextIdx]);
+                } else if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  const prevIdx = (currentIndex - 1 + MONTHS.length) % MONTHS.length;
+                  setMonth(MONTHS[prevIdx]);
+                } else if (e.key === 'Enter') {
+                  e.preventDefault();
+                  setMonth(getCurrentMonthName());
+                  if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
+                } else if (e.key === 'Tab') {
+                  e.preventDefault();
+                  if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
+                }
+              }}
+              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-xs"
             >
               {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
@@ -835,38 +883,58 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             <input 
               ref={billAmtRef}
               type="number" 
-              value={billAmt}
+              value={billAmt === '' || billAmt === 0 ? '' : billAmt}
+              placeholder="0"
               onChange={(e) => setBillAmt(parseFloat(e.target.value) || 0)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' || e.key === 'Tab') {
+                  e.preventDefault();
                   if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
                 }
               }}
-              className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-right text-xs"
+              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-right text-xs"
             />
 
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Ml. Rcp. At.</label>
             <input 
               ref={manualRcpAmtRef}
               type="number" 
-              value={manualRcpAmt}
-              onChange={(e) => setManualRcpAmt(parseFloat(e.target.value) || 0)}
+              value={manualRcpAmt === '' || manualRcpAmt === 0 ? '' : manualRcpAmt}
+              placeholder="0"
+              onChange={(e) => {
+                const val = parseFloat(e.target.value) || 0;
+                setManualRcpAmt(val);
+                const calculatedRev = Math.max(0, val - (Number(lessAmt) || 0));
+                setRevAmt(calculatedRev);
+                const remaining = Math.max(0, totalCustomerDue - calculatedRev - (Number(lessAmt) || 0));
+                setBalAmt(remaining);
+              }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' || e.key === 'Tab') {
+                  e.preventDefault();
                   if (lessAmtRef.current) lessAmtRef.current.focus();
                 }
               }}
-              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-xs"
+              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
             />
 
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Ls. Amt</label>
             <input 
               ref={lessAmtRef}
               type="number" 
-              value={lessAmt}
-              onChange={(e) => setLessAmt(parseFloat(e.target.value) || 0)}
+              value={lessAmt === '' || lessAmt === 0 ? '' : lessAmt}
+              placeholder="0"
+              onChange={(e) => {
+                const val = parseFloat(e.target.value) || 0;
+                setLessAmt(val);
+                const calculatedRev = Math.max(0, (Number(manualRcpAmt) || 0) - val);
+                setRevAmt(calculatedRev);
+                const remaining = Math.max(0, totalCustomerDue - calculatedRev - val);
+                setBalAmt(remaining);
+              }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' || e.key === 'Tab') {
+                  e.preventDefault();
                   if (revAmtRef.current) revAmtRef.current.focus();
                 }
               }}
@@ -877,10 +945,17 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             <input 
               ref={revAmtRef}
               type="number" 
-              value={revAmt}
-              onChange={(e) => setRevAmt(parseFloat(e.target.value) || 0)}
+              value={revAmt === '' || revAmt === 0 ? '' : revAmt}
+              placeholder="0"
+              onChange={(e) => {
+                const val = parseFloat(e.target.value) || 0;
+                setRevAmt(val);
+                const remaining = Math.max(0, totalCustomerDue - val - (Number(lessAmt) || 0));
+                setBalAmt(remaining);
+              }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' || e.key === 'Tab') {
+                  e.preventDefault();
                   if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
                 }
               }}
@@ -888,10 +963,17 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             />
 
             <label className="col-span-1 font-bold text-[#000080] text-right text-xs">Bal.</label>
+            <input 
+              ref={balRef}
+              type="text" 
+              value={balAmt}
+              readOnly
+              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-slate-800 text-xs"
+            />
           </div>
 
           {/* Control Row 3 */}
-          <div className="grid grid-cols-12 gap-2 items-center">
+          <div className="grid grid-cols-12 gap-1.5 items-center">
             <label className="col-span-2 font-bold text-[#000080] truncate">Mal. Recp. No</label>
             <input 
               ref={manualRecpNoRef}
@@ -899,7 +981,8 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               value={manualRecpNo}
               onChange={(e) => setManualRecpNo(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' || e.key === 'Tab') {
+                  e.preventDefault();
                   if (manualRecpDateRef.current) manualRecpDateRef.current.focus();
                 }
               }}
@@ -914,11 +997,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               value={manualRecpDate}
               onChange={(e) => setManualRecpDate(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' || e.key === 'Tab') {
+                  e.preventDefault();
                   if (paymentMode === 'Cheque') {
                     if (chequeNoRef.current) chequeNoRef.current.focus();
                   } else {
-                    handleApply();
+                    if (applyBtnRef.current) applyBtnRef.current.focus();
                   }
                 }
               }}
@@ -929,7 +1013,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Total Amt</label>
             <input 
               type="text" 
-              value={`${revAmt}`}
+              value={`${revAmt || 0}`}
               readOnly
               className="col-span-1 px-1.5 py-0.5 bg-[#FFFFCC] border border-[#808080] font-mono font-black text-center text-black text-xs"
             />
@@ -937,17 +1021,17 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Total Dues</label>
             <input 
               type="text" 
-              value={`${calculatedRemainingBal}`}
+              value={`${totalCustomerDue || 0}`}
               readOnly
               className="col-span-1 px-1.5 py-0.5 bg-[#FFCCCC] border border-[#808080] font-mono font-black text-center text-red-900 text-xs"
             />
           </div>
 
-          {/* Control Row 4: Shortcuts, Narration, Mode, Cheque, Action Buttons (Matching Video) */}
+          {/* Control Row 4: Shortcuts, Narration, Mode, Cheque, Action Buttons (Matching screenshot_13.jpg) */}
           <div className="flex items-center justify-between pt-1 flex-wrap gap-2 border-t border-slate-300">
             
             {/* Shortcuts & Narration & Payment Mode */}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap text-xs">
               <span className="font-bold text-xs text-[#800000] shrink-0">F1 - Cash &nbsp; F2 - Cheque</span>
 
               {/* Narration Field */}
@@ -958,7 +1042,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   value={narration}
                   onChange={(e) => setNarration(e.target.value)}
                   placeholder=""
-                  className="w-32 px-1 py-0.5 bg-white border border-[#808080] font-mono text-xs"
+                  className="w-28 px-1 py-0.5 bg-white border border-[#808080] font-mono text-xs"
                 />
               </div>
               
@@ -985,47 +1069,50 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 <span>Cheque</span>
               </label>
 
-              {paymentMode === 'Cheque' && (
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-[#000080]">Cheque No</span>
-                  <input 
-                    ref={chequeNoRef}
-                    type="text" 
-                    value={chequeNo}
-                    onChange={(e) => setChequeNo(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        if (chequeDateRef.current) chequeDateRef.current.focus();
-                      }
-                    }}
-                    placeholder="Chq #"
-                    className="w-20 px-1 py-0.5 bg-white border border-[#808080] font-mono font-bold text-xs"
-                  />
-                  <span className="font-bold text-[#000080]">Cheque Date</span>
-                  <input 
-                    ref={chequeDateRef}
-                    type="text" 
-                    value={chequeDate}
-                    onChange={(e) => setChequeDate(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleApply();
-                      }
-                    }}
-                    placeholder="//"
-                    className="w-16 px-1 py-0.5 bg-white border border-[#808080] font-mono text-center text-xs"
-                  />
-                </div>
-              )}
+              {/* Cheque Details matching screenshot_13.jpg */}
+              <div className="flex items-center gap-1">
+                <span className="font-bold text-[#000080]">Cheque No</span>
+                <input 
+                  ref={chequeNoRef}
+                  type="text" 
+                  disabled={paymentMode !== 'Cheque'}
+                  value={chequeNo}
+                  onChange={(e) => setChequeNo(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === 'Tab') {
+                      e.preventDefault();
+                      if (chequeDateRef.current) chequeDateRef.current.focus();
+                    }
+                  }}
+                  placeholder=""
+                  className="w-20 px-1 py-0.5 bg-white border border-[#808080] font-mono font-bold text-xs disabled:bg-slate-100"
+                />
+                <span className="font-bold text-[#000080]">Cheque Date</span>
+                <input 
+                  ref={chequeDateRef}
+                  type="text" 
+                  disabled={paymentMode !== 'Cheque'}
+                  value={chequeDate}
+                  onChange={(e) => setChequeDate(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === 'Tab') {
+                      e.preventDefault();
+                      if (applyBtnRef.current) applyBtnRef.current.focus();
+                    }
+                  }}
+                  placeholder="//"
+                  className="w-16 px-1 py-0.5 bg-white border border-[#808080] font-mono text-center text-xs disabled:bg-slate-100"
+                />
+              </div>
             </div>
 
-            {/* Action Buttons matching RecieptEntryRecording.mp4 */}
+            {/* Action Buttons matching screenshot_13.jpg */}
             <div className="flex items-center gap-2">
               <button 
                 ref={applyBtnRef}
                 onClick={handleApply}
                 disabled={isSaving}
-                className="px-4 py-1 bg-white hover:bg-blue-50 border border-[#808080] text-xs font-bold text-black cursor-pointer shadow-xs disabled:opacity-50 min-w-[70px]"
+                className="px-4 py-1 bg-white hover:bg-blue-50 border border-[#808080] text-xs font-bold text-black cursor-pointer shadow-xs disabled:opacity-50 min-w-[70px] focus:ring-2 focus:ring-blue-600 focus:outline-none"
               >
                 <u>A</u>pply
               </button>
