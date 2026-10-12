@@ -615,7 +615,13 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 value={collectionAgentName}
                 onChange={(e) => handleCollectorChange(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Tab' || e.key === 'Enter') {
+                  if (e.key === 'Tab') {
+                    if (!e.shiftKey) {
+                      e.preventDefault();
+                      if (bookSelectRef.current) bookSelectRef.current.focus();
+                      else if (customerInputRef.current) customerInputRef.current.focus();
+                    }
+                  } else if (e.key === 'Enter') {
                     e.preventDefault();
                     if (bookSelectRef.current) bookSelectRef.current.focus();
                     else if (customerInputRef.current) customerInputRef.current.focus();
@@ -657,7 +663,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                     );
                   })
                 ) : (
-                  <option value="">{selectedBookRange || (collectionAgentName ? '' : '-- Allotted Books --')}</option>
+                  <option value="">{selectedBookRange || (collectionAgentName ? '-- No Books Allotted --' : '-- Allotted Books --')}</option>
                 )}
               </select>
             </div>

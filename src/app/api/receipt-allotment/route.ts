@@ -3,12 +3,11 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { supabase } from '@/lib/supabaseClient';
 import path from 'path';
 import fs from 'fs';
-import os from 'os';
 
 export const dynamic = 'force-dynamic';
 
 const STORAGE_BUCKET = 'news-images';
-const STORAGE_FILE = 'data/receipt_allotments.json';
+const STORAGE_FILE = 'data/receipt_allotments_20262027.json';
 
 export interface ReceiptAllotmentRecord {
   id?: string | number;
@@ -64,43 +63,33 @@ function formatDateToYYYYMMDD(dStr?: string | null): string {
   return s;
 }
 
-function parseDateToTimestamp(dStr?: string | null): number {
-  if (!dStr) return 0;
-  if (dStr.includes('/')) {
-    const parts = dStr.split('/');
-    if (parts.length === 3) {
-      const dd = parts[0].padStart(2, '0');
-      const mm = parts[1].padStart(2, '0');
-      const yyyy = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
-      return new Date(`${yyyy}-${mm}-${dd}`).getTime() || 0;
-    }
-  }
-  if (dStr.includes('-')) {
-    const parts = dStr.split('-');
-    if (parts.length === 3 && parts[0].length === 4) {
-      return new Date(dStr).getTime() || 0;
-    }
-  }
-  return 0;
-}
-
-
 function sortAndIndexAllotments(list: ReceiptAllotmentRecord[]): ReceiptAllotmentRecord[] {
-  return [...list].sort((a, b) => {
+  const sorted = [...list].sort((a, b) => {
     if ((a.collector_name || '').toLowerCase() !== (b.collector_name || '').toLowerCase()) {
       return (a.collector_name || '').localeCompare(b.collector_name || '', undefined, { sensitivity: 'base' });
     }
     return (Number(a.sno) || 0) - (Number(b.sno) || 0);
   });
+
+  // Ensure clean sequential 1, 2, 3... sno per collector
+  const collectorCounters: Record<string, number> = {};
+  return sorted.map(item => {
+    const key = (item.collector_name || '').toLowerCase();
+    collectorCounters[key] = (collectorCounters[key] || 0) + 1;
+    return {
+      ...item,
+      sno: item.sno || collectorCounters[key]
+    };
+  });
 }
 
 async function loadAllotmentsFromStorage(): Promise<ReceiptAllotmentRecord[]> {
-  // 1. Try public/data
-  const pubPath = path.join(process.cwd(), 'public', 'data', 'receipt_allotments.json');
+  // 1. Try public/data/receipt_allotments_20262027.json
+  const pubPath = path.join(process.cwd(), 'public', 'data', 'receipt_allotments_20262027.json');
   if (fs.existsSync(pubPath)) {
     try {
       const data = JSON.parse(fs.readFileSync(pubPath, 'utf-8'));
-      if (Array.isArray(data) && data.length > 0) return data;
+      if (Array.isArray(data)) return data;
     } catch {}
   }
 
@@ -110,22 +99,26 @@ async function loadAllotmentsFromStorage(): Promise<ReceiptAllotmentRecord[]> {
     if (!error && data) {
       const text = await data.text();
       const parsed = JSON.parse(text);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch (err) {
-    console.warn('Supabase storage download error for receipt allotments:', err);
+    console.warn('Supabase storage download error for receipt allotments 20262027:', err);
   }
 
   return [];
 }
 
 async function saveAllotmentsToStorage(data: ReceiptAllotmentRecord[]) {
-  // 1. Save to public/data
+  // 1. Save to public/data/receipt_allotments_20262027.json
   try {
     const pubDir = path.join(process.cwd(), 'public', 'data');
     if (!fs.existsSync(pubDir)) fs.mkdirSync(pubDir, { recursive: true });
-    const pubPath = path.join(pubDir, 'receipt_allotments.json');
+    const pubPath = path.join(pubDir, 'receipt_allotments_20262027.json');
     fs.writeFileSync(pubPath, JSON.stringify(data, null, 2), 'utf-8');
+    
+    // Also update legacy receipt_allotments.json to keep it aligned
+    const legacyPath = path.join(pubDir, 'receipt_allotments.json');
+    fs.writeFileSync(legacyPath, JSON.stringify(data, null, 2), 'utf-8');
   } catch {}
 
   // 2. Save to Supabase Storage
@@ -136,7 +129,7 @@ async function saveAllotmentsToStorage(data: ReceiptAllotmentRecord[]) {
       { upsert: true, contentType: 'application/json' }
     );
   } catch (err) {
-    console.warn('Supabase storage upload error for receipt allotments:', err);
+    console.warn('Supabase storage upload error for receipt allotments 20262027:', err);
   }
 }
 
@@ -154,7 +147,7 @@ export async function GET(req: NextRequest) {
     const collectorsRes = await supabase
       .from('collect')
       .select('*')
-      .order('Collect_id', { ascending: true });
+      .order('name', { ascending: true });
 
     const collectors = (collectorsRes.data || []).map((c: any) => ({
       collect_id: c.Collect_id || c.collect_id || c.id,
@@ -163,17 +156,15 @@ export async function GET(req: NextRequest) {
 
     const colMap = Object.fromEntries(collectors.map(c => [c.collect_id, c.name]));
 
-    // 2. Load stored allotments (strictly for current financial year 2026-2027)
-    const storageRecords = await loadAllotmentsFromStorage();
-
-    // Query Supabase receiptissue20252026 table (if any FY 2026-2027 records exist)
+    // 2. Query Supabase table receiptissue20262027 (strictly active FY 2026-2027)
     let dbRecords: ReceiptAllotmentRecord[] = [];
     try {
       const { data: dbIssues, error: dbErr } = await supabase
-        .from('receiptissue20252026')
-        .select('*');
+        .from('receiptissue20262027')
+        .select('*')
+        .order('sno', { ascending: true });
 
-      if (!dbErr && dbIssues && dbIssues.length > 0) {
+      if (!dbErr && dbIssues && Array.isArray(dbIssues) && dbIssues.length > 0) {
         dbRecords = dbIssues.map(item => {
           const cName = colMap[item.Collect_id] || ('Collector ' + item.Collect_id);
           return {
@@ -188,12 +179,13 @@ export async function GET(req: NextRequest) {
         });
       }
     } catch (e) {
-      console.warn('Could not query receiptissue20252026 from Supabase:', e);
+      console.warn('Could not query receiptissue20262027 from Supabase:', e);
     }
 
-    // 3. Combine database records and storage records (active table receiptissue20252026)
-    const combined = dbRecords.length > 0 ? dbRecords : storageRecords;
-    const allotments = sortAndIndexAllotments(combined);
+    // 3. Fallback to 2026-2027 dedicated storage if table not yet populated or created
+    const storageRecords = await loadAllotmentsFromStorage();
+    const activeRecords = dbRecords.length > 0 ? dbRecords : storageRecords;
+    const allotments = sortAndIndexAllotments(activeRecords);
 
     let filtered: ReceiptAllotmentRecord[] = [];
     if (collectorName && collectorName.trim()) {
@@ -250,10 +242,10 @@ export async function POST(req: NextRequest) {
     const matchedCol = (cols || []).find((c: any) => (c.name || '').toLowerCase() === cleanName.toLowerCase());
     const collectId = matchedCol ? (matchedCol.Collect_id || matchedCol.collect_id || matchedCol.id) : null;
 
-    // Load existing allotments for validation
+    // Load existing allotments for validation (strictly FY 2026-2027)
     let allotments = await loadAllotmentsFromStorage();
 
-    // Check for range overlap with other allotments
+    // Check for range overlap with other 2026-2027 allotments
     for (const item of allotments) {
       const isSameItem = edit_sno && (item.collector_name.toLowerCase() === cleanName.toLowerCase()) && item.sno === edit_sno;
       if (!isSameItem) {
@@ -272,11 +264,11 @@ export async function POST(req: NextRequest) {
     const formattedRecDate = rec_date ? formatDateToDDMMYYYY(rec_date) : null;
     const dbIssueDate = formatDateToYYYYMMDD(formattedAllotDate);
 
-    // Save to Supabase receiptissue20252026 table
+    // Save to Supabase receiptissue20262027 table (if table exists)
     try {
       if (edit_sno && collectId) {
         await supabase
-          .from('receiptissue20252026')
+          .from('receiptissue20262027')
           .update({
             ReceiptFrom: String(fromNum),
             ReceiptTo: String(toNum),
@@ -290,7 +282,7 @@ export async function POST(req: NextRequest) {
         const nextSno = collectorItems.length > 0 ? Math.max(...collectorItems.map(a => a.sno)) + 1 : 1;
 
         await supabase
-          .from('receiptissue20252026')
+          .from('receiptissue20262027')
           .insert({
             sno: nextSno,
             Collect_id: collectId,
@@ -301,10 +293,10 @@ export async function POST(req: NextRequest) {
           });
       }
     } catch (dbErr) {
-      console.warn('Database write error to receiptissue20252026:', dbErr);
+      console.warn('Database write to receiptissue20262027:', dbErr);
     }
 
-    // Update in storage file
+    // Update in storage file for 2026-2027
     let updatedAllotments = [...allotments];
     if (edit_sno) {
       const idx = updatedAllotments.findIndex(a => 
@@ -347,7 +339,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Receipt allotment saved successfully!',
+      message: 'Receipt allotment saved successfully to receiptissue20262027!',
       allotments: collectorFiltered,
       all_allotments: sortedAll
     });
@@ -376,20 +368,20 @@ export async function DELETE(req: NextRequest) {
     const sno = parseInt(snoStr, 10);
     const cleanName = collectorName.trim();
 
-    // Delete from Supabase receiptissue20252026 table
+    // Delete from Supabase receiptissue20262027 table
     try {
       const { data: cols } = await supabase.from('collect').select('*');
       const matchedCol = (cols || []).find((c: any) => (c.name || '').toLowerCase() === cleanName.toLowerCase());
       if (matchedCol) {
         const collectId = matchedCol.Collect_id || matchedCol.collect_id || matchedCol.id;
         await supabase
-          .from('receiptissue20252026')
+          .from('receiptissue20262027')
           .delete()
           .eq('Collect_id', collectId)
           .eq('sno', sno);
       }
     } catch (dbErr) {
-      console.warn('Database delete error on receiptissue20252026:', dbErr);
+      console.warn('Database delete error on receiptissue20262027:', dbErr);
     }
 
     const allotments = await loadAllotmentsFromStorage();
@@ -406,7 +398,7 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Allotment deleted successfully!',
+      message: 'Allotment deleted successfully from receiptissue20262027!',
       allotments: collectorRemaining,
       all_allotments: reindexed
     });
