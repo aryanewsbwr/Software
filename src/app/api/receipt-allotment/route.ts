@@ -23,72 +23,45 @@ export interface ReceiptAllotmentRecord {
   updated_at?: string;
 }
 
-// Initial baseline records from old software
-const INITIAL_ALLOTMENTS: ReceiptAllotmentRecord[] = [
-  { sno: 1, collector_name: 'Salam', receipt_from: 1001, receipt_to: 1100, allot_date: '01/08/2026', rec_date: '15/08/2026' },
-  { sno: 2, collector_name: 'Salam', receipt_from: 1101, receipt_to: 1200, allot_date: '16/08/2026', rec_date: null }
-];
-
-async function loadAllotmentsFromStorage(): Promise<ReceiptAllotmentRecord[]> {
-  // 1. Try Supabase Storage
-  try {
-    const { data, error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).download(STORAGE_FILE);
-    if (!error && data) {
-      const text = await data.text();
-      const parsed = JSON.parse(text);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+function formatDateToDDMMYYYY(dStr?: string | null): string {
+  if (!dStr) return '';
+  const s = String(dStr).trim();
+  if (s.includes('/')) {
+    const parts = s.split('/');
+    if (parts.length === 3) {
+      const dd = parts[0].padStart(2, '0');
+      const mm = parts[1].padStart(2, '0');
+      const yyyy = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+      return `${dd}/${mm}/${yyyy}`;
     }
-  } catch (err) {
-    console.warn('Supabase storage download error for receipt allotments:', err);
   }
-
-  // 2. Fallback to /tmp
-  const tmpPath = path.join(os.tmpdir(), 'receipt_allotments.json');
-  if (fs.existsSync(tmpPath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(tmpPath, 'utf-8'));
-      if (Array.isArray(data) && data.length > 0) return data;
-    } catch {}
+  if (s.includes('-')) {
+    const parts = s.split('-');
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        // YYYY-MM-DD -> DD/MM/YYYY
+        return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+      } else {
+        return `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[2]}`;
+      }
+    }
   }
-
-  // 3. Fallback to public/data
-  const pubPath = path.join(process.cwd(), 'public', 'data', 'receipt_allotments.json');
-  if (fs.existsSync(pubPath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(pubPath, 'utf-8'));
-      if (Array.isArray(data) && data.length > 0) return data;
-    } catch {}
-  }
-
-  // Default seed from old software
-  return INITIAL_ALLOTMENTS;
+  return s;
 }
 
-async function saveAllotmentsToStorage(data: ReceiptAllotmentRecord[]) {
-  // 1. Save to Supabase Storage
-  try {
-    await supabaseAdmin.storage.from(STORAGE_BUCKET).upload(
-      STORAGE_FILE,
-      Buffer.from(JSON.stringify(data, null, 2)),
-      { upsert: true, contentType: 'application/json' }
-    );
-  } catch (err) {
-    console.warn('Supabase storage upload error for receipt allotments:', err);
+function formatDateToYYYYMMDD(dStr?: string | null): string {
+  if (!dStr) return '';
+  const s = String(dStr).trim();
+  if (s.includes('/')) {
+    const parts = s.split('/');
+    if (parts.length === 3) {
+      const dd = parts[0].padStart(2, '0');
+      const mm = parts[1].padStart(2, '0');
+      const yyyy = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+      return `${yyyy}-${mm}-${dd}`;
+    }
   }
-
-  // 2. Save to /tmp
-  try {
-    const tmpPath = path.join(os.tmpdir(), 'receipt_allotments.json');
-    fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
-  } catch {}
-
-  // 3. Save to public/data
-  try {
-    const pubDir = path.join(process.cwd(), 'public', 'data');
-    if (!fs.existsSync(pubDir)) fs.mkdirSync(pubDir, { recursive: true });
-    const pubPath = path.join(pubDir, 'receipt_allotments.json');
-    fs.writeFileSync(pubPath, JSON.stringify(data, null, 2), 'utf-8');
-  } catch {}
+  return s;
 }
 
 function parseDateToTimestamp(dStr?: string | null): number {
@@ -114,7 +87,7 @@ function parseDateToTimestamp(dStr?: string | null): number {
 function sortAndIndexAllotments(list: ReceiptAllotmentRecord[]): ReceiptAllotmentRecord[] {
   const sorted = [...list].sort((a, b) => {
     if ((a.collector_name || '').toLowerCase() !== (b.collector_name || '').toLowerCase()) {
-      return (a.collector_name || '').localeCompare(b.collector_name || '');
+      return (a.collector_name || '').localeCompare(b.collector_name || '', undefined, { sensitivity: 'base' });
     }
     const tA = parseDateToTimestamp(a.allot_date);
     const tB = parseDateToTimestamp(b.allot_date);
@@ -133,6 +106,52 @@ function sortAndIndexAllotments(list: ReceiptAllotmentRecord[]): ReceiptAllotmen
   });
 }
 
+async function loadAllotmentsFromStorage(): Promise<ReceiptAllotmentRecord[]> {
+  // 1. Try public/data
+  const pubPath = path.join(process.cwd(), 'public', 'data', 'receipt_allotments.json');
+  if (fs.existsSync(pubPath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(pubPath, 'utf-8'));
+      if (Array.isArray(data) && data.length > 0) return data;
+    } catch {}
+  }
+
+  // 2. Try Supabase Storage
+  try {
+    const { data, error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).download(STORAGE_FILE);
+    if (!error && data) {
+      const text = await data.text();
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (err) {
+    console.warn('Supabase storage download error for receipt allotments:', err);
+  }
+
+  return [];
+}
+
+async function saveAllotmentsToStorage(data: ReceiptAllotmentRecord[]) {
+  // 1. Save to public/data
+  try {
+    const pubDir = path.join(process.cwd(), 'public', 'data');
+    if (!fs.existsSync(pubDir)) fs.mkdirSync(pubDir, { recursive: true });
+    const pubPath = path.join(pubDir, 'receipt_allotments.json');
+    fs.writeFileSync(pubPath, JSON.stringify(data, null, 2), 'utf-8');
+  } catch {}
+
+  // 2. Save to Supabase Storage
+  try {
+    await supabaseAdmin.storage.from(STORAGE_BUCKET).upload(
+      STORAGE_FILE,
+      Buffer.from(JSON.stringify(data, null, 2)),
+      { upsert: true, contentType: 'application/json' }
+    );
+  } catch (err) {
+    console.warn('Supabase storage upload error for receipt allotments:', err);
+  }
+}
+
 /**
  * GET /api/receipt-allotment
  * Query Params:
@@ -143,23 +162,50 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const collectorName = searchParams.get('collector_name');
 
-    const [rawAllotments, collectorsRes] = await Promise.all([
-      loadAllotmentsFromStorage(),
-      supabase.from('collect').select('*').order('Collect_id', { ascending: true })
-    ]);
+    // 1. Fetch collectors
+    const collectorsRes = await supabase
+      .from('collect')
+      .select('*')
+      .order('Collect_id', { ascending: true });
 
     const collectors = (collectorsRes.data || []).map((c: any) => ({
       collect_id: c.Collect_id || c.collect_id || c.id,
       name: c.name || c.collector_name || `Collector #${c.Collect_id}`
     })).sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
 
-    // Filter allotments to Current Financial Year (2026-2027) only
-    const currentFYAllotments = rawAllotments.filter(a => {
-      if (!a.allot_date) return true;
-      return a.allot_date.includes('2026') || a.allot_date.includes('2027') || a.allot_date.includes('/26') || a.allot_date.includes('/27');
-    });
+    const colMap = Object.fromEntries(collectors.map(c => [c.collect_id, c.name]));
 
-    const allotments = sortAndIndexAllotments(currentFYAllotments);
+    // 2. Query Supabase receiptissue20252026 table
+    let records: ReceiptAllotmentRecord[] = [];
+    try {
+      const { data: dbIssues, error: dbErr } = await supabase
+        .from('receiptissue20252026')
+        .select('*');
+
+      if (!dbErr && dbIssues && dbIssues.length > 0) {
+        records = dbIssues.map(item => {
+          const cName = colMap[item.Collect_id] || ('Collector ' + item.Collect_id);
+          return {
+            sno: Number(item.sno) || 1,
+            collect_id: item.Collect_id,
+            collector_name: cName,
+            receipt_from: Number(item.ReceiptFrom) || 0,
+            receipt_to: Number(item.ReceiptTo) || 0,
+            allot_date: formatDateToDDMMYYYY(item.IssueDate),
+            rec_date: item.RecDate ? formatDateToDDMMYYYY(item.RecDate) : null
+          };
+        });
+      }
+    } catch (e) {
+      console.warn('Could not query receiptissue20252026 from Supabase:', e);
+    }
+
+    // Fallback to storage file if database returned empty
+    if (records.length === 0) {
+      records = await loadAllotmentsFromStorage();
+    }
+
+    const allotments = sortAndIndexAllotments(records);
 
     let filtered: ReceiptAllotmentRecord[] = [];
     if (collectorName && collectorName.trim()) {
@@ -210,16 +256,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Receipt To number must be greater than or equal to Receipt From number.' }, { status: 400 });
     }
 
-    const allotments = await loadAllotmentsFromStorage();
+    // Resolve collect_id
+    const { data: cols } = await supabase.from('collect').select('*');
     const cleanName = collector_name.trim();
+    const matchedCol = (cols || []).find((c: any) => (c.name || '').toLowerCase() === cleanName.toLowerCase());
+    const collectId = matchedCol ? (matchedCol.Collect_id || matchedCol.collect_id || matchedCol.id) : null;
 
-    // Check for range overlap with other allotments (excluding the current one if editing)
+    // Load existing allotments for validation
+    let allotments = await loadAllotmentsFromStorage();
+
+    // Check for range overlap with other allotments
     for (const item of allotments) {
       const isSameItem = edit_sno && (item.collector_name.toLowerCase() === cleanName.toLowerCase()) && item.sno === edit_sno;
       if (!isSameItem) {
         const itemFrom = item.receipt_from;
         const itemTo = item.receipt_to;
-        // Overlap condition: max(fromNum, itemFrom) <= min(toNum, itemTo)
         if (Math.max(fromNum, itemFrom) <= Math.min(toNum, itemTo)) {
           return NextResponse.json({
             success: false,
@@ -229,10 +280,45 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    let updatedAllotments = [...allotments];
+    const formattedAllotDate = formatDateToDDMMYYYY(allot_date || new Date().toLocaleDateString('en-GB'));
+    const formattedRecDate = rec_date ? formatDateToDDMMYYYY(rec_date) : null;
+    const dbIssueDate = formatDateToYYYYMMDD(formattedAllotDate);
 
+    // Save to Supabase receiptissue20252026 table
+    try {
+      if (edit_sno && collectId) {
+        await supabase
+          .from('receiptissue20252026')
+          .update({
+            ReceiptFrom: String(fromNum),
+            ReceiptTo: String(toNum),
+            IssueDate: dbIssueDate,
+            RecDate: formattedRecDate ? formatDateToYYYYMMDD(formattedRecDate) : null
+          })
+          .eq('Collect_id', collectId)
+          .eq('sno', edit_sno);
+      } else if (collectId) {
+        const collectorItems = allotments.filter(a => a.collector_name.toLowerCase() === cleanName.toLowerCase());
+        const nextSno = collectorItems.length > 0 ? Math.max(...collectorItems.map(a => a.sno)) + 1 : 1;
+
+        await supabase
+          .from('receiptissue20252026')
+          .insert({
+            sno: nextSno,
+            Collect_id: collectId,
+            ReceiptFrom: String(fromNum),
+            ReceiptTo: String(toNum),
+            IssueDate: dbIssueDate,
+            RecDate: formattedRecDate ? formatDateToYYYYMMDD(formattedRecDate) : null
+          });
+      }
+    } catch (dbErr) {
+      console.warn('Database write error to receiptissue20252026:', dbErr);
+    }
+
+    // Update in storage file
+    let updatedAllotments = [...allotments];
     if (edit_sno) {
-      // Edit existing row
       const idx = updatedAllotments.findIndex(a => 
         a.collector_name.toLowerCase() === cleanName.toLowerCase() && a.sno === edit_sno
       );
@@ -242,32 +328,32 @@ export async function POST(req: NextRequest) {
           collector_name: cleanName,
           receipt_from: fromNum,
           receipt_to: toNum,
-          allot_date: allot_date || updatedAllotments[idx].allot_date,
-          rec_date: rec_date !== undefined ? rec_date : updatedAllotments[idx].rec_date,
+          allot_date: formattedAllotDate,
+          rec_date: formattedRecDate,
           updated_at: new Date().toISOString()
         };
       }
     } else {
-      // Add new row for this collector
       const collectorItems = allotments.filter(a => a.collector_name.toLowerCase() === cleanName.toLowerCase());
       const nextSno = collectorItems.length > 0 ? Math.max(...collectorItems.map(a => a.sno)) + 1 : 1;
 
       const newRecord: ReceiptAllotmentRecord = {
         sno: nextSno,
+        collect_id: collectId,
         collector_name: cleanName,
         receipt_from: fromNum,
         receipt_to: toNum,
-        allot_date: allot_date || new Date().toLocaleDateString('en-GB'),
-        rec_date: rec_date || null,
+        allot_date: formattedAllotDate,
+        rec_date: formattedRecDate,
         created_at: new Date().toISOString()
       };
-
       updatedAllotments.push(newRecord);
     }
 
-    await saveAllotmentsToStorage(updatedAllotments);
+    const sortedAll = sortAndIndexAllotments(updatedAllotments);
+    await saveAllotmentsToStorage(sortedAll);
 
-    const collectorFiltered = updatedAllotments.filter(a => 
+    const collectorFiltered = sortedAll.filter(a => 
       a.collector_name.toLowerCase() === cleanName.toLowerCase()
     );
 
@@ -275,7 +361,7 @@ export async function POST(req: NextRequest) {
       success: true,
       message: 'Receipt allotment saved successfully!',
       allotments: collectorFiltered,
-      all_allotments: updatedAllotments
+      all_allotments: sortedAll
     });
   } catch (error: any) {
     console.error('Error saving receipt allotment:', error);
@@ -300,25 +386,34 @@ export async function DELETE(req: NextRequest) {
     }
 
     const sno = parseInt(snoStr, 10);
-    const allotments = await loadAllotmentsFromStorage();
+    const cleanName = collectorName.trim();
 
+    // Delete from Supabase receiptissue20252026 table
+    try {
+      const { data: cols } = await supabase.from('collect').select('*');
+      const matchedCol = (cols || []).find((c: any) => (c.name || '').toLowerCase() === cleanName.toLowerCase());
+      if (matchedCol) {
+        const collectId = matchedCol.Collect_id || matchedCol.collect_id || matchedCol.id;
+        await supabase
+          .from('receiptissue20252026')
+          .delete()
+          .eq('Collect_id', collectId)
+          .eq('sno', sno);
+      }
+    } catch (dbErr) {
+      console.warn('Database delete error on receiptissue20252026:', dbErr);
+    }
+
+    const allotments = await loadAllotmentsFromStorage();
     const filtered = allotments.filter(a => 
-      !(a.collector_name.toLowerCase() === collectorName.toLowerCase() && a.sno === sno)
+      !(a.collector_name.toLowerCase() === cleanName.toLowerCase() && a.sno === sno)
     );
 
-    // Re-index SNOs for this collector
-    let cCounter = 1;
-    const reindexed = filtered.map(a => {
-      if (a.collector_name.toLowerCase() === collectorName.toLowerCase()) {
-        return { ...a, sno: cCounter++ };
-      }
-      return a;
-    });
-
+    const reindexed = sortAndIndexAllotments(filtered);
     await saveAllotmentsToStorage(reindexed);
 
     const collectorRemaining = reindexed.filter(a => 
-      a.collector_name.toLowerCase() === collectorName.toLowerCase()
+      a.collector_name.toLowerCase() === cleanName.toLowerCase()
     );
 
     return NextResponse.json({

@@ -99,7 +99,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const chequeDateRef = useRef<HTMLInputElement>(null);
   const applyBtnRef = useRef<HTMLButtonElement>(null);
   const collectionSelectRef = useRef<HTMLSelectElement>(null);
+  const collectionNoRef = useRef<HTMLInputElement>(null);
   const bookSelectRef = useRef<HTMLSelectElement>(null);
+
+  const [collectionNo, setCollectionNo] = useState<string>('');
 
   // Allotted Books for chosen Collector
   const collectorBooks = useMemo(() => {
@@ -109,9 +112,9 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
   // 1. Initial Load: Next Receipt Number, Customers, Regions, Collectors & Allotments
   useEffect(() => {
-    // Focus customer search box immediately on mount
-    if (customerInputRef.current) {
-      customerInputRef.current.focus();
+    // Focus Collection Name dropdown immediately on mount
+    if (collectionSelectRef.current) {
+      collectionSelectRef.current.focus();
     }
 
     // Load next receipt number
@@ -175,6 +178,8 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   // Update active book range badge for selected collector
   const handleCollectorChange = (name: string) => {
     setCollectionAgentName(name);
+    const col = collectors.find(c => (c.name || '').toLowerCase() === (name || '').toLowerCase());
+    setCollectionNo(col ? String(col.collect_id) : '');
     if (!name) {
       setActiveBookRange('');
       setSelectedBookRange('');
@@ -190,6 +195,14 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     } else {
       setActiveBookRange('');
       setSelectedBookRange('');
+    }
+  };
+
+  const handleCollectionNoChange = (noStr: string) => {
+    setCollectionNo(noStr);
+    const col = collectors.find(c => String(c.collect_id) === noStr.trim());
+    if (col) {
+      handleCollectorChange(col.name);
     }
   };
 
@@ -600,13 +613,22 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               </div>
             </div>
 
-            {/* Collection Dropdown & Allotted Book Range Dropdown (Matching screenshot_13.jpg) */}
+            {/* Collection Dropdown, Collection No & Allotted Book Range Dropdown (Matching screenshot_13.jpg) */}
             <div className="flex items-center gap-2">
               <label className="font-bold text-[#000080]">Collection</label>
+
+              {/* 1. Collection Name Dropdown */}
               <select 
                 ref={collectionSelectRef}
                 value={collectionAgentName}
                 onChange={(e) => handleCollectorChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Tab' || e.key === 'Enter') {
+                    e.preventDefault();
+                    if (collectionNoRef.current) collectionNoRef.current.focus();
+                    else if (customerInputRef.current) customerInputRef.current.focus();
+                  }
+                }}
                 className="w-36 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-slate-800 outline-none text-xs cursor-pointer"
               >
                 <option value="">-- Select Collection --</option>
@@ -617,12 +639,42 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 ))}
               </select>
 
-              {/* Allotted Books Dropdown for chosen Collector */}
+              {/* 2. Collection No Input (matches screenshot_13.jpg) */}
+              <input 
+                ref={collectionNoRef}
+                type="text"
+                value={collectionNo}
+                onChange={(e) => handleCollectionNoChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Tab') {
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                      if (collectionSelectRef.current) collectionSelectRef.current.focus();
+                    } else {
+                      if (customerInputRef.current) customerInputRef.current.focus();
+                    }
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (customerInputRef.current) customerInputRef.current.focus();
+                  }
+                }}
+                placeholder="No"
+                title="Collection Agent Number / Code"
+                className="w-12 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-blue-900 outline-none text-center text-xs"
+              />
+
+              {/* 3. Allotted Books Dropdown for chosen Collector */}
               <select
                 ref={bookSelectRef}
                 value={selectedBookRange}
                 onChange={(e) => handleBookRangeChange(e.target.value)}
-                className="w-36 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-slate-800 outline-none text-xs cursor-pointer"
+                onKeyDown={(e) => {
+                  if (e.key === 'Tab' || e.key === 'Enter') {
+                    e.preventDefault();
+                    if (customerInputRef.current) customerInputRef.current.focus();
+                  }
+                }}
+                className="w-32 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-slate-800 outline-none text-xs cursor-pointer"
               >
                 {collectorBooks.length > 0 ? (
                   collectorBooks.map((b, idx) => {
@@ -659,7 +711,11 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                     if (customerSearchQuery.trim()) setIsCustomerDropdownOpen(true);
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === 'Tab') {
+                    if (e.key === 'Tab' && e.shiftKey) {
+                      e.preventDefault();
+                      if (collectionNoRef.current) collectionNoRef.current.focus();
+                      else if (collectionSelectRef.current) collectionSelectRef.current.focus();
+                    } else if (e.key === 'Tab') {
                       if (isCustomerDropdownOpen && filteredCustomerSuggestions.length > 0) {
                         e.preventDefault();
                         handleSelectCustomer(filteredCustomerSuggestions[highlightedCustomerIndex]);
@@ -1010,7 +1066,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === 'Tab') {
                   e.preventDefault();
-                  if (manualRecpDateRef.current) manualRecpDateRef.current.focus();
+                  if (applyBtnRef.current) applyBtnRef.current.focus();
                 }
               }}
               placeholder=""
