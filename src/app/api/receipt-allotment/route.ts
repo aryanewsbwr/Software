@@ -151,9 +151,15 @@ export async function GET(req: NextRequest) {
     const collectors = (collectorsRes.data || []).map((c: any) => ({
       collect_id: c.Collect_id || c.collect_id || c.id,
       name: c.name || c.collector_name || `Collector #${c.Collect_id}`
-    }));
+    })).sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
 
-    const allotments = sortAndIndexAllotments(rawAllotments);
+    // Filter allotments to Current Financial Year (2026-2027) only
+    const currentFYAllotments = rawAllotments.filter(a => {
+      if (!a.allot_date) return true;
+      return a.allot_date.includes('2026') || a.allot_date.includes('2027') || a.allot_date.includes('/26') || a.allot_date.includes('/27');
+    });
+
+    const allotments = sortAndIndexAllotments(currentFYAllotments);
 
     let filtered: ReceiptAllotmentRecord[] = [];
     if (collectorName && collectorName.trim()) {

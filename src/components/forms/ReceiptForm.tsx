@@ -129,17 +129,16 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         }
       });
 
-    // Load Collectors Master
+    // Load Collectors Master (sorted alphabetically)
     supabase
       .from('collect')
       .select('*')
-      .order('Collect_id', { ascending: true })
       .then(({ data }) => {
         if (data && data.length > 0) {
           const list = data.map((c: any) => ({
             collect_id: c.Collect_id || c.collect_id || c.id,
             name: c.name || c.collector_name || `Collector #${c.Collect_id}`
-          }));
+          })).sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
           setCollectors(list);
         }
       });
@@ -289,23 +288,33 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
       setCustomerBills(bList || []);
 
-      // 2. Fetch Receipts (receipt20262027 or receipt20252026)
+      // 2. Fetch Receipts (receipt20262027 and historical receipts from /api/receipts)
       let rList: any[] = [];
-      const { data: r26 } = await supabase
-        .from('receipt20262027')
-        .select('*')
-        .eq('customer_id', cust.customer_id)
-        .order('id', { ascending: true });
+      try {
+        const [r26Res, histRes] = await Promise.all([
+          supabase
+            .from('receipt20262027')
+            .select('*')
+            .eq('customer_id', cust.customer_id)
+            .order('id', { ascending: false }),
+          fetch(`/api/receipts?customer_id=${cust.customer_id}`)
+            .then(res => res.json())
+            .catch(() => ({ receipts: [] }))
+        ]);
 
-      if (r26 && r26.length > 0) {
-        rList = r26;
-      } else {
-        const { data: r25 } = await supabase
-          .from('receipt20252026')
-          .select('*')
-          .eq('customer_id', cust.customer_id)
-          .order('Receipt_id', { ascending: true });
-        if (r25) rList = r25;
+        const r26 = r26Res.data || [];
+        const rHist = (histRes && histRes.receipts) || [];
+        
+        // Merge r26 and rHist without duplicates
+        const combined = [...r26];
+        for (const h of rHist) {
+          if (!combined.some(c => (c.recp_no || c.id) == (h.receipt_no || h.receipt_id))) {
+            combined.push(h);
+          }
+        }
+        rList = combined;
+      } catch (err) {
+        console.warn('Error fetching receipts:', err);
       }
 
       setCustomerReceipts(rList || []);
@@ -322,6 +331,23 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     } finally {
       setIsLoadingHistory(false);
     }
+  };
+
+  // Helper for Bill Display Amount (handles due_amt, del_amt, balance)
+  const getBillDisplayAmount = (b: any): number => {
+    if (b.due_amt !== null && b.due_amt !== undefined && b.due_amt !== '') {
+      return Number(b.due_amt) || 0;
+    }
+    if (b.paper_amount !== null && b.paper_amount !== undefined && b.paper_amount !== '') {
+      return Number(b.paper_amount) || 0;
+    }
+    if (b.balance !== null && b.balance !== undefined && b.balance !== '') {
+      return Math.abs(Number(b.balance)) || 0;
+    }
+    if (b.Bill_Amt !== null && b.Bill_Amt !== undefined) {
+      return Number(b.Bill_Amt) || 0;
+    }
+    return 0;
   };
 
   // Lookup customer by ID directly
@@ -341,22 +367,23 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     const bId = b.bill_no?.toString() || b.bill_id?.toString() || b.Bill_id?.toString() || '';
     setSelectedBillId(bId);
     setBillNo(bId);
-    setMonth(b.month || b.Month || 'Sept');
+    setMonth(b.month || b.Month || getCurrentMonthName());
     setYear(String(b.year || b.Year || '2026'));
-    const amt = Number(b.paper_amount || b.balance || b.Balance || b.Bill_Amt || 0);
+    const amt = getBillDisplayAmount(b);
     setBillAmt(amt);
     setRevAmt(amt);
     setManualRcpAmt(amt);
-    if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
+    setBalAmt(Math.max(0, totalCustomerDue - amt));
+    if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
   };
 
   // 5. Grid Totals Calculation (Footer)
   const totalBillsSum = useMemo(() => {
-    return customerBills.reduce((acc, b) => acc + Number(b.paper_amount || b.balance || b.Balance || b.Bill_Amt || 0), 0);
+    return customerBills.reduce((acc, b) => acc + getBillDisplayAmount(b), 0);
   }, [customerBills]);
 
   const totalReceiptsReceivedSum = useMemo(() => {
-    return customerReceipts.reduce((acc, r) => acc + Number(r.r_amt || r.mal_recp_amt || r.R_amt || 0), 0);
+    return customerReceipts.reduce((acc, r) => acc + Number(r.r_amt ?? r.mal_recp_amt ?? r.R_amt ?? 0), 0);
   }, [customerReceipts]);
 
   // Balance Calculations
@@ -733,7 +760,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                       <span className="border-r border-slate-600">{bId}</span>
                       <span className="border-r border-slate-600">{b.year || b.Year || '2026'}</span>
                       <span className="border-r border-slate-600">{(b.month || b.Month || '').slice(0, 4)}</span>
-                      <span className="font-bold">{b.paper_amount || b.balance || b.Balance || b.Bill_Amt || 0}</span>
+                      <span className="font-bold">{getBillDisplayAmount(b)}</span>
                     </div>
                   );
                 })
@@ -744,9 +771,9 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               )}
             </div>
 
-            {/* Left Grid Footer: Total Bills Sum in Red Text (Matching Video: 1055) */}
+            {/* Left Grid Footer: Total Due in Red Text (Matching Video: 1055) */}
             <div className="bg-[#808080] border-t border-slate-600 px-2 py-0.5 flex justify-end items-center font-mono font-bold text-red-300 text-xs">
-              <span>{totalBillsSum > 0 ? totalBillsSum : 0}</span>
+              <span>{totalCustomerDue > 0 ? totalCustomerDue : 0}</span>
             </div>
           </div>
 
@@ -773,12 +800,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                     <span className="border-r border-slate-600">{r.bill_no || r.bill_id || r.Bill_id || '-'}</span>
                     <span className="border-r border-slate-600">{(r.month || r.Month || '').slice(0, 4)}</span>
                     <span className="border-r border-slate-600">{r.manual_rep_no || r.mal_rep_no || r.Manual_rep_no || '-'}</span>
-                    <span className="border-r border-slate-600">{r.mal_recp_dt || r.recp_date || r.bill_date || '-'}</span>
-                    <span className="border-r border-slate-600">{r.bill_amt || r.Bill_amt || 0}</span>
+                    <span className="border-r border-slate-600">{r.mal_recp_dt || '-'}</span>
+                    <span className="border-r border-slate-600">{r.mal_recp_amt ?? r.r_amt ?? r.bill_amt ?? 0}</span>
                     <span className="border-r border-slate-600">{r.less_amt || r.Less_amt || 0}</span>
                     <span className="border-r border-slate-600">{r.balance || r.Balance || 0}</span>
                     <span className="border-r border-slate-600">{r.recp_date || r.bill_date || r.Bill_date || '-'}</span>
-                    <span className="border-r border-slate-600 font-bold text-yellow-300">{r.r_amt || r.mal_recp_amt || r.R_amt || 0}</span>
+                    <span className="border-r border-slate-600 font-bold text-yellow-300">{r.r_amt ?? r.mal_recp_amt ?? 0}</span>
                     <span>{r.cash_chq || r.Cash_chq || 'Cash'}</span>
                   </div>
                 ))
@@ -792,7 +819,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             {/* Right Grid Footer: Total Received & Total Due (Matching Video: 905, 1055) */}
             <div className="bg-[#808080] border-t border-slate-600 px-4 py-0.5 flex justify-between items-center font-mono font-bold text-red-300 text-xs">
               <span>Total Received: {totalReceiptsReceivedSum}</span>
-              <span>Total Due: {totalBillsSum}</span>
+              <span>Total Due: {totalCustomerDue > 0 ? totalCustomerDue : 0}</span>
             </div>
           </div>
 

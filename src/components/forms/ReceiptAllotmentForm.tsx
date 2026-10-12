@@ -57,7 +57,12 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
     return `${dd}/${mm}/${yyyy}`;
   };
 
-  // 1. Initial Load: Fetch Collectors & Allotments (starts empty)
+  // 1. Initial Load: Fetch Collectors & Allotments (starts empty, current financial year only)
+  const isCurrentFinancialYear = (dStr?: string | null): boolean => {
+    if (!dStr) return true;
+    return dStr.includes('2026') || dStr.includes('2027') || dStr.includes('/26') || dStr.includes('/27');
+  };
+
   const fetchAllotments = async (targetCollector: string = '') => {
     setIsLoading(true);
     try {
@@ -67,14 +72,20 @@ export default function ReceiptAllotmentForm({ onClose }: ReceiptAllotmentFormPr
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
+        const fyAllAllotments = (data.all_allotments || []).filter((a: AllotmentRow) => isCurrentFinancialYear(a.allot_date));
+        const fyAllotments = (data.allotments || []).filter((a: AllotmentRow) => isCurrentFinancialYear(a.allot_date));
+        
         if (targetCollector.trim()) {
-          setAllotments(sortAndIndexRows(data.allotments || []));
+          setAllotments(sortAndIndexRows(fyAllotments));
         } else {
           setAllotments([]); // Clean & empty: no default entries shown until searched
         }
-        setAllAllotments(data.all_allotments || []);
+        setAllAllotments(fyAllAllotments);
         if (data.collectors && data.collectors.length > 0) {
-          setCollectors(data.collectors);
+          const sortedCols = [...data.collectors].sort((a, b) => 
+            (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+          );
+          setCollectors(sortedCols);
         }
       }
     } catch (err) {
