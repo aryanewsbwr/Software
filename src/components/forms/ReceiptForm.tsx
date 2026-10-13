@@ -99,21 +99,34 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const chequeNoRef = useRef<HTMLInputElement>(null);
   const chequeDateRef = useRef<HTMLInputElement>(null);
   const applyBtnRef = useRef<HTMLButtonElement>(null);
-  const collectionSelectRef = useRef<HTMLSelectElement>(null);
-  const bookSelectRef = useRef<HTMLSelectElement>(null);
+  
+  // Custom dropdown states for Collection Name and Allotted Books
+  const [isCollectionDropdownOpen, setIsCollectionDropdownOpen] = useState(true);
+  const [highlightedCollectionIndex, setHighlightedCollectionIndex] = useState(0);
+  const collectionContainerRef = useRef<HTMLDivElement>(null);
+  const collectionButtonRef = useRef<HTMLDivElement>(null);
 
-  // Allotted Books for chosen Collector
+  const [isBookDropdownOpen, setIsBookDropdownOpen] = useState(false);
+  const [highlightedBookIndex, setHighlightedBookIndex] = useState(0);
+  const bookContainerRef = useRef<HTMLDivElement>(null);
+  const bookButtonRef = useRef<HTMLDivElement>(null);
+
+  // Allotted Books for chosen Collector (latest allotment first so current active book is top)
   const collectorBooks = useMemo(() => {
     if (!collectionAgentName) return [];
-    return allotments.filter(a => (a.collector_name || '').toLowerCase() === collectionAgentName.toLowerCase());
+    const matched = allotments.filter(a => (a.collector_name || '').toLowerCase() === collectionAgentName.toLowerCase());
+    return [...matched].sort((a, b) => (Number(b.sno) || 0) - (Number(a.sno) || 0));
   }, [collectionAgentName, allotments]);
 
   // 1. Initial Load: Next Receipt Number, Customers, Regions, Collectors & Allotments
   useEffect(() => {
-    // Focus Collection Name dropdown immediately on mount
-    if (collectionSelectRef.current) {
-      collectionSelectRef.current.focus();
-    }
+    // Automatically open and focus Collection Name dropdown immediately on mount
+    setIsCollectionDropdownOpen(true);
+    setTimeout(() => {
+      if (collectionButtonRef.current) {
+        collectionButtonRef.current.focus();
+      }
+    }, 50);
 
     // Load next receipt number
     supabase
@@ -173,9 +186,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       .catch(err => console.warn('Could not load allotments:', err));
   }, []);
 
-  // Update active book range badge for selected collector
-  const handleCollectorChange = (name: string, customAllotments?: AllotmentInfo[]) => {
+  // Update active book range badge for selected collector & auto-open book dropdown
+  const handleCollectorChange = (name: string, customAllotments?: AllotmentInfo[], autoOpenBooks: boolean = true) => {
     setCollectionAgentName(name);
+    setIsCollectionDropdownOpen(false);
     if (!name) {
       setActiveBookRange('');
       setSelectedBookRange('');
@@ -184,33 +198,60 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     const source = customAllotments || allotments;
     const matched = source.filter(a => (a.collector_name || '').toLowerCase() === name.toLowerCase());
     if (matched && matched.length > 0) {
-      const active = [...matched].reverse().find(a => !a.rec_date || a.rec_date === '-') || matched[matched.length - 1];
+      const sorted = [...matched].sort((a, b) => (Number(b.sno) || 0) - (Number(a.sno) || 0));
+      const active = sorted.find(a => !a.rec_date || a.rec_date === '-') || sorted[0];
       const rangeStr = `${active.receipt_from} - ${active.receipt_to}`;
       setActiveBookRange(rangeStr);
       setSelectedBookRange(rangeStr);
       setManualRecpNo(String(active.receipt_from));
+      setHighlightedBookIndex(0);
     } else {
       setActiveBookRange('');
       setSelectedBookRange('');
     }
+
+    if (autoOpenBooks) {
+      setTimeout(() => {
+        setIsBookDropdownOpen(true);
+        if (bookButtonRef.current) {
+          bookButtonRef.current.focus();
+        }
+      }, 50);
+    }
   };
 
-  const handleBookRangeChange = (rangeStr: string) => {
+  const handleSelectBook = (rangeStr: string) => {
     setSelectedBookRange(rangeStr);
     setActiveBookRange(rangeStr);
+    setIsBookDropdownOpen(false);
     if (rangeStr) {
       const parts = rangeStr.split('-').map(s => s.trim());
       if (parts[0]) {
         setManualRecpNo(parts[0]);
       }
     }
+    setTimeout(() => {
+      if (customerInputRef.current) {
+        customerInputRef.current.focus();
+      }
+    }, 50);
   };
 
-  // Close customer dropdown on outside click
+  const handleBookRangeChange = (rangeStr: string) => {
+    handleSelectBook(rangeStr);
+  };
+
+  // Close dropdowns on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsCustomerDropdownOpen(false);
+      }
+      if (collectionContainerRef.current && !collectionContainerRef.current.contains(e.target as Node)) {
+        setIsCollectionDropdownOpen(false);
+      }
+      if (bookContainerRef.current && !bookContainerRef.current.contains(e.target as Node)) {
+        setIsBookDropdownOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -609,63 +650,177 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             <div className="flex items-center gap-2">
               <label className="font-bold text-[#000080]">Collection</label>
 
-              {/* 1. Collection Name Dropdown */}
-              <select 
-                ref={collectionSelectRef}
-                value={collectionAgentName}
-                onChange={(e) => handleCollectorChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Tab') {
-                    if (!e.shiftKey) {
+              {/* 1. Collection Name Custom Dropdown */}
+              <div className="relative" ref={collectionContainerRef}>
+                <div 
+                  ref={collectionButtonRef}
+                  tabIndex={0}
+                  onClick={() => setIsCollectionDropdownOpen(prev => !prev)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowDown') {
                       e.preventDefault();
-                      if (bookSelectRef.current) bookSelectRef.current.focus();
-                      else if (customerInputRef.current) customerInputRef.current.focus();
+                      setIsCollectionDropdownOpen(true);
+                      setHighlightedCollectionIndex(prev => (prev + 1) % (collectors.length + 1));
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      setIsCollectionDropdownOpen(true);
+                      setHighlightedCollectionIndex(prev => (prev - 1 + collectors.length + 1) % (collectors.length + 1));
+                    } else if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (highlightedCollectionIndex === 0) {
+                        handleCollectorChange('', undefined, true);
+                      } else if (collectors[highlightedCollectionIndex - 1]) {
+                        handleCollectorChange(collectors[highlightedCollectionIndex - 1].name, undefined, true);
+                      }
+                    } else if (e.key === 'Tab') {
+                      if (!e.shiftKey) {
+                        e.preventDefault();
+                        if (highlightedCollectionIndex > 0 && collectors[highlightedCollectionIndex - 1]) {
+                          handleCollectorChange(collectors[highlightedCollectionIndex - 1].name, undefined, true);
+                        } else {
+                          setIsCollectionDropdownOpen(false);
+                          setIsBookDropdownOpen(true);
+                          setTimeout(() => bookButtonRef.current?.focus(), 50);
+                        }
+                      }
+                    } else if (e.key === 'Escape') {
+                      setIsCollectionDropdownOpen(false);
+                    } else if (e.key.length === 1 && /[a-zA-Z0-9]/.test(e.key)) {
+                      // Quick typeahead jump
+                      const char = e.key.toLowerCase();
+                      const foundIdx = collectors.findIndex(c => (c.name || '').toLowerCase().startsWith(char));
+                      if (foundIdx !== -1) {
+                        setHighlightedCollectionIndex(foundIdx + 1);
+                        setIsCollectionDropdownOpen(true);
+                      }
                     }
-                  } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (bookSelectRef.current) bookSelectRef.current.focus();
-                    else if (customerInputRef.current) customerInputRef.current.focus();
-                  }
-                }}
-                className="w-36 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-slate-800 outline-none text-xs cursor-pointer"
-              >
-                <option value="">-- Select Collection --</option>
-                {collectors.map((c) => (
-                  <option key={c.collect_id} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                  }}
+                  className="w-40 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-slate-800 outline-none text-xs cursor-pointer flex items-center justify-between select-none focus:ring-1 focus:ring-blue-600"
+                >
+                  <span className="truncate">{collectionAgentName || '-- Select Collection --'}</span>
+                  <span className="ml-1 text-[10px] text-slate-600 bg-[#ECE9D8] px-1 border border-t-white border-l-white border-r-[#808080] border-b-[#808080]">▼</span>
+                </div>
 
-              {/* 2. Collection No. / Allotted Books Dropdown (Matching video: 2401 - 2700) */}
-              <select
-                ref={bookSelectRef}
-                value={selectedBookRange}
-                onChange={(e) => handleBookRangeChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Tab' && e.shiftKey) {
-                    e.preventDefault();
-                    if (collectionSelectRef.current) collectionSelectRef.current.focus();
-                  } else if (e.key === 'Tab' || e.key === 'Enter') {
-                    e.preventDefault();
-                    if (customerInputRef.current) customerInputRef.current.focus();
-                  }
-                }}
-                className="w-36 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-slate-800 outline-none text-xs cursor-pointer"
-              >
-                {collectorBooks.length > 0 ? (
-                  collectorBooks.map((b, idx) => {
-                    const rangeStr = `${b.receipt_from} - ${b.receipt_to}`;
-                    return (
-                      <option key={idx} value={rangeStr}>
-                        {rangeStr}
-                      </option>
-                    );
-                  })
-                ) : (
-                  <option value="">{selectedBookRange || (collectionAgentName ? '-- No Books Allotted --' : '-- Allotted Books --')}</option>
+                {/* Dropdown Options Popup */}
+                {isCollectionDropdownOpen && (
+                  <div className="absolute left-0 top-full mt-0.5 w-48 bg-white border-2 border-[#0A246A] shadow-2xl max-h-56 overflow-y-auto z-50 text-xs font-tahoma">
+                    <div
+                      onClick={() => handleCollectorChange('', undefined, true)}
+                      onMouseEnter={() => setHighlightedCollectionIndex(0)}
+                      className={`px-2 py-1 cursor-pointer font-bold border-b border-slate-100 ${
+                        highlightedCollectionIndex === 0 ? 'bg-[#0A246A] text-white' : 'hover:bg-blue-50 text-slate-500 italic'
+                      }`}
+                    >
+                      -- Select Collection --
+                    </div>
+                    {collectors.map((c, idx) => {
+                      const itemIdx = idx + 1;
+                      const isHighlighted = itemIdx === highlightedCollectionIndex;
+                      return (
+                        <div
+                          key={c.collect_id}
+                          onClick={() => handleCollectorChange(c.name, undefined, true)}
+                          onMouseEnter={() => setHighlightedCollectionIndex(itemIdx)}
+                          className={`px-2 py-1 cursor-pointer font-bold border-b border-slate-100 flex items-center justify-between ${
+                            isHighlighted ? 'bg-[#0A246A] text-white' : 'hover:bg-blue-50 text-slate-900'
+                          }`}
+                        >
+                          <span>{c.name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
-              </select>
+              </div>
+
+              {/* 2. Collection No. / Allotted Books Custom Dropdown (Matching video: 2401 - 2700) */}
+              <div className="relative" ref={bookContainerRef}>
+                <div
+                  ref={bookButtonRef}
+                  tabIndex={0}
+                  onClick={() => {
+                    if (collectorBooks.length > 0) setIsBookDropdownOpen(prev => !prev);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      if (collectorBooks.length > 0) {
+                        setIsBookDropdownOpen(true);
+                        setHighlightedBookIndex(prev => (prev + 1) % collectorBooks.length);
+                      }
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      if (collectorBooks.length > 0) {
+                        setIsBookDropdownOpen(true);
+                        setHighlightedBookIndex(prev => (prev - 1 + collectorBooks.length) % collectorBooks.length);
+                      }
+                    } else if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (collectorBooks.length > 0 && collectorBooks[highlightedBookIndex]) {
+                        const b = collectorBooks[highlightedBookIndex];
+                        handleSelectBook(`${b.receipt_from} - ${b.receipt_to}`);
+                      } else {
+                        setIsBookDropdownOpen(false);
+                        customerInputRef.current?.focus();
+                      }
+                    } else if (e.key === 'Tab') {
+                      if (e.shiftKey) {
+                        e.preventDefault();
+                        setIsBookDropdownOpen(false);
+                        setIsCollectionDropdownOpen(true);
+                        setTimeout(() => collectionButtonRef.current?.focus(), 50);
+                      } else {
+                        e.preventDefault();
+                        if (collectorBooks.length > 0 && collectorBooks[highlightedBookIndex]) {
+                          const b = collectorBooks[highlightedBookIndex];
+                          handleSelectBook(`${b.receipt_from} - ${b.receipt_to}`);
+                        } else {
+                          setIsBookDropdownOpen(false);
+                          customerInputRef.current?.focus();
+                        }
+                      }
+                    } else if (e.key === 'Escape') {
+                      setIsBookDropdownOpen(false);
+                    }
+                  }}
+                  className="w-40 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-slate-800 outline-none text-xs cursor-pointer flex items-center justify-between select-none focus:ring-1 focus:ring-blue-600"
+                >
+                  <span className="truncate">
+                    {selectedBookRange || (collectionAgentName ? (collectorBooks.length > 0 ? '-- Choose Book --' : '-- No Books Allotted --') : '-- Allotted Books --')}
+                  </span>
+                  <span className="ml-1 text-[10px] text-slate-600 bg-[#ECE9D8] px-1 border border-t-white border-l-white border-r-[#808080] border-b-[#808080]">▼</span>
+                </div>
+
+                {/* Dropdown Options Popup for Allotted Books */}
+                {isBookDropdownOpen && collectorBooks.length > 0 && (
+                  <div className="absolute left-0 top-full mt-0.5 w-48 bg-white border-2 border-[#0A246A] shadow-2xl max-h-56 overflow-y-auto z-50 text-xs font-mono font-bold">
+                    {collectorBooks.map((b, idx) => {
+                      const rangeStr = `${b.receipt_from} - ${b.receipt_to}`;
+                      const isHighlighted = idx === highlightedBookIndex;
+                      const isSelected = selectedBookRange === rangeStr;
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => handleSelectBook(rangeStr)}
+                          onMouseEnter={() => setHighlightedBookIndex(idx)}
+                          className={`px-2.5 py-1 cursor-pointer border-b border-slate-100 flex items-center justify-between ${
+                            isHighlighted 
+                              ? 'bg-[#0A246A] text-white' 
+                              : isSelected 
+                                ? 'bg-blue-100 text-blue-900' 
+                                : 'hover:bg-blue-50 text-slate-900'
+                          }`}
+                        >
+                          <span>{rangeStr}</span>
+                          <span className="text-[10px] opacity-75 font-sans">
+                            {b.allot_date ? `Dt: ${b.allot_date}` : ''}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
           </div>
@@ -689,8 +844,13 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   onKeyDown={(e) => {
                     if (e.key === 'Tab' && e.shiftKey) {
                       e.preventDefault();
-                      if (bookSelectRef.current) bookSelectRef.current.focus();
-                      else if (collectionSelectRef.current) collectionSelectRef.current.focus();
+                      if (bookButtonRef.current) {
+                        bookButtonRef.current.focus();
+                        setIsBookDropdownOpen(true);
+                      } else if (collectionButtonRef.current) {
+                        collectionButtonRef.current.focus();
+                        setIsCollectionDropdownOpen(true);
+                      }
                     } else if (e.key === 'Tab') {
                       if (isCustomerDropdownOpen && filteredCustomerSuggestions.length > 0) {
                         e.preventDefault();
