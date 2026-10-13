@@ -111,11 +111,11 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const bookContainerRef = useRef<HTMLDivElement>(null);
   const bookButtonRef = useRef<HTMLDivElement>(null);
 
-  // Allotted Books for chosen Collector (latest allotment first so current active book is top)
+  // Allotted Books for chosen Collector (in exact sequential order sno ASC matching Receipt Allotment)
   const collectorBooks = useMemo(() => {
     if (!collectionAgentName) return [];
     const matched = allotments.filter(a => (a.collector_name || '').toLowerCase() === collectionAgentName.toLowerCase());
-    return [...matched].sort((a, b) => (Number(b.sno) || 0) - (Number(a.sno) || 0));
+    return [...matched].sort((a, b) => (Number(a.sno) || 0) - (Number(b.sno) || 0));
   }, [collectionAgentName, allotments]);
 
   // 1. Initial Load: Next Receipt Number, Customers, Regions, Collectors & Allotments
@@ -198,13 +198,14 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     const source = customAllotments || allotments;
     const matched = source.filter(a => (a.collector_name || '').toLowerCase() === name.toLowerCase());
     if (matched && matched.length > 0) {
-      const sorted = [...matched].sort((a, b) => (Number(b.sno) || 0) - (Number(a.sno) || 0));
-      const active = sorted.find(a => !a.rec_date || a.rec_date === '-') || sorted[0];
+      const sorted = [...matched].sort((a, b) => (Number(a.sno) || 0) - (Number(b.sno) || 0));
+      const active = [...sorted].reverse().find(a => !a.rec_date || a.rec_date === '-') || sorted[sorted.length - 1];
       const rangeStr = `${active.receipt_from} - ${active.receipt_to}`;
       setActiveBookRange(rangeStr);
       setSelectedBookRange(rangeStr);
       setManualRecpNo(String(active.receipt_from));
-      setHighlightedBookIndex(0);
+      const activeIdx = sorted.findIndex(b => `${b.receipt_from} - ${b.receipt_to}` === rangeStr);
+      setHighlightedBookIndex(activeIdx >= 0 ? activeIdx : sorted.length - 1);
     } else {
       setActiveBookRange('');
       setSelectedBookRange('');
@@ -793,7 +794,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
                 {/* Dropdown Options Popup for Allotted Books */}
                 {isBookDropdownOpen && collectorBooks.length > 0 && (
-                  <div className="absolute left-0 top-full mt-0.5 w-48 bg-white border-2 border-[#0A246A] shadow-2xl max-h-56 overflow-y-auto z-50 text-xs font-mono font-bold">
+                  <div className="absolute left-0 top-full mt-0.5 w-40 bg-white border-2 border-[#0A246A] shadow-2xl max-h-56 overflow-y-auto z-50 text-xs font-mono font-bold">
                     {collectorBooks.map((b, idx) => {
                       const rangeStr = `${b.receipt_from} - ${b.receipt_to}`;
                       const isHighlighted = idx === highlightedBookIndex;
@@ -801,20 +802,22 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                       return (
                         <div
                           key={idx}
+                          ref={(el) => {
+                            if (isHighlighted && el) {
+                              el.scrollIntoView({ block: 'nearest' });
+                            }
+                          }}
                           onClick={() => handleSelectBook(rangeStr)}
                           onMouseEnter={() => setHighlightedBookIndex(idx)}
-                          className={`px-2.5 py-1 cursor-pointer border-b border-slate-100 flex items-center justify-between ${
+                          className={`px-2.5 py-1.5 cursor-pointer border-b border-slate-100 flex items-center justify-between text-xs transition-colors ${
                             isHighlighted 
-                              ? 'bg-[#0A246A] text-white' 
+                              ? 'bg-[#0A246A] text-white font-bold' 
                               : isSelected 
-                                ? 'bg-blue-100 text-blue-900' 
-                                : 'hover:bg-blue-50 text-slate-900'
+                                ? 'bg-blue-100 text-blue-900 font-bold' 
+                                : 'hover:bg-blue-50 text-slate-900 font-bold'
                           }`}
                         >
-                          <span>{rangeStr}</span>
-                          <span className="text-[10px] opacity-75 font-sans">
-                            {b.allot_date ? `Dt: ${b.allot_date}` : ''}
-                          </span>
+                          <span className="tracking-wide">{rangeStr}</span>
                         </div>
                       );
                     })}
