@@ -74,6 +74,8 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const [manualRecpDate, setManualRecpDate] = useState(defDateStr);
   
   const [totalCustomerDue, setTotalCustomerDue] = useState<number>(0);
+  const [priorCreditBal, setPriorCreditBal] = useState<number>(0);
+  const [totalPayableAmt, setTotalPayableAmt] = useState<number | null>(null);
   const [narration, setNarration] = useState('');
   
   const [paymentMode, setPaymentMode] = useState<'Cash' | 'Cheque'>('Cash');
@@ -282,6 +284,78 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   };
 
   // 3. Load Customer Details & Unpaid Bills & Previous Receipts
+  // Helper for Bill Display Amount (handles bill_amt, due_amt, paper_amount, balance)
+  const getBillDisplayAmount = (b: any): number => {
+    if (b.bill_amt !== null && b.bill_amt !== undefined && b.bill_amt !== '') {
+      return Number(b.bill_amt) || 0;
+    }
+    if (b.due_amt !== null && b.due_amt !== undefined && b.due_amt !== '') {
+      return Number(b.due_amt) || 0;
+    }
+    if (b.paper_amount !== null && b.paper_amount !== undefined && b.paper_amount !== '') {
+      return Number(b.paper_amount) || 0;
+    }
+    if (b.Bill_Amt !== null && b.Bill_Amt !== undefined) {
+      return Number(b.Bill_Amt) || 0;
+    }
+    if (b.balance !== null && b.balance !== undefined && b.balance !== '') {
+      return Math.abs(Number(b.balance)) || 0;
+    }
+    return 0;
+  };
+
+  // Helper to find prior credit balance (e.g. from negative balance in billno or excess from prior receipts)
+  const getPriorCreditBalance = (billsList: any[], receiptsList: any[], effectiveDues: number, billAmount: number): number => {
+    const billWithNegBal = billsList.find((b: any) => b.balance !== null && Number(b.balance) < 0);
+    if (billWithNegBal) {
+      return Math.abs(Number(billWithNegBal.balance));
+    }
+    const lastRecp = receiptsList[0];
+    if (lastRecp && Number(lastRecp.balance) > 0 && effectiveDues < billAmount) {
+      return Number(lastRecp.balance);
+    }
+    return 0;
+  };
+
+  // Select Month and find corresponding bill
+  const handleSelectMonth = (m: string, billsList?: any[], receiptsList?: any[], custDues?: number) => {
+    setMonth(m);
+    const bList = billsList || customerBills;
+    const rList = receiptsList || customerReceipts;
+    const effectiveDues = custDues !== undefined ? custDues : totalCustomerDue;
+
+    if (!bList || bList.length === 0) {
+      return;
+    }
+
+    const cleanM = (m || '').trim().toLowerCase();
+    const matchedBill = bList.find((b: any) => {
+      const bM = (b.month || b.Month || '').trim().toLowerCase();
+      return bM === cleanM || bM.startsWith(cleanM.slice(0, 3)) || cleanM.startsWith(bM.slice(0, 3));
+    });
+
+    if (matchedBill) {
+      const bId = matchedBill.bill_no?.toString() || matchedBill.bill_id?.toString() || matchedBill.Bill_id?.toString() || '';
+      setSelectedBillId(bId);
+      setBillNo(bId);
+      setYear(String(matchedBill.year || matchedBill.Year || '2026'));
+      const amt = getBillDisplayAmount(matchedBill);
+      setBillAmt(amt);
+
+      const credit = getPriorCreditBalance(bList, rList, effectiveDues, amt);
+      setPriorCreditBal(credit);
+      setBalAmt(credit > 0 ? credit : 0);
+
+      const currentLess = Number(lessAmt) || 0;
+      const netPayable = Math.max(0, amt - currentLess - credit);
+      setTotalPayableAmt(netPayable);
+
+      setManualRcpAmt(amt);
+      setRevAmt(amt);
+    }
+  };
+
+  // 3. Load Customer Details & Unpaid Bills & Previous Receipts
   const handleSelectCustomer = async (cust: Customer) => {
     setIsCustomerDropdownOpen(false);
     setCustomerSearchQuery(cust.name_eng || cust.name_hindi || '');
@@ -297,40 +371,96 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     const reg = allRegions.find(r => r.region_id === cust.region_id);
     setCustomerRegion(reg ? (reg.region_name || `SR${reg.region_id}`) : (cust.region_id ? `SR${cust.region_id}` : ''));
 
-    const due = Math.max(0, Number(cust.due_amount ?? cust.dueamount ?? cust.cbal ?? 0));
-    setTotalCustomerDue(due);
-
-    // Keep control section clean & empty / default 0 (matches old software screenshot_13.jpg)
+    // Reset control section fields initially
     setBillNo('');
     setYear(String(new Date().getFullYear()));
     setMonth(getCurrentMonthName());
-    setBillAmt(0);
-    setManualRcpAmt(0);
-    setLessAmt(0);
-    setRevAmt(0);
-    setBalAmt(due);
+    setBillAmt('');
+    setManualRcpAmt('');
+    setLessAmt('');
+    setRevAmt('');
+    setBalAmt('');
+    setTotalPayableAmt(null);
+    setPriorCreditBal(0);
     setNarration('');
 
     // Fetch Bills & Receipts
     setIsLoadingHistory(true);
     try {
-      // 1. Fetch Bills (billno20262027 or billno20252026)
+      // 1. Fetch Bills (billno20262027 or billno20252026) along with line item amounts from bill20262027
       let bList: any[] = [];
-      const { data: b26 } = await supabase
-        .from('billno20262027')
-        .select('*')
-        .eq('customer_id', cust.customer_id)
-        .order('bill_id', { ascending: true });
-
-      if (b26 && b26.length > 0) {
-        bList = b26;
-      } else {
-        const { data: b25 } = await supabase
-          .from('billno20252026')
+      const [b26Res, items26Res] = await Promise.all([
+        supabase
+          .from('billno20262027')
           .select('*')
-          .eq('Customer_id', cust.customer_id)
-          .order('Bill_id', { ascending: true });
-        if (b25) bList = b25;
+          .eq('customer_id', cust.customer_id)
+          .order('bill_id', { ascending: true }),
+        supabase
+          .from('bill20262027')
+          .select('bill_id, total_amt')
+          .eq('customer_id', cust.customer_id)
+      ]);
+
+      const sumByBillId = new Map<number, number>();
+      if (items26Res.data) {
+        items26Res.data.forEach((it: any) => {
+          const bid = Number(it.bill_id);
+          sumByBillId.set(bid, (sumByBillId.get(bid) || 0) + (Number(it.total_amt) || 0));
+        });
+      }
+
+      if (b26Res.data && b26Res.data.length > 0) {
+        bList = b26Res.data.map((b: any) => {
+          const bid = Number(b.bill_id);
+          const computedAmt = sumByBillId.get(bid);
+          const finalAmt = (b.due_amt !== null && b.due_amt !== undefined)
+            ? Number(b.due_amt)
+            : (computedAmt !== undefined ? computedAmt : (b.balance !== null ? Math.abs(Number(b.balance)) : 0));
+          return {
+            ...b,
+            bill_amt: finalAmt,
+            due_amt: finalAmt
+          };
+        });
+      } else {
+        // Fallback to 20252026
+        const [b25Res, items25Res] = await Promise.all([
+          supabase
+            .from('billno20252026')
+            .select('*')
+            .eq('Customer_id', cust.customer_id)
+            .order('Bill_id', { ascending: true }),
+          supabase
+            .from('bill20252026')
+            .select('bill_id, total_amt')
+            .eq('customer_id', cust.customer_id)
+        ]);
+
+        if (items25Res.data) {
+          items25Res.data.forEach((it: any) => {
+            const bid = Number(it.bill_id);
+            sumByBillId.set(bid, (sumByBillId.get(bid) || 0) + (Number(it.total_amt) || 0));
+          });
+        }
+
+        if (b25Res.data && b25Res.data.length > 0) {
+          bList = b25Res.data.map((b: any) => {
+            const bid = Number(b.Bill_id || b.bill_id);
+            const computedAmt = sumByBillId.get(bid);
+            const finalAmt = (b.Due_Amt !== null && b.Due_Amt !== undefined)
+              ? Number(b.Due_Amt)
+              : (computedAmt !== undefined ? computedAmt : (b.Balance !== null ? Math.abs(Number(b.Balance)) : 0));
+            return {
+              ...b,
+              bill_id: bid,
+              customer_id: b.Customer_id || b.customer_id,
+              month: b.Month || b.month,
+              year: b.Year || b.year,
+              bill_amt: finalAmt,
+              due_amt: finalAmt
+            };
+          });
+        }
       }
 
       setCustomerBills(bList || []);
@@ -366,6 +496,22 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
       setCustomerReceipts(rList || []);
 
+      // 3. Compute Total Dues = Total Bills - Total Receipts (Matching Original Software exactly!)
+      const totalBillsCalc = bList.reduce((sum, b) => sum + (Number(b.bill_amt) || 0), 0);
+      const totalRecpsCalc = rList.reduce((sum, r) => sum + Number(r.mal_recp_amt ?? r.r_amt ?? 0), 0);
+      const calculatedDues = Math.max(0, Math.round((totalBillsCalc - totalRecpsCalc) * 100) / 100);
+      setTotalCustomerDue(calculatedDues);
+
+      // 4. Auto-select latest bill month (e.g. Sept)
+      let pendingMonth = getCurrentMonthName();
+      if (bList.length > 0) {
+        const lastBill = bList[bList.length - 1];
+        if (lastBill && (lastBill.month || lastBill.Month)) {
+          pendingMonth = lastBill.month || lastBill.Month;
+        }
+      }
+      handleSelectMonth(pendingMonth, bList, rList, calculatedDues);
+
       // Focus directly to Month dropdown as requested by workflow
       setTimeout(() => {
         if (monthSelectRef.current) {
@@ -378,23 +524,6 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     } finally {
       setIsLoadingHistory(false);
     }
-  };
-
-  // Helper for Bill Display Amount (handles due_amt, del_amt, balance)
-  const getBillDisplayAmount = (b: any): number => {
-    if (b.due_amt !== null && b.due_amt !== undefined && b.due_amt !== '') {
-      return Number(b.due_amt) || 0;
-    }
-    if (b.paper_amount !== null && b.paper_amount !== undefined && b.paper_amount !== '') {
-      return Number(b.paper_amount) || 0;
-    }
-    if (b.balance !== null && b.balance !== undefined && b.balance !== '') {
-      return Math.abs(Number(b.balance)) || 0;
-    }
-    if (b.Bill_Amt !== null && b.Bill_Amt !== undefined) {
-      return Number(b.Bill_Amt) || 0;
-    }
-    return 0;
   };
 
   // Lookup customer by ID directly
@@ -414,14 +543,108 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     const bId = b.bill_no?.toString() || b.bill_id?.toString() || b.Bill_id?.toString() || '';
     setSelectedBillId(bId);
     setBillNo(bId);
-    setMonth(b.month || b.Month || getCurrentMonthName());
+    const m = b.month || b.Month || getCurrentMonthName();
+    setMonth(m);
     setYear(String(b.year || b.Year || '2026'));
     const amt = getBillDisplayAmount(b);
     setBillAmt(amt);
-    setRevAmt(amt);
+
+    const credit = getPriorCreditBalance(customerBills, customerReceipts, totalCustomerDue, amt);
+    setPriorCreditBal(credit);
+    setBalAmt(credit > 0 ? credit : 0);
+
+    const currentLess = Number(lessAmt) || 0;
+    const netPayable = Math.max(0, amt - currentLess - credit);
+    setTotalPayableAmt(netPayable);
+
     setManualRcpAmt(amt);
-    setBalAmt(Math.max(0, totalCustomerDue - amt));
+    setRevAmt(amt);
     if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
+  };
+
+  // Calculation Handlers matching authentic FoxPro / VB6 math
+  const handleManualRcpAmtChange = (valStr: string) => {
+    if (valStr === '') {
+      setManualRcpAmt('');
+      setRevAmt('');
+      setBalAmt('');
+      return;
+    }
+    const val = parseFloat(valStr) || 0;
+    setManualRcpAmt(val);
+    setRevAmt(val); // Cash received matches manual receipt amount!
+
+    const bAmt = Number(billAmt) || 0;
+    const currentLess = Number(lessAmt) || 0;
+    const netDueForThisBill = bAmt - priorCreditBal;
+    // When customer pays 1 on 150 bill: 1 - 150 = -149 (matches video sec 8!)
+    // When customer pays 150 on 150 bill: 150 - 150 = 0 (matches video sec 10!)
+    const bal = (val + currentLess) - netDueForThisBill;
+    setBalAmt(bal);
+  };
+
+  const handleLessAmtChange = (valStr: string) => {
+    if (valStr === '') {
+      setLessAmt('');
+      const bAmt = Number(billAmt) || 0;
+      const netPayable = Math.max(0, bAmt - priorCreditBal);
+      setTotalPayableAmt(netPayable);
+      if (manualRcpAmt !== '') {
+        const mVal = Number(manualRcpAmt) || 0;
+        setBalAmt(mVal - (bAmt - priorCreditBal));
+      }
+      return;
+    }
+    const discount = parseFloat(valStr) || 0;
+    setLessAmt(discount);
+
+    const bAmt = Number(billAmt) || 0;
+    const netPayable = Math.max(0, bAmt - discount - priorCreditBal);
+    setTotalPayableAmt(netPayable);
+
+    // If customer was paying full, automatically adjust manual receipt amount to net payable
+    const curManual = Number(manualRcpAmt) || 0;
+    if (curManual === 0 || curManual === bAmt || curManual === (bAmt - priorCreditBal)) {
+      setManualRcpAmt(netPayable);
+      setRevAmt(netPayable);
+      setBalAmt(0);
+    } else {
+      const netDueForThisBill = bAmt - priorCreditBal;
+      const bal = (curManual + discount) - netDueForThisBill;
+      setBalAmt(bal);
+    }
+  };
+
+  const handleRevAmtChange = (valStr: string) => {
+    if (valStr === '') {
+      setRevAmt('');
+      return;
+    }
+    const val = parseFloat(valStr) || 0;
+    setRevAmt(val);
+    const bAmt = Number(billAmt) || 0;
+    const currentLess = Number(lessAmt) || 0;
+    const netDueForThisBill = bAmt - priorCreditBal;
+    const bal = (val + currentLess) - netDueForThisBill;
+    setBalAmt(bal);
+  };
+
+  const handleBillAmtChange = (valStr: string) => {
+    if (valStr === '') {
+      setBillAmt('');
+      return;
+    }
+    const val = parseFloat(valStr) || 0;
+    setBillAmt(val);
+    if (totalCustomerDue === 0) {
+      setTotalCustomerDue(val);
+    }
+    const currentLess = Number(lessAmt) || 0;
+    const netPayable = Math.max(0, val - currentLess - priorCreditBal);
+    setTotalPayableAmt(netPayable);
+    setManualRcpAmt(netPayable);
+    setRevAmt(netPayable);
+    setBalAmt(0);
   };
 
   // 5. Grid Totals Calculation (Footer)
@@ -1081,20 +1304,19 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             <select 
               ref={monthSelectRef}
               value={month}
-              onChange={(e) => setMonth(e.target.value)}
+              onChange={(e) => handleSelectMonth(e.target.value)}
               onKeyDown={(e) => {
                 const currentIndex = MONTHS.indexOf(month);
                 if (e.key === 'ArrowRight') {
                   e.preventDefault();
                   const nextIdx = (currentIndex + 1) % MONTHS.length;
-                  setMonth(MONTHS[nextIdx]);
+                  handleSelectMonth(MONTHS[nextIdx]);
                 } else if (e.key === 'ArrowLeft') {
                   e.preventDefault();
                   const prevIdx = (currentIndex - 1 + MONTHS.length) % MONTHS.length;
-                  setMonth(MONTHS[prevIdx]);
+                  handleSelectMonth(MONTHS[prevIdx]);
                 } else if (e.key === 'Enter') {
                   e.preventDefault();
-                  setMonth(getCurrentMonthName());
                   if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
                 } else if (e.key === 'Tab') {
                   e.preventDefault();
@@ -1110,90 +1332,71 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             <input 
               ref={billAmtRef}
               type="number" 
-              value={billAmt === '' || billAmt === 0 ? '' : billAmt}
+              value={billAmt === '' ? '' : billAmt}
               placeholder="0"
-              onChange={(e) => setBillAmt(parseFloat(e.target.value) || 0)}
+              onChange={(e) => handleBillAmtChange(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === 'Tab') {
                   e.preventDefault();
                   if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
                 }
               }}
-              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-right text-xs"
+              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-right text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
 
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Ml. Rcp. At.</label>
             <input 
               ref={manualRcpAmtRef}
               type="number" 
-              value={manualRcpAmt === '' || manualRcpAmt === 0 ? '' : manualRcpAmt}
+              value={manualRcpAmt === '' ? '' : manualRcpAmt}
               placeholder="0"
-              onChange={(e) => {
-                const val = parseFloat(e.target.value) || 0;
-                setManualRcpAmt(val);
-                const calculatedRev = Math.max(0, val - (Number(lessAmt) || 0));
-                setRevAmt(calculatedRev);
-                const remaining = Math.max(0, totalCustomerDue - calculatedRev - (Number(lessAmt) || 0));
-                setBalAmt(remaining);
-              }}
+              onChange={(e) => handleManualRcpAmtChange(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === 'Tab') {
                   e.preventDefault();
                   if (lessAmtRef.current) lessAmtRef.current.focus();
                 }
               }}
-              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
 
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Ls. Amt</label>
             <input 
               ref={lessAmtRef}
               type="number" 
-              value={lessAmt === '' || lessAmt === 0 ? '' : lessAmt}
+              value={lessAmt === '' ? '' : lessAmt}
               placeholder="0"
-              onChange={(e) => {
-                const val = parseFloat(e.target.value) || 0;
-                setLessAmt(val);
-                const calculatedRev = Math.max(0, (Number(manualRcpAmt) || 0) - val);
-                setRevAmt(calculatedRev);
-                const remaining = Math.max(0, totalCustomerDue - calculatedRev - val);
-                setBalAmt(remaining);
-              }}
+              onChange={(e) => handleLessAmtChange(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === 'Tab') {
                   e.preventDefault();
                   if (revAmtRef.current) revAmtRef.current.focus();
                 }
               }}
-              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-red-700 font-bold text-xs"
+              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-red-700 font-bold text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
 
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Rev.Amt</label>
             <input 
               ref={revAmtRef}
               type="number" 
-              value={revAmt === '' || revAmt === 0 ? '' : revAmt}
+              value={revAmt === '' ? '' : revAmt}
               placeholder="0"
-              onChange={(e) => {
-                const val = parseFloat(e.target.value) || 0;
-                setRevAmt(val);
-                const remaining = Math.max(0, totalCustomerDue - val - (Number(lessAmt) || 0));
-                setBalAmt(remaining);
-              }}
+              onChange={(e) => handleRevAmtChange(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === 'Tab') {
                   e.preventDefault();
                   if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
                 }
               }}
-              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs"
+              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
 
             <label className="col-span-1 font-bold text-[#000080] text-right text-xs">Bal.</label>
             <input 
               ref={balRef}
               type="text" 
-              value={balAmt}
+              value={balAmt !== '' && balAmt !== null && balAmt !== undefined ? balAmt : ''}
               readOnly
               className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-slate-800 text-xs"
             />
@@ -1240,7 +1443,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Total Amt</label>
             <input 
               type="text" 
-              value={`${revAmt || 0}`}
+              value={`${totalPayableAmt !== null && totalPayableAmt !== undefined ? totalPayableAmt : (billAmt !== '' ? billAmt : 0)}`}
               readOnly
               className="col-span-1 px-1.5 py-0.5 bg-[#FFFFCC] border border-[#808080] font-mono font-black text-center text-black text-xs"
             />
