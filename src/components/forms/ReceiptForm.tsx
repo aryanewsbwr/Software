@@ -184,7 +184,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     const source = customAllotments || allotments;
     const matched = source.filter(a => (a.collector_name || '').toLowerCase() === name.toLowerCase());
     if (matched && matched.length > 0) {
-      const active = matched.find(a => !a.rec_date || a.rec_date === '-') || matched[0];
+      const active = [...matched].reverse().find(a => !a.rec_date || a.rec_date === '-') || matched[matched.length - 1];
       const rangeStr = `${active.receipt_from} - ${active.receipt_to}`;
       setActiveBookRange(rangeStr);
       setSelectedBookRange(rangeStr);
