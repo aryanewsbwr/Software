@@ -169,12 +169,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     // Load next receipt number
     supabase
       .from('receipt20262027')
-      .select('recp_no, receipt_no, id, Receipt_id', { count: 'exact' })
-      .order('id', { ascending: false })
+      .select('recp_no, receipt_no')
+      .order('recp_no', { ascending: false })
       .limit(1)
       .then(({ data }) => {
         if (data && data.length > 0) {
-          const highestNo = Number(data[0].recp_no || data[0].receipt_no || data[0].Receipt_id || data[0].id) || 1196604;
+          const highestNo = Number(data[0].recp_no || data[0].receipt_no) || 1196604;
           setReceiptNo(highestNo + 1);
         } else {
           setReceiptNo(1196605);
@@ -450,13 +450,17 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         bList = b26Res.data.map((b: any) => {
           const bid = Number(b.bill_id);
           const computedAmt = sumByBillId.get(bid);
-          const finalAmt = (b.due_amt !== null && b.due_amt !== undefined)
+          const delAmt = Number(b.del_amt ?? b.Del_amt ?? b.Del_Amt ?? 0);
+          const disAmt = Number(b.dis_amt ?? b.Dis_amt ?? b.Dis_Amt ?? 0);
+          const finalAmt = (b.due_amt !== null && b.due_amt !== undefined && b.due_amt !== '')
             ? Number(b.due_amt)
-            : (computedAmt !== undefined ? computedAmt : (b.balance !== null ? Math.abs(Number(b.balance)) : 0));
+            : (computedAmt !== undefined ? (computedAmt + delAmt - disAmt) : (b.balance !== null ? Math.abs(Number(b.balance)) : 0));
           return {
             ...b,
             bill_amt: finalAmt,
-            due_amt: finalAmt
+            due_amt: finalAmt,
+            del_amt: delAmt,
+            dis_amt: disAmt
           };
         });
       } else {
@@ -484,9 +488,11 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           bList = b25Res.data.map((b: any) => {
             const bid = Number(b.Bill_id || b.bill_id);
             const computedAmt = sumByBillId.get(bid);
-            const finalAmt = (b.Due_Amt !== null && b.Due_Amt !== undefined)
+            const delAmt = Number(b.del_amt ?? b.Del_amt ?? b.Del_Amt ?? 0);
+            const disAmt = Number(b.dis_amt ?? b.Dis_amt ?? b.Dis_Amt ?? 0);
+            const finalAmt = (b.Due_Amt !== null && b.Due_Amt !== undefined && b.Due_Amt !== '')
               ? Number(b.Due_Amt)
-              : (computedAmt !== undefined ? computedAmt : (b.Balance !== null ? Math.abs(Number(b.Balance)) : 0));
+              : (computedAmt !== undefined ? (computedAmt + delAmt - disAmt) : (b.Balance !== null ? Math.abs(Number(b.Balance)) : 0));
             return {
               ...b,
               bill_id: bid,
@@ -494,7 +500,9 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               month: b.Month || b.month,
               year: b.Year || b.year,
               bill_amt: finalAmt,
-              due_amt: finalAmt
+              due_amt: finalAmt,
+              del_amt: delAmt,
+              dis_amt: disAmt
             };
           });
         }
@@ -510,19 +518,43 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             .from('receipt20262027')
             .select('*')
             .eq('customer_id', cust.customer_id)
-            .order('id', { ascending: false }),
+            .order('id', { ascending: true }),
           fetch(`/api/receipts?customer_id=${cust.customer_id}`)
             .then(res => res.json())
             .catch(() => ({ receipts: [] }))
         ]);
 
-        const r26 = r26Res.data || [];
+        const r26 = (r26Res.data || []).map((r: any) => {
+          let parsedRemarks: any = null;
+          if (r.remarks && typeof r.remarks === 'string' && r.remarks.trim().startsWith('{')) {
+            try { parsedRemarks = JSON.parse(r.remarks); } catch (e) {}
+          }
+          const repId = r.receipt_id || r.Receipt_id || (r.id > 18383 ? r.id - 18383 : r.id);
+          return {
+            ...r,
+            rep_id: repId,
+            receipt_id: repId,
+            bill_no: r.bill_no ?? parsedRemarks?.bill_no ?? '-',
+            manual_rep_no: r.mal_rep_no ?? parsedRemarks?.manual_rep_no ?? '-',
+            mal_rep_no: r.mal_rep_no ?? parsedRemarks?.manual_rep_no ?? '-',
+            mal_recp_dt: r.mal_recp_dt ?? parsedRemarks?.mal_recp_dt ?? '-',
+            balance: r.balance ?? parsedRemarks?.balance ?? 0,
+            cash_chq: r.cash_chq ?? parsedRemarks?.cash_chq ?? 'Cash',
+            r_amt: r.mal_recp_amt ?? r.r_amt ?? 0
+          };
+        });
+
         const rHist = (histRes && histRes.receipts) || [];
+        const rHistMapped = rHist.map((h: any) => ({
+          ...h,
+          rep_id: h.receipt_id || h.Receipt_id || h.id,
+          receipt_id: h.receipt_id || h.Receipt_id || h.id
+        }));
         
         // Merge r26 and rHist without duplicates
         const combined = [...r26];
-        for (const h of rHist) {
-          if (!combined.some(c => (c.recp_no || c.id) == (h.receipt_no || h.receipt_id))) {
+        for (const h of rHistMapped) {
+          if (!combined.some(c => (c.recp_no && c.recp_no == h.receipt_no) || (c.id && c.id == h.receipt_id))) {
             combined.push(h);
           }
         }
@@ -719,43 +751,39 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       const cid = parseInt(customerId, 10);
       const appliedReceiptNo = receiptNo;
       const appliedManualNo = manualRecpNo;
-      const receiptData = {
-        recp_no: appliedReceiptNo,
-        recp_date: receiptDate || defDateStr,
-        customer_id: cid,
+
+      const metadata = {
         bill_no: billNo ? parseInt(billNo, 10) : null,
-        bill_amt: numBillAmt || totalCustomerDue,
-        less_amt: numLessAmt,
-        mal_recp_amt: numRevAmt,
-        r_amt: numRevAmt,
-        mal_rep_no: appliedManualNo || null,
+        manual_rep_no: appliedManualNo || null,
         mal_recp_dt: manualRecpDate || receiptDate || defDateStr,
-        month: month || 'Sept',
-        year: year || '2026',
+        balance: calculatedRemainingBal,
         cash_chq: paymentMode,
         cheque_no: paymentMode === 'Cheque' ? chequeNo : null,
         cheque_date: paymentMode === 'Cheque' ? chequeDate : null,
-        balance: calculatedRemainingBal,
-        remarks: narration || (collectionAgentName ? `Agent: ${collectionAgentName}` : '')
+        narr: narration || '',
+        agent: collectionAgentName || ''
       };
 
-      // 1. Insert into receipt20262027 (fallback to receipt20252026 if necessary)
-      const { error: insertErr } = await supabase.from('receipt20262027').insert([receiptData]);
+      const receiptPayload = {
+        recp_no: appliedReceiptNo,
+        recp_date: receiptDate || defDateStr,
+        customer_id: cid,
+        bill_amt: numBillAmt || totalCustomerDue,
+        less_amt: numLessAmt,
+        mal_recp_amt: numRevAmt,
+        month: month || 'Sept',
+        year: year || '2026',
+        remarks: JSON.stringify(metadata)
+      };
+
+      // 1. Insert into receipt20262027
+      const { data: insertedData, error: insertErr } = await supabase
+        .from('receipt20262027')
+        .insert([receiptPayload])
+        .select();
+
       if (insertErr) {
-        await supabase.from('receipt20252026').insert([{
-          Receipt_no: appliedReceiptNo,
-          customer_id: cid,
-          Bill_id: billNo ? parseInt(billNo, 10) : null,
-          Bill_amt: numBillAmt || totalCustomerDue,
-          Less_amt: numLessAmt,
-          R_amt: numRevAmt,
-          Manual_rep_no: appliedManualNo || null,
-          Bill_date: receiptDate,
-          Month: month,
-          Year: year,
-          Cash_chq: paymentMode,
-          Balance: calculatedRemainingBal
-        }]);
+        console.error('Error inserting into receipt20262027:', insertErr);
       }
 
       // 2. Adjust Customer Due Balance in Supabase Customer Table
@@ -767,8 +795,17 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         })
         .eq('customer_id', cid);
 
-      // 3. Immediately append the newly saved receipt to the Right Grid
+      // 3. Compute proper sequential Rep. Id
+      const createdId = insertedData && insertedData[0]?.id;
+      const savedRepId = createdId
+        ? (createdId > 18383 ? createdId - 18383 : createdId)
+        : (customerReceipts.length + 1);
+
+      // Immediately append the newly saved receipt to the Right Grid
       const newReceiptGridRow = {
+        id: createdId,
+        rep_id: savedRepId,
+        receipt_id: savedRepId,
         receipt_no: appliedReceiptNo,
         recp_no: appliedReceiptNo,
         bill_id: billNo,
@@ -778,10 +815,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         mal_rep_no: appliedManualNo,
         mal_recp_dt: manualRecpDate || receiptDate,
         bill_date: receiptDate,
+        recp_date: receiptDate,
         bill_amt: numBillAmt || numRevAmt,
         less_amt: numLessAmt,
         balance: calculatedRemainingBal,
         r_amt: numRevAmt,
+        mal_recp_amt: numRevAmt,
         cash_chq: paymentMode
       };
       setCustomerReceipts(prev => [...prev, newReceiptGridRow]);
@@ -1256,12 +1295,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               {customerReceipts.length > 0 ? (
                 customerReceipts.map((r, idx) => (
                   <div key={idx} className="grid grid-cols-11 border-b border-slate-600 text-center py-0.5 hover:bg-blue-600 text-[10px]">
-                    <span className="border-r border-slate-600">{r.receipt_no || r.recp_no || r.Receipt_id || r.id}</span>
+                    <span className="border-r border-slate-600">{r.rep_id || r.receipt_id || r.Receipt_id || (r.id > 18383 ? r.id - 18383 : r.id)}</span>
                     <span className="border-r border-slate-600">{r.bill_no || r.bill_id || r.Bill_id || '-'}</span>
                     <span className="border-r border-slate-600">{(r.month || r.Month || '').slice(0, 4)}</span>
                     <span className="border-r border-slate-600">{r.manual_rep_no || r.mal_rep_no || r.Manual_rep_no || '-'}</span>
                     <span className="border-r border-slate-600">{r.mal_recp_dt || '-'}</span>
-                    <span className="border-r border-slate-600">{r.mal_recp_amt ?? r.r_amt ?? r.bill_amt ?? 0}</span>
+                    <span className="border-r border-slate-600">{r.bill_amt ?? r.Bill_amt ?? r.mal_recp_amt ?? r.r_amt ?? 0}</span>
                     <span className="border-r border-slate-600">{r.less_amt || r.Less_amt || 0}</span>
                     <span className="border-r border-slate-600">{r.balance || r.Balance || 0}</span>
                     <span className="border-r border-slate-600">{r.recp_date || r.bill_date || r.Bill_date || '-'}</span>
