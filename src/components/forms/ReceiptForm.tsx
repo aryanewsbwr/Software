@@ -17,14 +17,25 @@ interface AllotmentInfo {
   rec_date?: string | null;
 }
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December', 'Dues'
+const ALL_FY_MONTHS = [
+  'April', 'May', 'June', 'July', 'August', 'September', 'October',
+  'November', 'December', 'January', 'February', 'March'
 ];
+
+const normalizeMonthName = (mStr?: string | null): string => {
+  if (!mStr) return 'October';
+  const clean = mStr.trim().toLowerCase();
+  if (clean === 'dues') return 'Dues';
+  const found = ALL_FY_MONTHS.find(m => 
+    m.toLowerCase().startsWith(clean.slice(0, 3)) || clean.startsWith(m.toLowerCase().slice(0, 3))
+  );
+  return found || mStr;
+};
 
 const getCurrentMonthName = () => {
   const mIndex = new Date().getMonth();
-  return MONTHS[mIndex] || 'October';
+  const calMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  return calMonths[mIndex] || 'October';
 };
 
 export default function ReceiptForm({ onClose }: ReceiptFormProps) {
@@ -119,6 +130,31 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     const matched = allotments.filter(a => (a.collector_name || '').toLowerCase() === collectionAgentName.toLowerCase());
     return [...matched].sort((a, b) => (Number(a.sno) || 0) - (Number(b.sno) || 0));
   }, [collectionAgentName, allotments]);
+
+  // Financial Year Months up to Current Date / Receipt Date (e.g. Dues, April ... October)
+  const availableMonths = useMemo(() => {
+    let refDate = new Date();
+    if (receiptDate) {
+      const parts = receiptDate.split('/');
+      if (parts.length === 3) {
+        const d = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const y = parseInt(parts[2], 10);
+        if (!isNaN(d) && !isNaN(m) && !isNaN(y)) {
+          refDate = new Date(y, m, d);
+        }
+      }
+    }
+
+    const currentMonthIdx = refDate.getMonth(); // 0 for Jan, 3 for Apr, 9 for Oct
+    // Months elapsed since April in the financial year:
+    const elapsedCount = currentMonthIdx >= 3
+      ? (currentMonthIdx - 3 + 1)
+      : (currentMonthIdx + 12 - 3 + 1);
+
+    const activeFyMonths = ALL_FY_MONTHS.slice(0, Math.min(12, Math.max(1, elapsedCount)));
+    return ['Dues', ...activeFyMonths];
+  }, [receiptDate]);
 
   // 1. Initial Load: Next Receipt Number, Customers, Regions, Collectors & Allotments
   useEffect(() => {
@@ -319,7 +355,8 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
   // Select Month and find corresponding bill
   const handleSelectMonth = (m: string, billsList?: any[], receiptsList?: any[], custDues?: number) => {
-    setMonth(m);
+    const normalized = normalizeMonthName(m);
+    setMonth(normalized);
     const bList = billsList || customerBills;
     const rList = receiptsList || customerReceipts;
     const effectiveDues = custDues !== undefined ? custDues : totalCustomerDue;
@@ -502,12 +539,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       const calculatedDues = Math.max(0, Math.round((totalBillsCalc - totalRecpsCalc) * 100) / 100);
       setTotalCustomerDue(calculatedDues);
 
-      // 4. Auto-select latest bill month (e.g. Sept)
+      // 4. Auto-select latest bill month (e.g. Sept / October)
       let pendingMonth = getCurrentMonthName();
       if (bList.length > 0) {
         const lastBill = bList[bList.length - 1];
         if (lastBill && (lastBill.month || lastBill.Month)) {
-          pendingMonth = lastBill.month || lastBill.Month;
+          pendingMonth = normalizeMonthName(lastBill.month || lastBill.Month);
         }
       }
       handleSelectMonth(pendingMonth, bList, rList, calculatedDues);
@@ -543,7 +580,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     const bId = b.bill_no?.toString() || b.bill_id?.toString() || b.Bill_id?.toString() || '';
     setSelectedBillId(bId);
     setBillNo(bId);
-    const m = b.month || b.Month || getCurrentMonthName();
+    const m = normalizeMonthName(b.month || b.Month || getCurrentMonthName());
     setMonth(m);
     setYear(String(b.year || b.Year || '2026'));
     const amt = getBillDisplayAmount(b);
@@ -1306,15 +1343,16 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               value={month}
               onChange={(e) => handleSelectMonth(e.target.value)}
               onKeyDown={(e) => {
-                const currentIndex = MONTHS.indexOf(month);
+                const len = availableMonths.length || 1;
+                const currentIndex = availableMonths.indexOf(month);
                 if (e.key === 'ArrowRight') {
                   e.preventDefault();
-                  const nextIdx = (currentIndex + 1) % MONTHS.length;
-                  handleSelectMonth(MONTHS[nextIdx]);
+                  const nextIdx = (currentIndex + 1) % len;
+                  handleSelectMonth(availableMonths[nextIdx]);
                 } else if (e.key === 'ArrowLeft') {
                   e.preventDefault();
-                  const prevIdx = (currentIndex - 1 + MONTHS.length) % MONTHS.length;
-                  handleSelectMonth(MONTHS[prevIdx]);
+                  const prevIdx = (currentIndex - 1 + len) % len;
+                  handleSelectMonth(availableMonths[prevIdx]);
                 } else if (e.key === 'Enter') {
                   e.preventDefault();
                   if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
@@ -1323,9 +1361,9 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
                 }
               }}
-              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-xs"
+              className="col-span-1 px-0.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-[11px] leading-tight focus:outline-none"
             >
-              {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+              {availableMonths.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
 
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Bill Amt</label>
