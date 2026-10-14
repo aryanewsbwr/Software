@@ -796,11 +796,17 @@ export default function ReportsForm({
       {/* 4. Main Crystal Reports Canvas Area */}
       <div className="flex-1 bg-[#525659] p-4 overflow-auto flex justify-center items-start">
         
-        {/* Printable White Sheet of Paper */}
+        {/* Printable Paper Canvas (A4 sheet or auto-fit for 58mm thermal preview) */}
         <div 
-          className="bg-white shadow-[0_4px_25px_rgba(0,0,0,0.6)] p-8 font-serif text-black border border-slate-300 transition-all duration-150 min-h-[900px]"
+          className={`bg-white shadow-[0_4px_25px_rgba(0,0,0,0.6)] font-serif text-black border border-slate-300 transition-all duration-150 ${
+            activeReport.includes('bill_print') && billPrinterType === 'thermal_58mm'
+              ? 'p-3 min-h-0 w-auto'
+              : 'p-8 min-h-[900px]'
+          }`}
           style={{ 
-            width: `${Math.round(880 * (zoomLevel / 100))}px`, 
+            width: activeReport.includes('bill_print') && billPrinterType === 'thermal_58mm'
+              ? 'auto'
+              : `${Math.round(880 * (zoomLevel / 100))}px`, 
             fontSize: `${Math.round(11 * (zoomLevel / 100))}px`
           }}
         >

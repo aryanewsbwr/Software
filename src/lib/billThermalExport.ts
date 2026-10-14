@@ -83,8 +83,15 @@ export function renderSingleThermalBillHtml(b: BillRecord): string {
       <div class="divider">================================</div>
 
       <div class="receipt-row">
-        <span>Bill No: <b>${b.bill_no || '-'}</b></span>
-        <span>Date: ${b.bill_date || new Date().toLocaleDateString('en-GB')}</span>
+        <span>Bill: <b>${String(b.bill_no || '-').replace(/^BILL-?/i, '')}</b></span>
+        <span>Date: ${(() => {
+          if (!b.bill_date) return new Date().toLocaleDateString('en-GB');
+          const d = new Date(b.bill_date);
+          if (!isNaN(d.getTime())) {
+            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+          }
+          return String(b.bill_date).replace(/\/September\//i, '/09/').replace(/\/October\//i, '/10/').replace(/\/August\//i, '/08/');
+        })()}</span>
       </div>
       <div class="receipt-row">
         <span>Month: <b>${b.month} ${b.year}</b></span>
@@ -225,74 +232,84 @@ export function generateThermal58mmFullHtml(bills: BillRecord[], title: string =
     }
     .btn-close:hover { background: #334155; }
 
-    /* Thermal receipt container for 58mm (approx. 48mm printable / 185px - 210px) */
+    /* Thermal receipt container for 58mm (48mm printable area max, 44-46mm safe zone) */
     .receipts-container {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 20px;
+      gap: 16px;
     }
 
     .thermal-receipt {
-      width: 58mm;
-      max-width: 58mm;
-      min-width: 58mm;
+      width: 48mm;
+      max-width: 48mm;
+      min-width: 48mm;
       background: #fff;
-      padding: 4mm 3mm;
+      padding: 2mm 1.5mm;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       border: 1px dashed #cbd5e1;
       box-sizing: border-box;
       page-break-inside: avoid;
+      font-weight: 700;
+      color: #000000;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
 
     .thermal-header {
       text-align: center;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
     }
 
     .agency-title {
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 900;
-      letter-spacing: 0.5px;
+      letter-spacing: -0.2px;
+      color: #000;
     }
 
     .agency-sub {
-      font-size: 9px;
-      color: #111;
+      font-size: 8.5px;
+      font-weight: 700;
+      color: #000;
     }
 
     .receipt-title {
-      font-size: 10px;
-      font-weight: bold;
-      margin-top: 3px;
-      letter-spacing: 1px;
+      font-size: 9.5px;
+      font-weight: 900;
+      margin-top: 2px;
+      letter-spacing: 0.5px;
     }
 
     .divider {
       text-align: center;
-      font-weight: bold;
-      font-size: 9px;
+      font-weight: 900;
+      font-size: 8.5px;
       letter-spacing: -0.5px;
-      margin: 2px 0;
+      margin: 1.5px 0;
       overflow: hidden;
       white-space: nowrap;
+      color: #000;
     }
 
     .divider-dotted {
       text-align: center;
-      font-size: 9px;
+      font-size: 8.5px;
+      font-weight: 700;
       letter-spacing: -0.5px;
       margin: 1px 0;
       overflow: hidden;
       white-space: nowrap;
+      color: #000;
     }
 
     .receipt-row {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      font-size: 10px;
-      margin: 1.5px 0;
+      font-size: 9.5px;
+      margin: 1px 0;
+      font-weight: 700;
     }
 
     .cust-info {
@@ -300,72 +317,85 @@ export function generateThermal58mmFullHtml(bills: BillRecord[], title: string =
     }
 
     .cust-name {
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 900;
       text-transform: uppercase;
+      color: #000;
     }
 
     .cust-hindi {
-      font-size: 11px;
-      font-weight: bold;
+      font-size: 10.5px;
+      font-weight: 900;
+      color: #000;
     }
 
     .cust-detail {
-      font-size: 9.5px;
-      color: #111;
+      font-size: 9px;
+      font-weight: 700;
+      color: #000;
       word-break: break-word;
     }
 
     .receipt-table-header {
       display: flex;
       justify-content: space-between;
-      font-size: 10px;
-      font-weight: bold;
+      font-size: 9px;
+      font-weight: 900;
       margin-top: 2px;
+      color: #000;
     }
 
     .receipt-items {
-      margin: 2px 0;
+      margin: 1.5px 0;
     }
 
     .col-item {
-      font-size: 10px;
-      max-width: 70%;
+      font-size: 9px;
+      font-weight: 700;
+      max-width: 65%;
       word-break: break-word;
+      color: #000;
     }
 
     .col-val {
-      font-size: 10px;
-      font-weight: bold;
+      font-size: 9px;
+      font-weight: 900;
       text-align: right;
+      color: #000;
+      white-space: nowrap;
     }
 
     .font-bold {
-      font-weight: bold;
+      font-weight: 900;
     }
 
     .total-row {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 900;
-      margin: 3px 0;
+      margin: 2.5px 0;
+      color: #000;
     }
 
     .total-amount {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 900;
+      color: #000;
+      white-space: nowrap;
     }
 
     .thermal-footer {
       text-align: center;
-      font-size: 9px;
-      margin-top: 6px;
+      font-size: 8.5px;
+      font-weight: 700;
+      margin-top: 4px;
       line-height: 1.3;
+      color: #000;
     }
 
     .cut-line {
-      font-size: 8px;
-      color: #666;
-      margin-top: 6px;
+      font-size: 7.5px;
+      color: #000;
+      margin-top: 4px;
     }
 
     /* Print Specific Media Query */
@@ -374,34 +404,55 @@ export function generateThermal58mmFullHtml(bills: BillRecord[], title: string =
         background: transparent !important;
         padding: 0 !important;
         margin: 0 !important;
-        width: 58mm !important;
+        width: 48mm !important;
+        max-width: 48mm !important;
       }
 
       .no-print, .print-toolbar {
         display: none !important;
       }
 
+      html, body {
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
       .receipts-container {
         gap: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 48mm !important;
       }
 
       .thermal-receipt {
         box-shadow: none !important;
         border: none !important;
-        padding: 2mm 2mm !important;
-        width: 58mm !important;
-        max-width: 58mm !important;
+        padding: 1mm 1mm !important;
+        width: 48mm !important;
+        max-width: 48mm !important;
+        min-width: 48mm !important;
+        box-sizing: border-box !important;
+        min-height: 0 !important;
+        height: auto !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
         page-break-after: always;
+        break-after: page;
       }
 
       .page-break {
         page-break-after: always;
+        break-after: page;
         height: 0;
+        margin: 0;
+        padding: 0;
       }
 
       @page {
         size: 58mm auto;
-        margin: 0;
+        margin: 0mm;
       }
     }
   </style>
