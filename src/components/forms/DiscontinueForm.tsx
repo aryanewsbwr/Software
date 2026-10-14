@@ -645,7 +645,7 @@ export default function DiscontinueForm({
             </div>
           </div>
 
-          {/* Hawker Dropdown */}
+          {/* Hawker Dropdown - Shows only hawker(s) delivering to this customer */}
           <div className="flex items-center gap-2">
             <label className="w-28 font-bold text-[#800000] text-right shrink-0">
               Hawker
@@ -656,12 +656,64 @@ export default function DiscontinueForm({
                 onChange={(e) => setSelectedHawkerId(e.target.value)}
                 className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
               >
-                <option value="">-- Select Hawker --</option>
-                {hawkerList.map((h) => (
-                  <option key={h.hawker_id} value={h.hawker_id}>
-                    #{h.hawker_id} {h.name} {h.hindi_name ? `(${h.hindi_name})` : ''}
-                  </option>
-                ))}
+                {(() => {
+                  // Determine hawkers delivering to this customer
+                  if (selectedCust) {
+                    const custHawkerIds = new Set<number>();
+                    if ((selectedCust as any).hawker_id) {
+                      custHawkerIds.add(Number((selectedCust as any).hawker_id));
+                    }
+                    customerSubs.forEach((s: any) => {
+                      const hid = Number(s.hawker_id);
+                      if (hid > 0) custHawkerIds.add(hid);
+                    });
+
+                    const matchedHawkers = Array.from(custHawkerIds).map(hid => {
+                      const found = hawkerList.find(h => Number(h.hawker_id) === hid);
+                      return found || {
+                        hawker_id: hid,
+                        name: `Hawker #${hid}`,
+                        hindi_name: ''
+                      };
+                    });
+
+                    if (matchedHawkers.length > 0) {
+                      return (
+                        <>
+                          <option value="">-- Select Delivering Hawker --</option>
+                          <optgroup label="-- Customer's Delivering Hawker(s) --">
+                            {matchedHawkers.map((h: any) => (
+                              <option key={`cust-hwk-${h.hawker_id}`} value={h.hawker_id}>
+                                #{h.hawker_id} {h.name} {h.hindi_name ? `(${h.hindi_name})` : ''}
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="-- All Other Hawkers --">
+                            {hawkerList
+                              .filter(h => !custHawkerIds.has(Number(h.hawker_id)))
+                              .map((h: any) => (
+                                <option key={`all-hwk-${h.hawker_id}`} value={h.hawker_id}>
+                                  #{h.hawker_id} {h.name} {h.hindi_name ? `(${h.hindi_name})` : ''}
+                                </option>
+                              ))}
+                          </optgroup>
+                        </>
+                      );
+                    }
+                  }
+
+                  // Default when no customer selected yet
+                  return (
+                    <>
+                      <option value="">-- Select Hawker --</option>
+                      {hawkerList.map((h) => (
+                        <option key={h.hawker_id} value={h.hawker_id}>
+                          #{h.hawker_id} {h.name} {h.hindi_name ? `(${h.hindi_name})` : ''}
+                        </option>
+                      ))}
+                    </>
+                  );
+                })()}
               </select>
             </div>
           </div>
