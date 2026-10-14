@@ -96,6 +96,31 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const [msg, setMsg] = useState<{ text: string; isError?: boolean } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Update Receipt Modal States matching FoxPro screen
+  const [selectedReceiptId, setSelectedReceiptId] = useState<string | number | null>(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [updateRepId, setUpdateRepId] = useState<string | number>('');
+  const [updateBillNo, setUpdateBillNo] = useState<string | number>('');
+  const [updateRecpNo, setUpdateRecpNo] = useState<string | number>('');
+  const [updateRecpDate, setUpdateRecpDate] = useState('');
+  const [updateYear, setUpdateYear] = useState('2026');
+  const [updateMonth, setUpdateMonth] = useState('April');
+  const [updateBillAmt, setUpdateBillAmt] = useState<string | number>('');
+  const [updateMalRecpAmt, setUpdateMalRecpAmt] = useState<string | number>('');
+  const [updateLessAmt, setUpdateLessAmt] = useState<string | number>('');
+  const [updateRevAmt, setUpdateRevAmt] = useState<string | number>('');
+  const [updateBal, setUpdateBal] = useState<string | number>('');
+  const [updateMalRecpNo, setUpdateMalRecpNo] = useState<string | number>('');
+  const [updateMalRecpDt, setUpdateMalRecpDt] = useState('');
+  const [updateDebit, setUpdateDebit] = useState<string | number>('');
+  const [updateCredit, setUpdateCredit] = useState<string | number>('');
+  const [updatePaymentMode, setUpdatePaymentMode] = useState<'Cash' | 'Cheque'>('Cash');
+  const [updateChequeNo, setUpdateChequeNo] = useState('');
+  const [updateChequeDate, setUpdateChequeDate] = useState('');
+  const [updateTotalAmt, setUpdateTotalAmt] = useState<string | number>('');
+  const [updateNarration, setUpdateNarration] = useState('');
+  const [isUpdatingReceipt, setIsUpdatingReceipt] = useState(false);
+
   // Refs for keyboard shortcuts & Enter/Tab navigation
   const customerInputRef = useRef<HTMLInputElement>(null);
   const customerIdRef = useRef<HTMLInputElement>(null);
@@ -856,9 +881,222 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     }
   };
 
+  // Update Modal Handlers
+  const populateUpdateFields = (target: any) => {
+    const repId = target.rep_id || target.receipt_id || (target.id > 18383 ? target.id - 18383 : target.id) || '';
+    const bAmt = Number(target.bill_amt ?? target.Bill_amt ?? 0);
+    const mRecpAmt = Number(target.mal_recp_amt ?? target.r_amt ?? target.R_amt ?? 0);
+    const lAmt = Number(target.less_amt ?? target.Less_amt ?? 0);
+    const rev = mRecpAmt + lAmt;
+    const bal = rev - bAmt;
+
+    setUpdateRepId(repId);
+    setUpdateBillNo(target.bill_no || target.bill_id || target.Bill_id || '');
+    setUpdateRecpNo(target.receipt_no || target.recp_no || '');
+    setUpdateRecpDate(target.recp_date || target.bill_date || target.Bill_date || defDateStr);
+    setUpdateYear(String(target.year || target.Year || '2026'));
+    setUpdateMonth(normalizeMonthName(target.month || target.Month || 'April'));
+    setUpdateBillAmt(bAmt);
+    setUpdateMalRecpAmt(mRecpAmt);
+    setUpdateLessAmt(lAmt);
+    setUpdateRevAmt(rev);
+    setUpdateBal(bal);
+    setUpdateMalRecpNo(target.manual_rep_no || target.mal_rep_no || target.Manual_rep_no || '0');
+    setUpdateMalRecpDt(target.mal_recp_dt || target.recp_date || defDateStr);
+    setUpdateDebit(bAmt);
+    setUpdateCredit(mRecpAmt);
+    setUpdateTotalAmt(bAmt);
+    setUpdatePaymentMode(target.cash_chq === 'Cheque' ? 'Cheque' : 'Cash');
+    setUpdateChequeNo(target.cheque_no || '');
+    setUpdateChequeDate(target.cheque_date || '');
+    setUpdateNarration(target.narr || target.remarks || '');
+  };
+
+  const openUpdateModal = (receiptToEdit?: any) => {
+    let target = receiptToEdit;
+    if (!target) {
+      if (selectedReceiptId) {
+        target = customerReceipts.find(r => {
+          const rid = r.rep_id || r.receipt_id || (r.id > 18383 ? r.id - 18383 : r.id);
+          return String(rid) === String(selectedReceiptId);
+        });
+      }
+      if (!target && customerReceipts.length > 0) {
+        target = customerReceipts[customerReceipts.length - 1];
+      }
+    }
+
+    if (!target) {
+      setMsg({ text: 'No receipt available to update.', isError: true });
+      return;
+    }
+
+    const targetRid = target.rep_id || target.receipt_id || (target.id > 18383 ? target.id - 18383 : target.id);
+    setSelectedReceiptId(targetRid);
+    populateUpdateFields(target);
+    setIsUpdateModalOpen(true);
+  };
+
+  const handleRepNoChange = (newRepId: string) => {
+    setUpdateRepId(newRepId);
+    const matched = customerReceipts.find(r => {
+      const rid = r.rep_id || r.receipt_id || (r.id > 18383 ? r.id - 18383 : r.id);
+      return String(rid) === String(newRepId).trim();
+    });
+    if (matched) {
+      populateUpdateFields(matched);
+    }
+  };
+
+  const handleUpdateMalRecpAmtChange = (val: string) => {
+    setUpdateMalRecpAmt(val);
+    const mAmt = Number(val) || 0;
+    const lAmt = Number(updateLessAmt) || 0;
+    const bAmt = Number(updateBillAmt) || 0;
+    const rev = mAmt + lAmt;
+    setUpdateRevAmt(rev);
+    setUpdateBal(rev - bAmt);
+    setUpdateCredit(mAmt);
+  };
+
+  const handleUpdateLessAmtChange = (val: string) => {
+    setUpdateLessAmt(val);
+    const mAmt = Number(updateMalRecpAmt) || 0;
+    const lAmt = Number(val) || 0;
+    const bAmt = Number(updateBillAmt) || 0;
+    const rev = mAmt + lAmt;
+    setUpdateRevAmt(rev);
+    setUpdateBal(rev - bAmt);
+  };
+
+  const handleUpdateBillAmtChange = (val: string) => {
+    setUpdateBillAmt(val);
+    const mAmt = Number(updateMalRecpAmt) || 0;
+    const lAmt = Number(updateLessAmt) || 0;
+    const bAmt = Number(val) || 0;
+    const rev = mAmt + lAmt;
+    setUpdateBal(rev - bAmt);
+    setUpdateDebit(bAmt);
+    setUpdateTotalAmt(bAmt);
+  };
+
+  const handleSaveUpdate = async () => {
+    if (!updateRecpNo && !updateRepId) return;
+    setIsUpdatingReceipt(true);
+    try {
+      const numBill = Number(updateBillAmt) || 0;
+      const numLess = Number(updateLessAmt) || 0;
+      const numRev = Number(updateMalRecpAmt) || 0;
+      const numBal = Number(updateBal) || 0;
+
+      const metadata = {
+        bill_no: updateBillNo ? parseInt(String(updateBillNo), 10) : null,
+        manual_rep_no: updateMalRecpNo || null,
+        mal_recp_dt: updateMalRecpDt || updateRecpDate,
+        balance: numBal,
+        cash_chq: updatePaymentMode,
+        cheque_no: updatePaymentMode === 'Cheque' ? updateChequeNo : null,
+        cheque_date: updatePaymentMode === 'Cheque' ? updateChequeDate : null,
+        narr: updateNarration || ''
+      };
+
+      const updatePayload = {
+        recp_date: updateRecpDate,
+        bill_amt: numBill,
+        less_amt: numLess,
+        mal_recp_amt: numRev,
+        month: updateMonth,
+        year: updateYear,
+        remarks: JSON.stringify(metadata)
+      };
+
+      const targetRepIdNum = parseInt(String(updateRepId), 10);
+      const targetDbId = !isNaN(targetRepIdNum) ? (targetRepIdNum + 18383) : null;
+
+      let query = supabase.from('receipt20262027').update(updatePayload);
+      if (targetDbId) {
+        query = query.eq('id', targetDbId);
+      } else if (updateRecpNo) {
+        query = query.eq('recp_no', updateRecpNo);
+      }
+      const { error: updErr } = await query;
+      if (updErr) {
+        console.warn('Update error on receipt20262027:', updErr);
+      }
+
+      setCustomerReceipts(prev => prev.map(r => {
+        const rid = r.rep_id || r.receipt_id || (r.id > 18383 ? r.id - 18383 : r.id);
+        if (String(rid) === String(updateRepId) || (updateRecpNo && String(r.recp_no || r.receipt_no) === String(updateRecpNo))) {
+          return {
+            ...r,
+            recp_date: updateRecpDate,
+            bill_date: updateRecpDate,
+            bill_no: updateBillNo,
+            bill_id: updateBillNo,
+            month: updateMonth,
+            year: updateYear,
+            bill_amt: numBill,
+            less_amt: numLess,
+            mal_recp_amt: numRev,
+            r_amt: numRev,
+            balance: numBal,
+            manual_rep_no: updateMalRecpNo,
+            mal_rep_no: updateMalRecpNo,
+            mal_recp_dt: updateMalRecpDt,
+            cash_chq: updatePaymentMode,
+            cheque_no: updateChequeNo,
+            cheque_date: updateChequeDate,
+            remarks: JSON.stringify(metadata)
+          };
+        }
+        return r;
+      }));
+
+      const totalBillsCalc = customerBills.reduce((sum, b) => sum + (Number(b.bill_amt) || 0), 0);
+      const updatedRecps = customerReceipts.map(r => {
+        const rid = r.rep_id || r.receipt_id || (r.id > 18383 ? r.id - 18383 : r.id);
+        if (String(rid) === String(updateRepId)) {
+          return { ...r, mal_recp_amt: numRev };
+        }
+        return r;
+      });
+      const totalRecpsCalc = updatedRecps.reduce((sum, r) => sum + Number(r.mal_recp_amt ?? r.r_amt ?? 0), 0);
+      const calculatedDues = Math.max(0, Math.round((totalBillsCalc - totalRecpsCalc) * 100) / 100);
+      setTotalCustomerDue(calculatedDues);
+
+      setIsUpdateModalOpen(false);
+      setMsg({ text: `Receipt Rep #${updateRepId} (Recp #${updateRecpNo}) updated successfully!` });
+    } catch (err: any) {
+      console.error('Failed to update receipt:', err);
+      setMsg({ text: 'Error updating receipt: ' + err.message, isError: true });
+    } finally {
+      setIsUpdatingReceipt(false);
+    }
+  };
+
   // Keyboard Shortcuts: F1=Cash, F2=Cheque, Alt+A / Alt+S -> Apply, Alt+U -> Update, Alt+E / Esc -> Exit
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isUpdateModalOpen) {
+        if (e.key === 'F1') {
+          e.preventDefault();
+          setUpdatePaymentMode('Cash');
+        } else if (e.key === 'F2') {
+          e.preventDefault();
+          setUpdatePaymentMode('Cheque');
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          setIsUpdateModalOpen(false);
+        } else if (e.altKey && e.key.toLowerCase() === 'u') {
+          e.preventDefault();
+          handleSaveUpdate();
+        } else if (e.altKey && e.key.toLowerCase() === 'e') {
+          e.preventDefault();
+          setIsUpdateModalOpen(false);
+        }
+        return;
+      }
+
       if (e.key === 'F1') {
         e.preventDefault();
         setPaymentMode('Cash');
@@ -875,7 +1113,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           handleApply();
         } else if (k === 'u') {
           e.preventDefault();
-          handleApply();
+          openUpdateModal();
         } else if (k === 'e') {
           e.preventDefault();
           onClose();
@@ -884,7 +1122,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [customerId, customerName, revAmt, lessAmt, totalCustomerDue, receiptNo, receiptDate, billNo, month, year, paymentMode, manualRecpNo, narration]);
+  }, [customerId, customerName, revAmt, lessAmt, totalCustomerDue, receiptNo, receiptDate, billNo, month, year, paymentMode, manualRecpNo, narration, isUpdateModalOpen, updateRepId, updateRecpNo, updateBillAmt, updateMalRecpAmt, updateLessAmt, updatePaymentMode, updateChequeNo, updateChequeDate, updateNarration, customerReceipts, selectedReceiptId]);
 
   return (
     <div className="relative w-full max-w-[920px] max-h-[calc(100vh-40px)] bg-[#C0DCF8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0">
@@ -1293,21 +1531,33 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             </div>
             <div className="flex-1 bg-[#808080] overflow-y-auto text-xs font-mono text-white">
               {customerReceipts.length > 0 ? (
-                customerReceipts.map((r, idx) => (
-                  <div key={idx} className="grid grid-cols-11 border-b border-slate-600 text-center py-0.5 hover:bg-blue-600 text-[10px]">
-                    <span className="border-r border-slate-600">{r.rep_id || r.receipt_id || r.Receipt_id || (r.id > 18383 ? r.id - 18383 : r.id)}</span>
-                    <span className="border-r border-slate-600">{r.bill_no || r.bill_id || r.Bill_id || '-'}</span>
-                    <span className="border-r border-slate-600">{(r.month || r.Month || '').slice(0, 4)}</span>
-                    <span className="border-r border-slate-600">{r.manual_rep_no || r.mal_rep_no || r.Manual_rep_no || '-'}</span>
-                    <span className="border-r border-slate-600">{r.mal_recp_dt || '-'}</span>
-                    <span className="border-r border-slate-600">{r.bill_amt ?? r.Bill_amt ?? r.mal_recp_amt ?? r.r_amt ?? 0}</span>
-                    <span className="border-r border-slate-600">{r.less_amt || r.Less_amt || 0}</span>
-                    <span className="border-r border-slate-600">{r.balance || r.Balance || 0}</span>
-                    <span className="border-r border-slate-600">{r.recp_date || r.bill_date || r.Bill_date || '-'}</span>
-                    <span className="border-r border-slate-600 font-bold text-yellow-300">{r.r_amt ?? r.mal_recp_amt ?? 0}</span>
-                    <span>{r.cash_chq || r.Cash_chq || 'Cash'}</span>
-                  </div>
-                ))
+                customerReceipts.map((r, idx) => {
+                  const rid = r.rep_id || r.receipt_id || (r.id > 18383 ? r.id - 18383 : r.id);
+                  const isSelected = String(selectedReceiptId) === String(rid);
+                  return (
+                    <div 
+                      key={idx} 
+                      onClick={() => setSelectedReceiptId(rid)}
+                      onDoubleClick={() => openUpdateModal(r)}
+                      className={`grid grid-cols-11 border-b border-slate-600 text-center py-0.5 cursor-pointer text-[10px] ${
+                        isSelected ? 'bg-blue-800 text-yellow-300 font-bold ring-1 ring-yellow-400' : 'hover:bg-blue-600'
+                      }`}
+                      title="Click to select, double-click to update"
+                    >
+                      <span className="border-r border-slate-600">{rid}</span>
+                      <span className="border-r border-slate-600">{r.bill_no || r.bill_id || r.Bill_id || '-'}</span>
+                      <span className="border-r border-slate-600">{(r.month || r.Month || '').slice(0, 4)}</span>
+                      <span className="border-r border-slate-600">{r.manual_rep_no || r.mal_rep_no || r.Manual_rep_no || '-'}</span>
+                      <span className="border-r border-slate-600">{r.mal_recp_dt || '-'}</span>
+                      <span className="border-r border-slate-600">{r.bill_amt ?? r.Bill_amt ?? r.mal_recp_amt ?? r.r_amt ?? 0}</span>
+                      <span className="border-r border-slate-600">{r.less_amt || r.Less_amt || 0}</span>
+                      <span className="border-r border-slate-600">{r.balance || r.Balance || 0}</span>
+                      <span className="border-r border-slate-600">{r.recp_date || r.bill_date || r.Bill_date || '-'}</span>
+                      <span className="border-r border-slate-600 font-bold text-yellow-300">{r.r_amt ?? r.mal_recp_amt ?? 0}</span>
+                      <span>{r.cash_chq || r.Cash_chq || 'Cash'}</span>
+                    </div>
+                  );
+                })
               ) : (
                 <div className="p-6 text-center text-slate-300 italic text-[10px]">
                   {isLoadingHistory ? 'Loading receipts...' : 'No previous receipts'}
@@ -1624,7 +1874,8 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 <u>A</u>pply
               </button>
               <button 
-                onClick={handleApply}
+                type="button"
+                onClick={() => openUpdateModal()}
                 disabled={isSaving}
                 className="px-4 py-1 bg-white hover:bg-blue-50 border border-[#808080] text-xs font-bold text-black cursor-pointer shadow-xs disabled:opacity-50 min-w-[70px]"
               >
@@ -1653,6 +1904,254 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         </div>
 
       </div>
+
+      {/* 4. UPDATE RECEIPT MODAL (Matching FoxPro Screen in media_1791953418411_773bd0d5.png) */}
+      {isUpdateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
+          <div className="w-[720px] bg-[#D4F1D4] border-2 border-[#5BA35B] shadow-2xl p-3 text-xs text-black font-sans space-y-2 select-none">
+            
+            {/* Header Row: Bill No | Customer Name Banner | Rep No */}
+            <div className="grid grid-cols-12 gap-2 items-center pb-1">
+              <div className="col-span-3 flex items-center gap-1.5">
+                <label className="font-bold text-[#000080] shrink-0">Bill No</label>
+                <input 
+                  type="text" 
+                  value={updateBillNo}
+                  onChange={(e) => setUpdateBillNo(e.target.value)}
+                  className="w-full px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+                />
+              </div>
+
+              <div className="col-span-6 bg-[#BCE2F8] border border-[#7CBCE5] py-0.5 px-2 text-center font-bold text-[#000080] text-sm truncate shadow-xs">
+                {customerName || 'Customer'}
+              </div>
+
+              <div className="col-span-3 flex items-center justify-end gap-1.5">
+                <label className="font-bold text-[#000080] shrink-0">Rep No</label>
+                <div className="flex items-center">
+                  <input 
+                    type="text" 
+                    value={updateRepId}
+                    onChange={(e) => handleRepNoChange(e.target.value)}
+                    className="w-20 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+                  />
+                  <span className="font-bold text-[#000080] ml-0.5 text-xs">*</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 1: Recp. No | Recp Date | Year | Month */}
+            <div className="grid grid-cols-12 gap-1.5 items-center">
+              <label className="col-span-2 font-bold text-[#000080]">Recp. No</label>
+              <input 
+                type="text" 
+                value={updateRecpNo}
+                readOnly
+                className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+              />
+
+              <label className="col-span-2 font-bold text-[#000080] text-right">Recp Date</label>
+              <input 
+                type="text" 
+                value={updateRecpDate}
+                onChange={(e) => setUpdateRecpDate(e.target.value)}
+                className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+              />
+
+              <label className="col-span-1 font-bold text-[#000080] text-right">Year</label>
+              <input 
+                type="text" 
+                value={updateYear}
+                onChange={(e) => setUpdateYear(e.target.value)}
+                className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+              />
+
+              <label className="col-span-1 font-bold text-[#000080] text-right">Month</label>
+              <select 
+                value={updateMonth}
+                onChange={(e) => setUpdateMonth(e.target.value)}
+                className="col-span-1 px-0.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-[11px] leading-tight focus:outline-none"
+              >
+                {availableMonths.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+
+            {/* Row 2: Bill Amt | Mal. Recp. Amt | L. Amt | Rev.Amt | Bal. */}
+            <div className="grid grid-cols-12 gap-1.5 items-center">
+              <label className="col-span-2 font-bold text-[#000080]">Bill Amt</label>
+              <input 
+                type="number" 
+                value={updateBillAmt}
+                onChange={(e) => handleUpdateBillAmtChange(e.target.value)}
+                className="col-span-2 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-right text-xs"
+              />
+
+              <label className="col-span-2 font-bold text-[#000080] text-right truncate">Mal. Recp. Amt</label>
+              <input 
+                type="number" 
+                value={updateMalRecpAmt}
+                onChange={(e) => handleUpdateMalRecpAmtChange(e.target.value)}
+                className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+              />
+
+              <label className="col-span-1 font-bold text-[#000080] text-right truncate">L. Amt</label>
+              <input 
+                type="number" 
+                value={updateLessAmt}
+                onChange={(e) => handleUpdateLessAmtChange(e.target.value)}
+                className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+              />
+
+              <label className="col-span-1 font-bold text-[#000080] text-right truncate">Rev.Amt</label>
+              <input 
+                type="text" 
+                value={updateRevAmt}
+                readOnly
+                className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs"
+              />
+
+              <label className="col-span-1 font-bold text-[#000080] text-right truncate">Bal.</label>
+              <input 
+                type="text" 
+                value={updateBal}
+                readOnly
+                className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-red-700 text-xs"
+              />
+            </div>
+
+            {/* Row 3: Mal. Recp. No | Mal. Recp. Dt. | Debit | Credit */}
+            <div className="grid grid-cols-12 gap-1.5 items-center">
+              <label className="col-span-2 font-bold text-[#000080] truncate">Mal. Recp. No</label>
+              <input 
+                type="text" 
+                value={updateMalRecpNo}
+                onChange={(e) => setUpdateMalRecpNo(e.target.value)}
+                className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+              />
+
+              <label className="col-span-2 font-bold text-[#000080] text-right truncate">Mal. Recp. Dt.</label>
+              <input 
+                type="text" 
+                value={updateMalRecpDt}
+                onChange={(e) => setUpdateMalRecpDt(e.target.value)}
+                className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+              />
+
+              <label className="col-span-1 font-bold text-[#000080] text-right truncate">Debit</label>
+              <input 
+                type="text" 
+                value={updateDebit}
+                readOnly
+                className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+              />
+
+              <label className="col-span-1 font-bold text-[#000080] text-right truncate">Credit</label>
+              <input 
+                type="text" 
+                value={updateCredit}
+                readOnly
+                className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+              />
+            </div>
+
+            {/* Row 4: Payment Mode, Total Amt, Action Buttons */}
+            <div className="grid grid-cols-12 gap-1.5 items-center">
+              <div className="col-span-5 flex items-center gap-3">
+                <label className="flex items-center gap-1 cursor-pointer font-bold text-xs">
+                  <input 
+                    type="checkbox" 
+                    checked={updatePaymentMode === 'Cash'}
+                    onChange={() => setUpdatePaymentMode('Cash')}
+                    className="accent-[#800000]"
+                  />
+                  Cash
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer font-bold text-xs">
+                  <input 
+                    type="checkbox" 
+                    checked={updatePaymentMode === 'Cheque'}
+                    onChange={() => setUpdatePaymentMode('Cheque')}
+                    className="accent-[#800000]"
+                  />
+                  Cheque
+                </label>
+                <span className="text-[11px] font-bold text-[#800000]">F1 - Cash F2 - Cheque</span>
+              </div>
+
+              <div className="col-span-4 flex items-center justify-end gap-1.5">
+                <label className="font-bold text-[#000080] truncate">Total Amt</label>
+                <input 
+                  type="text" 
+                  value={updateTotalAmt}
+                  readOnly
+                  className="w-24 px-1.5 py-0.5 bg-[#FFFFCC] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+                />
+              </div>
+
+              <div className="col-span-3 flex justify-end">
+                <button 
+                  type="button"
+                  onClick={handleSaveUpdate}
+                  disabled={isUpdatingReceipt}
+                  className="w-20 py-1 bg-white hover:bg-emerald-50 border border-[#808080] text-xs font-bold text-black cursor-pointer shadow-xs disabled:opacity-50"
+                >
+                  <u>U</u>pdate
+                </button>
+              </div>
+            </div>
+
+            {/* Row 5: Cheque No, Cheque Date, Exit Button */}
+            <div className="grid grid-cols-12 gap-1.5 items-center">
+              <div className="col-span-9 flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <label className="font-bold text-[#000080]">Cheque No</label>
+                  <input 
+                    type="text" 
+                    value={updateChequeNo}
+                    disabled={updatePaymentMode !== 'Cheque'}
+                    onChange={(e) => setUpdateChequeNo(e.target.value)}
+                    className="w-28 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-xs disabled:bg-slate-100"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <label className="font-bold text-[#000080]">Cheque Date</label>
+                  <input 
+                    type="text" 
+                    value={updateChequeDate}
+                    disabled={updatePaymentMode !== 'Cheque'}
+                    placeholder="//"
+                    onChange={(e) => setUpdateChequeDate(e.target.value)}
+                    className="w-24 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-xs disabled:bg-slate-100"
+                  />
+                </div>
+              </div>
+
+              <div className="col-span-3 flex justify-end">
+                <button 
+                  type="button"
+                  onClick={() => setIsUpdateModalOpen(false)}
+                  className="w-20 py-1 bg-white hover:bg-rose-50 border border-[#808080] text-xs font-bold text-black cursor-pointer shadow-xs"
+                >
+                  <u>E</u>xit
+                </button>
+              </div>
+            </div>
+
+            {/* Row 6: Narration */}
+            <div className="grid grid-cols-12 gap-1.5 items-center">
+              <label className="col-span-2 font-bold text-[#000080]">Narration</label>
+              <input 
+                type="text" 
+                value={updateNarration}
+                onChange={(e) => setUpdateNarration(e.target.value)}
+                className="col-span-10 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-xs"
+              />
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
