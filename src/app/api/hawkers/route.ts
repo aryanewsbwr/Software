@@ -22,8 +22,19 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = (searchParams.get('search') || '').trim().toLowerCase();
 
-    const hawkers = loadJson('hawkers.json');
-    let filtered = hawkers;
+    let hawkers: any[] = [];
+    try {
+      const { data, error } = await supabase.from('hawker').select('*').order('hawker_id', { ascending: true });
+      if (!error && data && data.length > 0) {
+        hawkers = data;
+      }
+    } catch (_) {}
+
+    if (hawkers.length === 0) {
+      hawkers = loadJson('hawkers.json');
+    }
+
+    let filtered = hawkers.filter((h: any) => h.name && h.name.trim().length > 0);
 
     if (search) {
       filtered = filtered.filter((h: any) =>

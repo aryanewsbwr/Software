@@ -62,10 +62,12 @@ export default function DiscontinueForm({
   const [selectedPubId, setSelectedPubId] = useState<string>('0'); // '0' = All Papers
   const [isLoadingSubs, setIsLoadingSubs] = useState(false);
 
-  // Publications & Hawkers
+  // Publications & Hawkers & Regions
   const [pubList, setPubList] = useState<Publication[]>(() => normalizeAndSortPubs(publications));
   const [hawkerList, setHawkerList] = useState<Hawker[]>(initialHawkers);
   const [selectedHawkerId, setSelectedHawkerId] = useState<string>('');
+  const [regionList, setRegionList] = useState<any[]>([]);
+  const [selectedRegionFilter, setSelectedRegionFilter] = useState<string>('all');
 
   // Discontinue Type & Dates
   const [holdType, setHoldType] = useState<'Temporary' | 'Permanent'>('Temporary');
@@ -91,6 +93,17 @@ export default function DiscontinueForm({
     const dStr = `${p(cur.getDate())}/${p(cur.getMonth() + 1)}/${cur.getFullYear()}`;
     setEntryDate(dStr);
     setFromDate(dStr);
+  }, []);
+
+  // Load Regions
+  useEffect(() => {
+    fetch('/api/regions')
+      .then(r => r.json())
+      .then(d => {
+        const regs = d.regions || (Array.isArray(d) ? d : []);
+        setRegionList(regs);
+      })
+      .catch(() => {});
   }, []);
 
   // Sync publications (sorted alphabetically, no NaN)
@@ -120,16 +133,15 @@ export default function DiscontinueForm({
 
   // Load Hawkers if not provided
   useEffect(() => {
-    if (!initialHawkers || initialHawkers.length === 0) {
-      fetch('/api/hawkers')
-        .then(r => r.json())
-        .then(data => {
-          if (data.hawkers) setHawkerList(data.hawkers);
-          else if (Array.isArray(data)) setHawkerList(data);
-        })
-        .catch(() => {});
-    }
-  }, [initialHawkers]);
+    fetch('/api/hawkers')
+      .then(r => r.json())
+      .then(data => {
+        const hList = data.hawkers || (Array.isArray(data) ? data : []);
+        const valid = hList.filter((h: any) => h.name && h.name.trim().length > 0);
+        setHawkerList(valid);
+      })
+      .catch(() => {});
+  }, []);
 
   // Global Keyboard shortcuts: F1 (Temporary), F2 (Permanent), Escape (Exit)
   useEffect(() => {
@@ -154,8 +166,8 @@ export default function DiscontinueForm({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showFindModal, showCustSuggestions, onClose]);
 
-  // Customer search by Name or ID
-  const handleCustSearchChange = (val: string) => {
+  // Customer search by Name or ID with Region Filter
+  const handleCustSearchChange = (val: string, regId: string = selectedRegionFilter) => {
     setCustSearchTerm(val);
     if (!val.trim()) {
       setCustSuggestions([]);
@@ -167,7 +179,8 @@ export default function DiscontinueForm({
     searchDebounceRef.current = setTimeout(async () => {
       setIsSearchingCust(true);
       try {
-        const res = await fetch(`/api/customers?search=${encodeURIComponent(val.trim())}&limit=12`);
+        const regionParam = regId && regId !== 'all' ? `&region_id=${regId}` : '';
+        const res = await fetch(`/api/customers?search=${encodeURIComponent(val.trim())}&limit=20${regionParam}`);
         if (res.ok) {
           const data = await res.json();
           setCustSuggestions(data.customers || []);
@@ -185,6 +198,7 @@ export default function DiscontinueForm({
   const handleSelectCustomer = async (c: Customer) => {
     setSelectedCust(c);
     setCustSearchTerm(`${c.name_eng || ''} (#${c.customer_id})`);
+    setFindSearch(String(c.customer_id)); // Auto-target Find to this selected customer
     setShowCustSuggestions(false);
     setMsg(null);
 
@@ -311,12 +325,34 @@ export default function DiscontinueForm({
     }
   };
 
+  // Helper to format ISO date YYYY-MM-DD to DD/MM/YYYY
+  const formatIsoToDdmmyyyy = (iso: string | null | undefined): string => {
+    if (!iso) return '-';
+    const s = String(iso).trim();
+    if (s.toLowerCase().startsWith('p') || s.toLowerCase().includes('permanent')) return 'Permanent';
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+      const [y, m, d] = s.slice(0, 10).split('-');
+      return `${d}/${m}/${y}`;
+    }
+    const parts = s.split(/[\/\-]/);
+    if (parts.length === 3 && parts[0].length === 4) {
+      return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+    }
+    return s;
+  };
+
   // Load Discontinues for Find Dialog
   const handleOpenFind = async () => {
     setShowFindModal(true);
     setIsLoadingDiscs(true);
+    if (selectedCust) {
+      setFindSearch(String(selectedCust.customer_id));
+    }
     try {
-      const res = await fetch('/api/discontinue', { cache: 'no-store' });
+      const url = selectedCust 
+        ? `/api/discontinue?customer_id=${selectedCust.customer_id}`
+        : '/api/discontinue';
+      const res = await fetch(url, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         const list = (data.discontinues || []).sort((a: any, b: any) => (b.discontinue_id || 0) - (a.discontinue_id || 0));
@@ -481,54 +517,88 @@ export default function DiscontinueForm({
             </div>
           </div>
 
-          {/* Customer Name Search (Search by Name, NOT by ID) */}
-          <div className="relative">
+          {/* Customer Search Row with Region Filter */}
+          <div className="space-y-2">
+            {/* Region Filter */}
             <div className="flex items-center gap-2">
-              <label className="w-28 font-bold text-[#800000] text-right shrink-0">
-                Customer Name
+              <label className="w-28 font-bold text-[#000080] text-right shrink-0">
+                Region Filter
               </label>
-              <div className="flex-1 relative">
-                <input 
-                  type="text" 
-                  value={custSearchTerm}
-                  onChange={(e) => handleCustSearchChange(e.target.value)}
-                  onFocus={() => { if (custSuggestions.length > 0) setShowCustSuggestions(true); }}
-                  placeholder="ग्राहक का नाम टाइप करके खोजें (Type name to search)..."
-                  className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
-                />
-                {isSearchingCust && (
-                  <span className="absolute right-2 top-1 text-[10px] text-slate-500 font-bold">
-                    खोज जारी...
-                  </span>
-                )}
+              <div className="flex-1">
+                <select
+                  value={selectedRegionFilter}
+                  onChange={(e) => {
+                    const regId = e.target.value;
+                    setSelectedRegionFilter(regId);
+                    if (custSearchTerm.trim()) {
+                      handleCustSearchChange(custSearchTerm, regId);
+                    }
+                  }}
+                  className="w-full px-2 py-0.5 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner text-xs"
+                >
+                  <option value="all">-- All Regions (सभी क्षेत्र) --</option>
+                  {regionList.map((r: any) => (
+                    <option key={r.region_id || r.id} value={r.region_id || r.id}>
+                      #{r.region_id || r.id} - {r.region_name || r.name} {r.hindi_name ? `(${r.hindi_name})` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {/* Customer Autocomplete Dropdown */}
-            {showCustSuggestions && custSuggestions.length > 0 && (
-              <div className="absolute left-30 right-0 top-7 z-50 bg-white border border-[#808080] shadow-xl max-h-48 overflow-y-auto">
-                {custSuggestions.map((c) => (
-                  <div 
-                    key={c.customer_id}
-                    onClick={() => handleSelectCustomer(c)}
-                    className="p-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer border-b border-slate-100 flex items-center justify-between text-xs"
-                  >
-                    <div>
-                      <strong className="text-blue-900 group-hover:text-white font-mono">#{c.customer_id}</strong>
-                      <span className="ml-1 font-bold">{c.name_eng}</span>
-                      {c.name_hindi && (
-                        <span className="ml-1 text-slate-600 group-hover:text-slate-200">
-                          ({cleanOrTransliterateHindi(c.name_hindi, c.name_eng)})
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-slate-500 group-hover:text-slate-200">
-                      {[c.add1, c.add2].filter(Boolean).join(', ') || 'No Addr'}
+            {/* Customer Name Search (Search by Name, NOT by ID) */}
+            <div className="relative">
+              <div className="flex items-center gap-2">
+                <label className="w-28 font-bold text-[#800000] text-right shrink-0">
+                  Customer Name
+                </label>
+                <div className="flex-1 relative">
+                  <input 
+                    type="text" 
+                    value={custSearchTerm}
+                    onChange={(e) => handleCustSearchChange(e.target.value, selectedRegionFilter)}
+                    onFocus={() => { if (custSuggestions.length > 0) setShowCustSuggestions(true); }}
+                    placeholder="ग्राहक का नाम टाइप करके खोजें (Type name to search)..."
+                    className="w-full px-2 py-1 border border-t-[#808080] border-l-[#808080] border-r-white border-b-white bg-white font-bold text-black outline-none shadow-inner"
+                  />
+                  {isSearchingCust && (
+                    <span className="absolute right-2 top-1 text-[10px] text-slate-500 font-bold">
+                      खोज जारी...
                     </span>
-                  </div>
-                ))}
+                  )}
+                </div>
               </div>
-            )}
+
+              {/* Customer Autocomplete Dropdown */}
+              {showCustSuggestions && custSuggestions.length > 0 && (
+                <div className="absolute left-30 right-0 top-7 z-50 bg-white border border-[#808080] shadow-xl max-h-48 overflow-y-auto">
+                  {custSuggestions.map((c: any) => {
+                    const rName = regionList.find(r => Number(r.region_id || r.id) === Number(c.region_id))?.region_name || '';
+                    return (
+                      <div 
+                        key={c.customer_id}
+                        onClick={() => handleSelectCustomer(c)}
+                        className="p-1.5 hover:bg-[#0A246A] hover:text-white cursor-pointer border-b border-slate-100 flex items-center justify-between text-xs"
+                      >
+                        <div>
+                          <strong className="text-blue-900 group-hover:text-white font-mono">#{c.customer_id}</strong>
+                          <span className="ml-1 font-bold">{c.name_eng}</span>
+                          {c.name_hindi && (
+                            <span className="ml-1 text-slate-600 group-hover:text-slate-200">
+                              ({cleanOrTransliterateHindi(c.name_hindi, c.name_eng)})
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-right text-[10px] text-slate-500 group-hover:text-slate-200">
+                          {rName && <span className="font-bold text-emerald-800 group-hover:text-emerald-200 mr-1">[{rName}]</span>}
+                          <span>{[c.add1, c.add2].filter(Boolean).join(', ') || ''}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Publication Dropdown - Populated according to the person */}
@@ -789,11 +859,11 @@ export default function DiscontinueForm({
                 <table className="w-full text-[11px] border-collapse">
                   <thead className="sticky top-0 bg-[#ECE9D8] border-b border-[#808080]">
                     <tr>
-                      <th className="p-1 border-r text-center">#ID</th>
-                      <th className="p-1 border-r text-left">Cust ID</th>
-                      <th className="p-1 border-r text-left">Type</th>
-                      <th className="p-1 border-r text-left">From</th>
-                      <th className="p-1 border-r text-left">To</th>
+                      <th className="p-1 border-r text-left">Customer Name</th>
+                      <th className="p-1 border-r text-left">Publication</th>
+                      <th className="p-1 border-r text-center">Type</th>
+                      <th className="p-1 border-r text-center">From</th>
+                      <th className="p-1 border-r text-center">To</th>
                       <th className="p-1 text-center">Action</th>
                     </tr>
                   </thead>
@@ -809,20 +879,46 @@ export default function DiscontinueForm({
                         .filter(d => {
                           if (!findSearch.trim()) return true;
                           const s = findSearch.toLowerCase();
-                          return String(d.customer_id).includes(s) || String(d.discontinue_id).includes(s);
+                          return (
+                            String(d.customer_id).includes(s) || 
+                            String(d.customer_name || '').toLowerCase().includes(s) ||
+                            String(d.customer_hindi || '').toLowerCase().includes(s) ||
+                            String(d.publication_name || '').toLowerCase().includes(s) ||
+                            String(d.region_name || '').toLowerCase().includes(s) ||
+                            String(d.discontinue_id).includes(s)
+                          );
                         })
-                        .slice(0, 100)
+                        .slice(0, 150)
                         .map((d) => {
                           const isPerm = String(d.temp_perma).toUpperCase().startsWith('P');
                           return (
                             <tr key={d.discontinue_id} className="border-b hover:bg-blue-50">
-                              <td className="p-1 border-r text-center font-mono font-bold">#{d.discontinue_id}</td>
-                              <td className="p-1 border-r text-blue-900 font-mono font-bold">#{d.customer_id}</td>
-                              <td className="p-1 border-r font-bold">
-                                {isPerm ? 'Permanent' : 'Temporary'}
+                              <td className="p-1 border-r">
+                                <div className="font-bold text-blue-950">
+                                  {d.customer_name || `Customer #${d.customer_id}`}
+                                </div>
+                                <div className="text-[10px] text-slate-500 font-mono">
+                                  #{d.customer_id} {d.region_name ? `• ${d.region_name}` : ''}
+                                </div>
                               </td>
-                              <td className="p-1 border-r font-mono">{d.temp_from || d.entry_date || '-'}</td>
-                              <td className="p-1 border-r font-mono">{d.temp_to || 'Permanent'}</td>
+                              <td className="p-1 border-r">
+                                <span className="font-bold text-slate-800">
+                                  {d.publication_name || (d.publica_id ? `Paper #${d.publica_id}` : 'All Papers (सभी)')}
+                                </span>
+                              </td>
+                              <td className="p-1 border-r text-center font-bold">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                                  isPerm ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                  {isPerm ? 'Permanent' : 'Temporary'}
+                                </span>
+                              </td>
+                              <td className="p-1 border-r text-center font-mono font-bold">
+                                {formatIsoToDdmmyyyy(d.temp_from || d.entry_date)}
+                              </td>
+                              <td className="p-1 border-r text-center font-mono font-bold">
+                                {isPerm ? 'Permanent' : formatIsoToDdmmyyyy(d.temp_to)}
+                              </td>
                               <td className="p-1 text-center">
                                 <button 
                                   onClick={() => handleDeleteRecord(d.discontinue_id)}

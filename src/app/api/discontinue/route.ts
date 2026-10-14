@@ -48,13 +48,54 @@ export async function GET(request: NextRequest) {
     // Sort newest first
     discs.sort((a: any, b: any) => (b.discontinue_id || 0) - (a.discontinue_id || 0));
 
+    // Load customer, publication, and region lookup maps for enrichment
+    const allCustomers = loadJson('all_customers.json');
+    const custMap = new Map<number, any>();
+    for (const c of allCustomers) {
+      if (c.customer_id) custMap.set(Number(c.customer_id), c);
+    }
+
+    const allPubs = loadJson('publications.json');
+    const pubMap = new Map<number, string>();
+    for (const p of allPubs) {
+      const pid = Number(p.publica_id || p.publication_id || p.id);
+      if (pid) pubMap.set(pid, p.public_name || p.name || `Publication #${pid}`);
+    }
+
+    const allRegions = loadJson('regions.json');
+    const regionMap = new Map<number, string>();
+    for (const r of allRegions) {
+      const rid = Number(r.region_id || r.id);
+      if (rid) regionMap.set(rid, r.region_name || r.name || `Region #${rid}`);
+    }
+
+    const enrichedDiscs = discs.map((d: any) => {
+      const cid = Number(d.customer_id || d.Customer_id);
+      const cust = custMap.get(cid);
+      const pid = Number(d.publica_id || d.Publica_id || 0);
+      const pubName = pid === 0 ? 'All Papers (सभी अखबार/पत्रिका)' : (pubMap.get(pid) || (pid > 0 ? `Paper #${pid}` : 'All Papers'));
+      const regionId = cust?.region_id ? Number(cust.region_id) : 0;
+      const regionName = regionId ? (regionMap.get(regionId) || `Region #${regionId}`) : '';
+
+      return {
+        ...d,
+        customer_id: cid,
+        customer_name: cust?.name_eng || (cid ? `Customer #${cid}` : ''),
+        customer_hindi: cust?.name_hindi || '',
+        publica_id: pid,
+        publication_name: pubName,
+        region_id: regionId,
+        region_name: regionName
+      };
+    });
+
     if (customerIdStr) {
       const cid = parseInt(customerIdStr, 10);
-      const filtered = discs.filter((d: any) => (d.customer_id || d.Customer_id) === cid);
+      const filtered = enrichedDiscs.filter((d: any) => (d.customer_id || d.Customer_id) === cid);
       return NextResponse.json({ total: filtered.length, discontinues: filtered });
     }
 
-    return NextResponse.json({ total: discs.length, discontinues: discs });
+    return NextResponse.json({ total: enrichedDiscs.length, discontinues: enrichedDiscs });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
