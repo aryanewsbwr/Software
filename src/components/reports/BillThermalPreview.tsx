@@ -117,12 +117,11 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 
         {/* Bill Metadata */}
         <div className="flex justify-between items-baseline text-[10px]">
-          <span>Bill No: <b className="font-bold">{b.bill_no || '-'}</b></span>
-          <span>{b.bill_date || new Date().toLocaleDateString('en-GB')}</span>
-        </div>
-        <div className="flex justify-between items-baseline text-[10px]">
-          <span>Month: <b className="font-bold">{b.month} {b.year}</b></span>
+          <span>Bill No: <b className="font-bold">{String(b.bill_no || '-').replace(/^BILL-?/i, '')}</b></span>
           <span>ID: <b className="font-bold">{b.customer_id}</b></span>
+        </div>
+        <div className="flex justify-between items-baseline text-[10.5px] font-bold text-slate-900">
+          <span>Period: <b className="font-bold">{b.month} {b.year}</b></span>
         </div>
 
         <div className="text-center text-[10px] my-1 text-slate-600">

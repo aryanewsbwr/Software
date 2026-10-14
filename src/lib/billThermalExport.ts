@@ -84,18 +84,10 @@ export function renderSingleThermalBillHtml(b: BillRecord): string {
 
       <div class="receipt-row">
         <span>Bill: <b>${String(b.bill_no || '-').replace(/^BILL-?/i, '')}</b></span>
-        <span>Date: ${(() => {
-          if (!b.bill_date) return new Date().toLocaleDateString('en-GB');
-          const d = new Date(b.bill_date);
-          if (!isNaN(d.getTime())) {
-            return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-          }
-          return String(b.bill_date).replace(/\/September\//i, '/09/').replace(/\/October\//i, '/10/').replace(/\/August\//i, '/08/');
-        })()}</span>
-      </div>
-      <div class="receipt-row">
-        <span>Month: <b>${b.month} ${b.year}</b></span>
         <span>ID: <b>${b.customer_id}</b></span>
+      </div>
+      <div class="receipt-row font-bold">
+        <span>Period: <b>${b.month} ${b.year}</b></span>
       </div>
 
       <div class="divider">--------------------------------</div>
