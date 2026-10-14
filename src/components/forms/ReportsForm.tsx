@@ -8,7 +8,9 @@ import {
 } from 'lucide-react';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { Bill4in1Preview } from '@/components/reports/Bill4in1Preview';
+import { BillThermalPreview } from '@/components/reports/BillThermalPreview';
 import { printBills4in1 } from '@/lib/bill4in1Export';
+import { printBillsThermal58mm } from '@/lib/billThermalExport';
 
 interface ReportsFormProps {
   onClose: () => void;
@@ -83,6 +85,7 @@ export default function ReportsForm({
   const [targetCustId, setTargetCustId] = useState<string>('');
   const [billBatchLimit, setBillBatchLimit] = useState<number>(0);
   const [billPrintMode, setBillPrintMode] = useState<'detail' | 'simple'>('simple');
+  const [billPrinterType, setBillPrinterType] = useState<'4in1_a4' | 'thermal_58mm'>('4in1_a4');
 
   // Report Data
   const [reportData, setReportData] = useState<any>(null);
@@ -186,7 +189,11 @@ export default function ReportsForm({
 
   const handlePrint = () => {
     if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single') {
-      printBills4in1(reportData?.rows || [], currentMeta.title, billPrintMode);
+      if (billPrinterType === 'thermal_58mm') {
+        printBillsThermal58mm(reportData?.rows || [], currentMeta.title);
+      } else {
+        printBills4in1(reportData?.rows || [], currentMeta.title, billPrintMode);
+      }
     } else {
       window.print();
     }
@@ -380,8 +387,40 @@ export default function ReportsForm({
               </div>
             )}
 
-            {/* Bill Print Format Option: Simple vs Detail */}
+            {/* Printer Output Target: 4-in-1 A4 vs 58mm Thermal */}
             {(activeReport === 'bill_print_region' || activeReport === 'bill_print_single') && (
+              <div className="flex items-center justify-between p-2 bg-[#E8F4FD] border border-[#7FB5DA] rounded-xs text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-[#000080]">Printer (प्रिंटर):</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800">
+                    <input 
+                      type="radio" 
+                      name="billPrinterTypeCriteria" 
+                      checked={billPrinterType === '4in1_a4'} 
+                      onChange={() => setBillPrinterType('4in1_a4')} 
+                    />
+                    <span>📄 4-in-1 (A4 Sheet)</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-800">
+                    <input 
+                      type="radio" 
+                      name="billPrinterTypeCriteria" 
+                      checked={billPrinterType === 'thermal_58mm'} 
+                      onChange={() => {
+                        setBillPrinterType('thermal_58mm');
+                        setBillPrintMode('simple');
+                      }} 
+                    />
+                    <span>🧾 58mm Thermal (203 DPI)</span>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Bill Print Format Option: Simple vs Detail */}
+            {(activeReport === 'bill_print_region' || activeReport === 'bill_print_single') && billPrinterType === '4in1_a4' && (
               <div className="flex items-center justify-between p-2 bg-[#FFF9E6] border border-[#E0C060] rounded-xs text-xs">
                 <div className="flex items-center gap-1.5">
                   <span className="font-bold text-[#000080]">Format (बिल प्रारूप):</span>
@@ -426,7 +465,11 @@ export default function ReportsForm({
                 setViewMode('preview');
                 setTimeout(() => {
                   if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single') {
-                    printBills4in1(reportData?.rows || [], currentMeta.title, billPrintMode);
+                    if (billPrinterType === 'thermal_58mm') {
+                      printBillsThermal58mm(reportData?.rows || [], currentMeta.title);
+                    } else {
+                      printBills4in1(reportData?.rows || [], currentMeta.title, billPrintMode);
+                    }
                   } else {
                     window.print();
                   }
@@ -556,33 +599,69 @@ export default function ReportsForm({
 
           <div className="h-4 w-[1px] bg-[#808080]"></div>
 
-          {/* Bill Printing Format Switcher in Top Bar */}
+          {/* Bill Printing Target & Format Switcher in Top Bar */}
           {activeReport.includes('bill_print') && (
-            <div className="flex items-center bg-white p-0.5 border border-[#808080] rounded-xs text-[11px]">
-              <button
-                type="button"
-                onClick={() => setBillPrintMode('simple')}
-                className={`px-2 py-0.5 font-bold cursor-pointer transition-colors ${
-                  billPrintMode === 'simple'
-                    ? 'bg-blue-700 text-white'
-                    : 'text-slate-700 hover:bg-slate-100'
-                }`}
-                title="Simple Print: Delivery is merged directly into publication prices"
-              >
-                📄 Simple (सरल)
-              </button>
-              <button
-                type="button"
-                onClick={() => setBillPrintMode('detail')}
-                className={`px-2 py-0.5 font-bold cursor-pointer transition-colors ${
-                  billPrintMode === 'detail'
-                    ? 'bg-blue-700 text-white'
-                    : 'text-slate-700 hover:bg-slate-100'
-                }`}
-                title="Detail Print: Delivery charge is shown separately in the summary box"
-              >
-                📑 Detail (विस्तृत)
-              </button>
+            <div className="flex items-center gap-1.5">
+              {/* Target: 4-in-1 vs 58mm Thermal */}
+              <div className="flex items-center bg-white p-0.5 border border-[#808080] rounded-xs text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setBillPrinterType('4in1_a4')}
+                  className={`px-2 py-0.5 font-bold cursor-pointer transition-colors ${
+                    billPrinterType === '4in1_a4'
+                      ? 'bg-blue-700 text-white'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                  title="4-in-1 A4 Sheet Layout"
+                >
+                  📄 4-in-1 (A4)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBillPrinterType('thermal_58mm');
+                    setBillPrintMode('simple');
+                  }}
+                  className={`px-2 py-0.5 font-bold cursor-pointer transition-colors ${
+                    billPrinterType === 'thermal_58mm'
+                      ? 'bg-emerald-700 text-white'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                  title="58mm (203 DPI) Thermal Receipt Roll"
+                >
+                  🧾 58mm Thermal
+                </button>
+              </div>
+
+              {/* Simple vs Detail (available for 4-in-1) */}
+              {billPrinterType === '4in1_a4' && (
+                <div className="flex items-center bg-white p-0.5 border border-[#808080] rounded-xs text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setBillPrintMode('simple')}
+                    className={`px-2 py-0.5 font-bold cursor-pointer transition-colors ${
+                      billPrintMode === 'simple'
+                        ? 'bg-blue-700 text-white'
+                        : 'text-slate-700 hover:bg-slate-100'
+                    }`}
+                    title="Simple Print: Delivery is merged directly into publication prices"
+                  >
+                    Simple
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBillPrintMode('detail')}
+                    className={`px-2 py-0.5 font-bold cursor-pointer transition-colors ${
+                      billPrintMode === 'detail'
+                        ? 'bg-blue-700 text-white'
+                        : 'text-slate-700 hover:bg-slate-100'
+                    }`}
+                    title="Detail Print: Delivery charge is shown separately in the summary box"
+                  >
+                    Detail
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -591,13 +670,25 @@ export default function ReportsForm({
             onClick={handlePrint}
             className={`px-2 py-0.5 border flex items-center gap-1 cursor-pointer font-bold ${
               activeReport.includes('bill_print') 
-                ? 'bg-blue-700 hover:bg-blue-800 text-white border-blue-900 shadow-xs' 
+                ? billPrinterType === 'thermal_58mm'
+                  ? 'bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-900 shadow-xs'
+                  : 'bg-blue-700 hover:bg-blue-800 text-white border-blue-900 shadow-xs' 
                 : 'bg-white hover:bg-slate-100 border-[#808080]'
             }`}
-            title={activeReport.includes('bill_print') ? `Print 4-in-1 A4 Sheets / Save PDF (${billPrintMode === 'simple' ? 'Simple' : 'Detail'})` : "Print Report (Ctrl+P)"}
+            title={activeReport.includes('bill_print') 
+              ? billPrinterType === 'thermal_58mm'
+                ? 'Print 58mm Thermal Bills / Save as 58mm PDF'
+                : `Print 4-in-1 A4 Sheets / Save PDF (${billPrintMode === 'simple' ? 'Simple' : 'Detail'})` 
+              : "Print Report (Ctrl+P)"}
           >
             <Printer className={`w-3.5 h-3.5 ${activeReport.includes('bill_print') ? 'text-white' : 'text-blue-900'}`} />
-            <span>{activeReport.includes('bill_print') ? `Print 4 in 1 A4 (${billPrintMode === 'simple' ? 'Simple' : 'Detail'})` : 'Print'}</span>
+            <span>
+              {activeReport.includes('bill_print') 
+                ? billPrinterType === 'thermal_58mm'
+                  ? 'Print 58mm Thermal'
+                  : `Print 4 in 1 A4 (${billPrintMode === 'simple' ? 'Simple' : 'Detail'})` 
+                : 'Print'}
+            </span>
           </button>
 
           <button 
@@ -741,15 +832,23 @@ export default function ReportsForm({
             <div className="pt-3 font-sans">
               
               {/* ========================================================================= */}
-              {/* REPORT 1: AUTHENTIC 4-IN-1 A4 BILL PRINTING (media_1790483652507.jpg) */}
+              {/* REPORT 1: BILL PRINTING (4-IN-1 A4 or 58mm THERMAL 203 DPI) */}
               {/* ========================================================================= */}
               {(activeReport === 'bill_print_region' || activeReport === 'bill_print_single') && (
-                <Bill4in1Preview 
-                  bills={reportData.rows || []} 
-                  title={currentMeta.title} 
-                  zoomLevel={zoomLevel} 
-                  initialPrintMode={billPrintMode}
-                />
+                billPrinterType === 'thermal_58mm' ? (
+                  <BillThermalPreview 
+                    bills={reportData.rows || []} 
+                    title={currentMeta.title} 
+                    zoomLevel={zoomLevel} 
+                  />
+                ) : (
+                  <Bill4in1Preview 
+                    bills={reportData.rows || []} 
+                    title={currentMeta.title} 
+                    zoomLevel={zoomLevel} 
+                    initialPrintMode={billPrintMode}
+                  />
+                )
               )}
 
               {/* ========================================================================= */}
