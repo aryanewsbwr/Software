@@ -602,13 +602,28 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           receipt_id: h.receipt_id || h.Receipt_id || h.id
         }));
         
-        // Merge r26 and rHist without duplicates
+        // Merge r26 and rHist: Prioritize 20262027 entries, avoid duplicate entries
         const combined = [...r26];
         for (const h of rHistMapped) {
-          if (!combined.some(c => (c.recp_no && c.recp_no == h.receipt_no) || (c.id && c.id == h.receipt_id))) {
+          const isDuplicate = combined.some(c => 
+            (c.recp_no && h.recp_no && String(c.recp_no) === String(h.recp_no)) ||
+            (c.receipt_no && h.receipt_no && String(c.receipt_no) === String(h.receipt_no)) ||
+            (c.id && h.receipt_id && String(c.id) === String(h.receipt_id))
+          );
+          if (!isDuplicate) {
+            // Only add if not superseded by a 2026 receipt
             combined.push(h);
           }
         }
+
+        // Sort chronologically by year (2025 -> 2026) and rep_id ascending
+        combined.sort((a, b) => {
+          const yA = parseInt(a.year || '2025', 10);
+          const yB = parseInt(b.year || '2025', 10);
+          if (yA !== yB) return yA - yB;
+          return Number(a.rep_id || a.receipt_id || 0) - Number(b.rep_id || b.receipt_id || 0);
+        });
+
         rList = combined;
       } catch (err) {
         console.warn('Error fetching receipts:', err);

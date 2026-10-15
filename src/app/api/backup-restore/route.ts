@@ -725,6 +725,110 @@ export async function POST(req: NextRequest) {
       stats['holiday'] = mappedHolidays.length;
     }
 
+    // 9. Current Financial Year Receipts (receipt20262027)
+    const receiptRows = parsedTables['receipt20262027'];
+    if (receiptRows && receiptRows.length > 0) {
+      const mappedReceipts = receiptRows.map(r => {
+        if (Array.isArray(r)) {
+          // MySQL: (`Receipt_id`,`Bill_id`,`ReceiptNo`,`ManualRepNo`,`BillDate`,`BillAmt`,`MalRecpDt`,`Month`,`Year`,`DueAmt`,`MalRecpAmt`,`Balance`,`LessAmt`,`RAmt`,`ChequeNo`,`ChequeDate`,`Debit`,`Credit`,`Cash_Chq`,`Narr`,`customer_id`)
+          const repId = Number(r[0] ?? 0);
+          const recpNo = Number(r[2] ?? 0);
+          return {
+            receipt_id: repId,
+            id: repId,
+            bill_id: Number(r[1] ?? 0),
+            bill_no: Number(r[1] ?? 0),
+            receipt_no: recpNo,
+            recp_no: recpNo,
+            manual_rep_no: String(r[3] ?? ''),
+            mal_rep_no: String(r[3] ?? ''),
+            bill_date: r[4] || '',
+            recp_date: r[4] || r[6] || '',
+            bill_amt: Number(r[5] ?? 0),
+            mal_recp_dt: r[6] || '',
+            month: r[7] || '',
+            year: String(r[8] ?? '2026'),
+            due_amt: Number(r[9] ?? 0),
+            mal_recp_amt: Number(r[10] ?? 0),
+            r_amt: Number(r[13] ?? r[10] ?? 0),
+            balance: Number(r[11] ?? 0),
+            less_amt: Number(r[12] ?? 0),
+            cheque_no: String(r[14] ?? ''),
+            cheque_date: String(r[15] ?? ''),
+            cash_chq: r[18] || 'Cash',
+            narr: r[19] || '',
+            customer_id: Number(r[20] ?? 0),
+          };
+        }
+        const repId = Number(r.receipt_id ?? r.receiptid ?? r.id ?? 0);
+        const recpNo = Number(r.receipt_no ?? r.receiptno ?? r.recp_no ?? 0);
+        return {
+          receipt_id: repId,
+          id: repId,
+          bill_id: Number(r.bill_id ?? r.billid ?? 0),
+          bill_no: Number(r.bill_no ?? r.bill_id ?? 0),
+          receipt_no: recpNo,
+          recp_no: recpNo,
+          manual_rep_no: String(r.manual_rep_no ?? r.manualrepno ?? r.mal_rep_no ?? ''),
+          mal_rep_no: String(r.manual_rep_no ?? r.manualrepno ?? r.mal_rep_no ?? ''),
+          bill_date: r.bill_date ?? r.billdate ?? '',
+          recp_date: r.recp_date ?? r.recpdate ?? r.bill_date ?? '',
+          bill_amt: Number(r.bill_amt ?? r.billamt ?? 0),
+          mal_recp_dt: r.mal_recp_dt ?? r.malrecpdt ?? '',
+          month: r.month ?? '',
+          year: String(r.year ?? '2026'),
+          due_amt: Number(r.due_amt ?? r.dueamt ?? 0),
+          mal_recp_amt: Number(r.mal_recp_amt ?? r.malrecpamt ?? 0),
+          r_amt: Number(r.r_amt ?? r.ramt ?? r.mal_recp_amt ?? 0),
+          balance: Number(r.balance ?? 0),
+          less_amt: Number(r.less_amt ?? r.lessamt ?? 0),
+          cheque_no: String(r.cheque_no ?? r.chequeno ?? ''),
+          cheque_date: String(r.cheque_date ?? r.chequedate ?? ''),
+          cash_chq: r.cash_chq ?? r.cashchq ?? 'Cash',
+          narr: r.narr ?? '',
+          customer_id: Number(r.customer_id ?? r.customerid ?? 0),
+        };
+      });
+
+      // Save into active JSON store
+      saveJson('all_receipts.json', mappedReceipts, isAppendMode);
+      stats['receipt20262027'] = mappedReceipts.length;
+
+      // Sync into Supabase receipt20262027 table
+      (async () => {
+        try {
+          const supabaseBatch = mappedReceipts.map(rc => ({
+            id: rc.receipt_id,
+            recp_no: rc.recp_no,
+            recp_date: rc.recp_date,
+            customer_id: rc.customer_id,
+            bill_amt: rc.bill_amt,
+            less_amt: rc.less_amt,
+            mal_recp_amt: rc.mal_recp_amt,
+            month: rc.month,
+            year: rc.year,
+            region_id: null,
+            remarks: JSON.stringify({
+              bill_no: rc.bill_no,
+              manual_rep_no: rc.manual_rep_no,
+              mal_rep_no: rc.mal_rep_no,
+              mal_recp_dt: rc.mal_recp_dt,
+              balance: rc.balance,
+              cash_chq: rc.cash_chq,
+              r_amt: rc.r_amt
+            })
+          }));
+
+          for (let i = 0; i < supabaseBatch.length; i += 300) {
+            const chunk = supabaseBatch.slice(i, i + 300);
+            await supabase.from('receipt20262027').upsert(chunk, { onConflict: 'id' });
+          }
+        } catch (err) {
+          console.warn('Supabase receipt20262027 sync error:', err);
+        }
+      })();
+    }
+
     return NextResponse.json({
       success: true,
       message: 'SQL Backup file parsed and restored successfully into active database and local JSON stores!',

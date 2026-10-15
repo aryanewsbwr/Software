@@ -5,12 +5,18 @@ import fs from 'fs';
 export const dynamic = 'force-dynamic';
 
 let cachedReceipts: any[] | null = null;
+let lastMtime: number = 0;
 
 function loadReceipts() {
-  if (!cachedReceipts) {
-    const f = path.join(process.cwd(), 'public', 'data', 'all_receipts.json');
-    if (fs.existsSync(f)) cachedReceipts = JSON.parse(fs.readFileSync(f, 'utf-8'));
-    else cachedReceipts = [];
+  const f = path.join(process.cwd(), 'public', 'data', 'all_receipts.json');
+  if (fs.existsSync(f)) {
+    const stats = fs.statSync(f);
+    if (!cachedReceipts || stats.mtimeMs !== lastMtime) {
+      cachedReceipts = JSON.parse(fs.readFileSync(f, 'utf-8'));
+      lastMtime = stats.mtimeMs;
+    }
+  } else {
+    cachedReceipts = [];
   }
 }
 
