@@ -24,17 +24,17 @@ function saveJson(filename: string, data: any[]) {
     const dataDir = path.join(process.cwd(), 'public', 'data');
     const p = path.join(dataDir, filename);
 
-    // Auto-create timestamped safety snapshot of existing file before overwriting
+    // Keep only 1 single prior backup file (prevents storage pileup and drive filling)
+    const backupDir = path.join(process.cwd(), 'public', 'data_backup');
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+    const priorBackup = path.join(backupDir, filename);
     if (fs.existsSync(p)) {
-      const snapDir = path.join(process.cwd(), 'public', 'data_snapshots');
-      if (!fs.existsSync(snapDir)) {
-        fs.mkdirSync(snapDir, { recursive: true });
-      }
-      const timeTag = new Date().toISOString().replace(/[:.]/g, '-');
-      const snapPath = path.join(snapDir, `${filename.replace('.json', '')}_${timeTag}.json`);
-      fs.copyFileSync(p, snapPath);
+      fs.copyFileSync(p, priorBackup);
     }
 
+    // Direct clean replace (100% replaces old content, prevents duplicate records)
     fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf-8');
   } catch (e) {
     console.error(`Error writing ${filename}:`, e);
