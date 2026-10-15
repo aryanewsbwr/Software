@@ -638,18 +638,15 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
             <u>T</u>ools
           </button>
           {activeMenu === 'tools' && (
-            <div className="absolute top-full left-0 min-w-[260px] bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
-              <button onClick={() => { setActiveMenu(null); setBackupModalMode('balance_forward'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                1. Year-End Balance Forward
+            <div className="absolute top-full left-0 min-w-[320px] bg-[#ECE9D8] vb-box-outset shadow-2xl z-50 py-1 flex flex-col text-black text-xs">
+              <button onClick={() => { setActiveMenu(null); setBackupModalMode('restore'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                1. Database Restore (पुराने सॉफ्टवेयर से SQL रिस्टोर)
               </button>
               <button onClick={() => { setActiveMenu(null); setBackupModalMode('backup_master'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                2. Master Database Backup
+                2. Master Database Backup (SQL बैकअप बनाएं)
               </button>
-              <button onClick={() => { setActiveMenu(null); setBackupModalMode('backup_yearly'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                3. Yearly Database Backup
-              </button>
-              <button onClick={() => { setActiveMenu(null); setBackupModalMode('restore'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                4. Database Restore
+              <button onClick={() => { setActiveMenu(null); setBackupModalMode('balance_forward'); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
+                3. Year-End Balance Forward (बैलेंस कैरी फॉरवर्ड)
               </button>
             </div>
           )}
