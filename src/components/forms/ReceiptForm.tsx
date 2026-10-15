@@ -356,13 +356,13 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
     const q = query.toLowerCase().trim();
     const matches = allCustomers.filter(c => 
-      (c.name_eng || '').toLowerCase().includes(q) ||
-      (c.name_hindi || '').toLowerCase().includes(q) ||
-      (c.add1 || '').toLowerCase().includes(q) ||
-      (c.add2 || '').toLowerCase().includes(q) ||
-      (c.phone || '').includes(q) ||
-      String(c.customer_id).includes(q) ||
-      String(c.priority).includes(q)
+      String(c.name_eng || '').toLowerCase().includes(q) ||
+      String(c.name_hindi || '').toLowerCase().includes(q) ||
+      String(c.add1 || '').toLowerCase().includes(q) ||
+      String(c.add2 || '').toLowerCase().includes(q) ||
+      String(c.phone || '').includes(q) ||
+      String(c.customer_id || '').includes(q) ||
+      String(c.priority || '').includes(q)
     ).slice(0, 30);
 
     setFilteredCustomerSuggestions(matches);
