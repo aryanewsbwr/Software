@@ -467,12 +467,17 @@ export async function POST(req: NextRequest) {
       saveJson('all_customers.json', mappedCusts);
       stats['customer'] = mappedCusts.length;
 
-      try {
-        const topChunk = mappedCusts.slice(0, 1000);
-        await supabase.from('customer').upsert(topChunk, { onConflict: 'customer_id' });
-      } catch (err) {
-        console.warn('Supabase customer upsert warning:', err);
-      }
+      // Upsert full customer master into Supabase in batches of 500
+      (async () => {
+        try {
+          for (let i = 0; i < mappedCusts.length; i += 500) {
+            const batch = mappedCusts.slice(i, i + 500);
+            await supabase.from('customer').upsert(batch, { onConflict: 'customer_id' });
+          }
+        } catch (err) {
+          console.warn('Supabase customer full sync error:', err);
+        }
+      })();
     }
 
     // 2. Subscriptions
@@ -512,6 +517,18 @@ export async function POST(req: NextRequest) {
       });
       saveJson('all_subscriptions.json', mappedSubs);
       stats['customer_detail'] = mappedSubs.length;
+
+      // Upsert full customer_detail into Supabase in batches
+      (async () => {
+        try {
+          for (let i = 0; i < mappedSubs.length; i += 500) {
+            const batch = mappedSubs.slice(i, i + 500);
+            await supabase.from('customer_detail').upsert(batch, { onConflict: 'sno' });
+          }
+        } catch (err) {
+          console.warn('Supabase customer_detail sync error:', err);
+        }
+      })();
     }
 
     // 3. Discontinue
@@ -549,11 +566,18 @@ export async function POST(req: NextRequest) {
       });
       saveJson('discontinues.json', mappedDiscs);
       stats['discontinue'] = mappedDiscs.length;
-      try {
-        await supabase.from('discontinue').upsert(mappedDiscs.slice(0, 500), { onConflict: 'discontinue_id' });
-      } catch (err) {
-        console.warn('Supabase discontinue upsert warning:', err);
-      }
+
+      // Upsert full discontinue into Supabase in batches
+      (async () => {
+        try {
+          for (let i = 0; i < mappedDiscs.length; i += 500) {
+            const batch = mappedDiscs.slice(i, i + 500);
+            await supabase.from('discontinue').upsert(batch, { onConflict: 'discontinue_id' });
+          }
+        } catch (err) {
+          console.warn('Supabase discontinue upsert warning:', err);
+        }
+      })();
     }
 
     // 4. Hawkers
