@@ -20,7 +20,20 @@ function loadJson(filename: string): any[] {
 
 function saveJson(filename: string, data: any[]) {
   try {
-    const p = path.join(process.cwd(), 'public', 'data', filename);
+    const dataDir = path.join(process.cwd(), 'public', 'data');
+    const p = path.join(dataDir, filename);
+
+    // Auto-create timestamped safety snapshot of existing file before overwriting
+    if (fs.existsSync(p)) {
+      const snapDir = path.join(process.cwd(), 'public', 'data_snapshots');
+      if (!fs.existsSync(snapDir)) {
+        fs.mkdirSync(snapDir, { recursive: true });
+      }
+      const timeTag = new Date().toISOString().replace(/[:.]/g, '-');
+      const snapPath = path.join(snapDir, `${filename.replace('.json', '')}_${timeTag}.json`);
+      fs.copyFileSync(p, snapPath);
+    }
+
     fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf-8');
   } catch (e) {
     console.error(`Error writing ${filename}:`, e);
@@ -678,6 +691,48 @@ export async function POST(req: NextRequest) {
         };
       });
       saveJson('rates.json', mappedRates);
+    }
+
+    // 7. Regions (region / regions)
+    const regionRows = parsedTables['region'] || parsedTables['regions'];
+    if (regionRows && regionRows.length > 0) {
+      const mappedRegions = regionRows.map(r => {
+        if (Array.isArray(r)) {
+          return {
+            region_id: Number(r[0]),
+            region_name: r[1] || '',
+            name: r[1] || '',
+            zone: r[2] || '',
+          };
+        }
+        return {
+          region_id: Number(r.region_id ?? r.regionid ?? 0),
+          region_name: r.region_name ?? r.regionname ?? r.name ?? '',
+          name: r.region_name ?? r.regionname ?? r.name ?? '',
+          zone: r.zone ?? '',
+        };
+      });
+      saveJson('regions.json', mappedRegions);
+    }
+
+    // 8. Holidays (holiday)
+    const holidayRows = parsedTables['holiday'];
+    if (holidayRows && holidayRows.length > 0) {
+      const mappedHolidays = holidayRows.map(r => {
+        if (Array.isArray(r)) {
+          return {
+            oc_date: r[0] || '',
+            occasion: r[1] || '',
+            publica_id: Number(r[2] ?? 0),
+          };
+        }
+        return {
+          oc_date: r.oc_date ?? r.ocdate ?? '',
+          occasion: r.occasion ?? '',
+          publica_id: Number(r.publica_id ?? r.publicaid ?? 0),
+        };
+      });
+      saveJson('holidays.json', mappedHolidays);
     }
 
     return NextResponse.json({
