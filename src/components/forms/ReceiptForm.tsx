@@ -599,20 +599,28 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         const rHistMapped = rHist.map((h: any) => ({
           ...h,
           rep_id: h.receipt_id || h.Receipt_id || h.id,
-          receipt_id: h.receipt_id || h.Receipt_id || h.id
+          receipt_id: h.receipt_id || h.Receipt_id || h.id,
+          bill_no: h.bill_no ?? h.bill_id ?? '-',
+          manual_rep_no: h.manual_rep_no ?? h.mal_rep_no ?? '-',
+          mal_rep_no: h.manual_rep_no ?? h.mal_rep_no ?? '-',
+          mal_recp_dt: h.mal_recp_dt ?? '-',
+          balance: h.balance ?? 0,
+          cash_chq: h.cash_chq ?? 'Cash',
+          r_amt: h.r_amt ?? h.mal_recp_amt ?? 0,
         }));
         
-        // Merge r26 and rHist: Prioritize 20262027 entries, avoid duplicate entries
-        const combined = [...r26];
-        for (const h of rHistMapped) {
-          const isDuplicate = combined.some(c => 
-            (c.recp_no && h.recp_no && String(c.recp_no) === String(h.recp_no)) ||
-            (c.receipt_no && h.receipt_no && String(c.receipt_no) === String(h.receipt_no)) ||
-            (c.id && h.receipt_id && String(c.id) === String(h.receipt_id))
+        // rHistMapped contains full accurate columns directly from the master SQL dump (including Bill No, Ml.No, Ml.Date, Rep. Id)
+        // Merge rHistMapped first, then add any newly created receipts in Supabase that are not yet in disk
+        const combined = [...rHistMapped];
+        for (const s of r26) {
+          const sRecpNo = String(s.recp_no || s.receipt_no || '');
+          const sId = String(s.id || s.receipt_id || '');
+          const exists = combined.some(c => 
+            (sRecpNo && (String(c.recp_no) === sRecpNo || String(c.receipt_no) === sRecpNo)) ||
+            (sId && (String(c.id) === sId || String(c.receipt_id) === sId))
           );
-          if (!isDuplicate) {
-            // Only add if not superseded by a 2026 receipt
-            combined.push(h);
+          if (!exists) {
+            combined.push(s);
           }
         }
 
