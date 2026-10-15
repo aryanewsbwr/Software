@@ -167,13 +167,23 @@ export default function BackupRestoreModal({ mode: initialMode, onClose }: Backu
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 p-2.5 rounded text-[11px] text-slate-700 space-y-1">
-                <div className="font-bold text-blue-950 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-                  कोई भी नॉन-टेक्निकल व्यक्ति आसानी से उपयोग कर सकता है:
+              <div className="bg-amber-50 border border-amber-300 p-2.5 rounded text-[11px] text-amber-950 space-y-1.5">
+                <div className="font-bold flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <ShieldCheck className="w-4 h-4 text-amber-700" />
+                    सुरक्षा सलाह: नया डाटा डालने से पहले वर्तमान बैकअप डाउनलोड करें
+                  </span>
+                  <button
+                    onClick={handleDownloadSqlBackup}
+                    disabled={isProcessing}
+                    className="vb-btn bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-2 py-0.5 text-[10px] cursor-pointer"
+                  >
+                    पहले बैकअप डाउनलोड करें (Take Safety Backup)
+                  </button>
                 </div>
-                <div>1. नीचे <strong>"Choose .SQL File"</strong> पर क्लिक करके अपनी बैकअप फाइल चुनें।</div>
-                <div>2. <strong>"Start SQL Restore"</strong> बटन दबाएं। सॉफ्टवेयर अपने आप ग्राहकों, हॉकरों, सब्स्क्रिप्शन्स, दरों एवं छुट्टियों को अपडेट कर देगा।</div>
+                <div className="text-[10px] text-amber-900">
+                  सॉफ्टवेयर रिस्टोर करने से पहले अपने वर्तमान डाटा का एक स्वचालित स्नैपशॉट भी अपने आप बना लेता है।
+                </div>
               </div>
 
               {/* File Input */}
