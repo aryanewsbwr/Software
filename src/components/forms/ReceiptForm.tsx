@@ -229,13 +229,36 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         if (data) setAllRegions(data);
       });
 
-    // Load All Customers Master for instant typeahead search
-    supabase
-      .from('customer')
-      .select('*')
-      .order('priority', { ascending: true })
-      .then(({ data }) => {
-        if (data) setAllCustomers(data);
+    // Load All Customers Master for instant typeahead search (Load entire 24,630+ customer database)
+    fetch('/data/all_customers.json')
+      .then(res => {
+        if (!res.ok) throw new Error('Static file not available');
+        return res.json();
+      })
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setAllCustomers(data);
+        } else {
+          throw new Error('Empty static data');
+        }
+      })
+      .catch(() => {
+        // Fallback to Supabase API
+        fetch('/api/customers?limit=30000')
+          .then(res => res.json())
+          .then(data => {
+            if (data?.customers) setAllCustomers(data.customers);
+          })
+          .catch(() => {
+            supabase
+              .from('customer')
+              .select('*')
+              .order('priority', { ascending: true })
+              .limit(5000)
+              .then(({ data }) => {
+                if (data) setAllCustomers(data);
+              });
+          });
       });
 
     // Load Receipt Allotments (starts empty, user selects collector)
@@ -335,9 +358,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     const matches = allCustomers.filter(c => 
       (c.name_eng || '').toLowerCase().includes(q) ||
       (c.name_hindi || '').toLowerCase().includes(q) ||
+      (c.add1 || '').toLowerCase().includes(q) ||
+      (c.add2 || '').toLowerCase().includes(q) ||
+      (c.phone || '').includes(q) ||
       String(c.customer_id).includes(q) ||
       String(c.priority).includes(q)
-    ).slice(0, 15);
+    ).slice(0, 30);
 
     setFilteredCustomerSuggestions(matches);
     setHighlightedCustomerIndex(0);
