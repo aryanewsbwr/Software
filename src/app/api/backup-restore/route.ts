@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import readline from 'readline';
 import { supabase } from '@/lib/supabaseClient';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300; // Allow sufficient processing time for large SQL files
+export const maxDuration = 300;
 
 function loadJson(filename: string): any[] {
   try {
@@ -58,20 +59,15 @@ function escapeSqlNum(val: any, fallback = 0): string {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const mode = searchParams.get('mode') || 'all';
-
-    const tablesToDump = [];
     const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 
-    let sqlHeader = `-- ========================================================\n` +
+    let sqlContent = `-- ========================================================\n` +
       `-- ARYAN NEWS ERP DATABASE BACKUP DUMP\n` +
       `-- Exported At: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}\n` +
       `-- Host: MySQL / Supabase Compatible ERP Dump\n` +
       `-- ========================================================\n\n` +
       `SET FOREIGN_KEY_CHECKS=0;\n` +
       `SET SQL_MODE="NO_AUTO_VALUE_ON_ZERO";\n\n`;
-
-    let sqlContent = sqlHeader;
 
     // 1. Region Master (regions / region)
     const regions = loadJson('regions.json');
@@ -362,106 +358,57 @@ export async function GET(req: NextRequest) {
 }
 
 // -------------------------------------------------------------
-// POST: Parse uploaded .sql file, update Supabase & local JSON
+// POST: Process SQL restore via JSON payload or File upload
 // -------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const file = formData.get('file') as File;
+    const contentType = req.headers.get('content-type') || '';
+    let parsedTables: Record<string, any[]> = {};
 
-    if (!file) {
-      return NextResponse.json({ success: false, error: 'No SQL file uploaded' }, { status: 400 });
+    // 1. If JSON payload (client-side pre-filtered or server local stream)
+    if (contentType.includes('application/json')) {
+      const body = await req.json();
+
+      // Mode A: Server local file path
+      if (body.filePath) {
+        if (!fs.existsSync(body.filePath)) {
+          return NextResponse.json({ success: false, error: `File not found at ${body.filePath}` }, { status: 404 });
+        }
+        parsedTables = await parseSqlFileStream(body.filePath);
+      }
+      // Mode B: Client extracted tables directly
+      else if (body.tables) {
+        parsedTables = body.tables;
+      } else {
+        return NextResponse.json({ success: false, error: 'No tables or filePath provided' }, { status: 400 });
+      }
+    } 
+    // 2. Fallback: multipart/form-data for smaller SQL files (< 50MB)
+    else {
+      const formData = await req.formData();
+      const file = formData.get('file') as File;
+      if (!file) {
+        return NextResponse.json({ success: false, error: 'No SQL file uploaded' }, { status: 400 });
+      }
+
+      // Save file temporarily to disk to stream-parse without RAM exhaustion
+      const tempPath = path.join(process.cwd(), 'public', `temp_restore_${Date.now()}.sql`);
+      const buffer = Buffer.from(await file.arrayBuffer());
+      fs.writeFileSync(tempPath, buffer);
+
+      try {
+        parsedTables = await parseSqlFileStream(tempPath);
+      } finally {
+        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      }
     }
 
-    const text = await file.text();
-    if (!text || text.length < 10) {
-      return NextResponse.json({ success: false, error: 'Uploaded SQL file is empty or corrupted' }, { status: 400 });
-    }
-
-    // Regex to capture INSERT INTO `tableName` or INSERT INTO tableName
-    // Handles multi-line insert statements
-    const insertRegex = /INSERT\s+INTO\s+[`"']?([a-zA-Z0-9_]+)[`"']?\s*(?:\(([^)]+)\))?\s*VALUES\s*([\s\S]+?);/gi;
-
-    let match;
     const stats: Record<string, number> = {};
-    const parsedTables: Record<string, any[]> = {};
 
-    // Helper to parse comma separated values tuple: (val1, val2, ...)
-    const parseValuesString = (valsStr: string, columns?: string[]): any[] => {
-      const rows: any[] = [];
-      const rowRegex = /\(([\s\S]*?)\)(?:,\s*|\s*$)/g;
-      let rowMatch;
+    // -------------------------------------------------------------
+    // Map & Update Active Stores
+    // -------------------------------------------------------------
 
-      while ((rowMatch = rowRegex.exec(valsStr)) !== null) {
-        const rowContent = rowMatch[1].trim();
-        // Split rowContent handling quoted strings with escaped commas
-        const tokens: string[] = [];
-        let inQuote = false;
-        let quoteChar = '';
-        let cur = '';
-
-        for (let i = 0; i < rowContent.length; i++) {
-          const ch = rowContent[i];
-          if ((ch === "'" || ch === '"') && (i === 0 || rowContent[i - 1] !== '\\')) {
-            if (!inQuote) {
-              inQuote = true;
-              quoteChar = ch;
-            } else if (ch === quoteChar) {
-              inQuote = false;
-            } else {
-              cur += ch;
-            }
-          } else if (ch === ',' && !inQuote) {
-            tokens.push(cur.trim());
-            cur = '';
-          } else {
-            cur += ch;
-          }
-        }
-        tokens.push(cur.trim());
-
-        // Clean tokens
-        const cleanedTokens = tokens.map(t => {
-          if (t.toUpperCase() === 'NULL') return null;
-          if ((t.startsWith("'") && t.endsWith("'")) || (t.startsWith('"') && t.endsWith('"'))) {
-            return t.slice(1, -1).replace(/\\'/g, "'").replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-          }
-          const num = Number(t);
-          return isNaN(num) ? t : num;
-        });
-
-        if (columns && columns.length === cleanedTokens.length) {
-          const rowObj: Record<string, any> = {};
-          columns.forEach((col, idx) => {
-            rowObj[col.trim().replace(/[`"']/g, '').toLowerCase()] = cleanedTokens[idx];
-          });
-          rows.push(rowObj);
-        } else {
-          rows.push(cleanedTokens);
-        }
-      }
-      return rows;
-    };
-
-    while ((match = insertRegex.exec(text)) !== null) {
-      const rawTableName = match[1].toLowerCase();
-      const colStr = match[2];
-      const valStr = match[3];
-
-      let cols: string[] | undefined;
-      if (colStr) {
-        cols = colStr.split(',').map(c => c.trim().replace(/[`"']/g, ''));
-      }
-
-      const rows = parseValuesString(valStr, cols);
-      if (!parsedTables[rawTableName]) {
-        parsedTables[rawTableName] = [];
-      }
-      parsedTables[rawTableName].push(...rows);
-      stats[rawTableName] = (stats[rawTableName] || 0) + rows.length;
-    }
-
-    // Now map parsed tables to our system stores
     // 1. Customers
     const customerRows = parsedTables['customer'] || parsedTables['tbl_customer'];
     if (customerRows && customerRows.length > 0) {
@@ -518,8 +465,8 @@ export async function POST(req: NextRequest) {
         };
       });
       saveJson('all_customers.json', mappedCusts);
+      stats['customer'] = mappedCusts.length;
 
-      // Async batch upsert top customers into Supabase in chunks
       try {
         const topChunk = mappedCusts.slice(0, 1000);
         await supabase.from('customer').upsert(topChunk, { onConflict: 'customer_id' });
@@ -528,8 +475,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Subscriptions (custdetail)
-    const subRows = parsedTables['custdetail'] || parsedTables['customer_detail'];
+    // 2. Subscriptions
+    const subRows = parsedTables['customer_detail'] || parsedTables['custdetail'];
     if (subRows && subRows.length > 0) {
       const mappedSubs = subRows.map(r => {
         if (Array.isArray(r)) {
@@ -564,29 +511,32 @@ export async function POST(req: NextRequest) {
         };
       });
       saveJson('all_subscriptions.json', mappedSubs);
+      stats['customer_detail'] = mappedSubs.length;
     }
 
     // 3. Discontinue
-    const discRows = parsedTables['discontinue'];
+    const discRows = parsedTables['discontinue20262027'] || parsedTables['discontinue'];
     if (discRows && discRows.length > 0) {
       const mappedDiscs = discRows.map(r => {
         if (Array.isArray(r)) {
           return {
             discontinue_id: Number(r[0]),
             sno: Number(r[1] ?? 0),
-            customer_id: Number(r[2]),
-            publica_id: Number(r[3]),
-            temp_perma: r[4] || 'T',
-            temp_from: r[5] || '',
-            temp_to: r[6] || '',
-            s_date: r[7] || '',
-            c_date: r[8] || '',
-            hawker_id: Number(r[9] ?? 0),
+            entry_date: r[2] || '',
+            customer_id: Number(r[3]),
+            publica_id: Number(r[4]),
+            temp_perma: r[5] || 'T',
+            temp_from: r[6] || '',
+            temp_to: r[7] || '',
+            s_date: r[8] || '',
+            c_date: r[9] || '',
+            hawker_id: Number(r[10] ?? 0),
           };
         }
         return {
           discontinue_id: Number(r.discontinue_id ?? r.discontinueid ?? 0),
           sno: Number(r.sno ?? 0),
+          entry_date: r.entry_date ?? r.entrydate ?? '',
           customer_id: Number(r.customer_id ?? r.customerid ?? 0),
           publica_id: Number(r.publica_id ?? r.publicaid ?? 0),
           temp_perma: r.temp_perma ?? r.tempperma ?? 'T',
@@ -598,6 +548,7 @@ export async function POST(req: NextRequest) {
         };
       });
       saveJson('discontinues.json', mappedDiscs);
+      stats['discontinue'] = mappedDiscs.length;
       try {
         await supabase.from('discontinue').upsert(mappedDiscs.slice(0, 500), { onConflict: 'discontinue_id' });
       } catch (err) {
@@ -633,10 +584,11 @@ export async function POST(req: NextRequest) {
         };
       });
       saveJson('hawkers.json', mappedHawkers);
+      stats['hawker'] = mappedHawkers.length;
     }
 
     // 5. Publications
-    const pubRows = parsedTables['publica'] || parsedTables['publication'];
+    const pubRows = parsedTables['publication'] || parsedTables['publica'];
     if (pubRows && pubRows.length > 0) {
       const mappedPubs = pubRows.map(r => {
         if (Array.isArray(r)) {
@@ -671,6 +623,7 @@ export async function POST(req: NextRequest) {
         };
       });
       saveJson('publications.json', mappedPubs);
+      stats['publication'] = mappedPubs.length;
     }
 
     // 6. Rates
@@ -691,10 +644,11 @@ export async function POST(req: NextRequest) {
         };
       });
       saveJson('rates.json', mappedRates);
+      stats['rate'] = mappedRates.length;
     }
 
-    // 7. Regions (region / regions)
-    const regionRows = parsedTables['region'] || parsedTables['regions'];
+    // 7. Regions (regiond / region / regions)
+    const regionRows = parsedTables['regiond'] || parsedTables['region'] || parsedTables['regions'];
     if (regionRows && regionRows.length > 0) {
       const mappedRegions = regionRows.map(r => {
         if (Array.isArray(r)) {
@@ -713,6 +667,7 @@ export async function POST(req: NextRequest) {
         };
       });
       saveJson('regions.json', mappedRegions);
+      stats['region'] = mappedRegions.length;
     }
 
     // 8. Holidays (holiday)
@@ -733,6 +688,7 @@ export async function POST(req: NextRequest) {
         };
       });
       saveJson('holidays.json', mappedHolidays);
+      stats['holiday'] = mappedHolidays.length;
     }
 
     return NextResponse.json({
@@ -744,4 +700,84 @@ export async function POST(req: NextRequest) {
     console.error('Restore processing error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
+}
+
+// -------------------------------------------------------------
+// Stream Parser Helper (Handles huge 500MB+ MySQL dumps in seconds)
+// -------------------------------------------------------------
+async function parseSqlFileStream(filePath: string): Promise<Record<string, any[]>> {
+  const fileStream = fs.createReadStream(filePath, { encoding: 'latin1' });
+  const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
+
+  const coreTables = new Set([
+    'customer',
+    'customer_detail',
+    'custdetail',
+    'hawker',
+    'publication',
+    'publica',
+    'rate',
+    'discontinue20262027',
+    'discontinue',
+    'regiond',
+    'region',
+    'regions',
+    'holiday',
+    'receipt20262027',
+  ]);
+
+  const parsedTables: Record<string, any[]> = {};
+  for (const t of coreTables) parsedTables[t] = [];
+
+  const parseRow = (str: string): any[] => {
+    const trimmed = str.trim().replace(/^\(/, '').replace(/\)[,;]?$/, '');
+    const tokens: string[] = [];
+    let inQuote = false;
+    let cur = '';
+
+    for (let i = 0; i < trimmed.length; i++) {
+      const ch = trimmed[i];
+      if (ch === '\'' && (i === 0 || trimmed[i - 1] !== '\\')) {
+        inQuote = !inQuote;
+      } else if (ch === ',' && !inQuote) {
+        tokens.push(cur.trim());
+        cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+    tokens.push(cur.trim());
+
+    return tokens.map(t => {
+      if (t === 'NULL' || t === 'null') return null;
+      if (t.startsWith('\'') && t.endsWith('\'')) {
+        return t.slice(1, -1).replace(/\\'/g, '\'').replace(/\\\\/g, '\\');
+      }
+      const num = Number(t);
+      return isNaN(num) ? t : num;
+    });
+  };
+
+  let currentTbl: string | null = null;
+
+  for await (const line of rl) {
+    if (line.startsWith('INSERT INTO ' + String.fromCharCode(96))) {
+      const b1 = line.indexOf(String.fromCharCode(96));
+      const b2 = line.indexOf(String.fromCharCode(96), b1 + 1);
+      if (b2 !== -1) {
+        const tbl = line.slice(b1 + 1, b2);
+        currentTbl = coreTables.has(tbl) ? tbl : null;
+      }
+    } else if (currentTbl) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('(')) {
+        parsedTables[currentTbl].push(parseRow(trimmed));
+      }
+      if (trimmed.endsWith(');') || trimmed.endsWith(';')) {
+        currentTbl = null;
+      }
+    }
+  }
+
+  return parsedTables;
 }
