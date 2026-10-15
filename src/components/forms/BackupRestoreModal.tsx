@@ -209,24 +209,40 @@ export default function BackupRestoreModal({ mode: initialMode, onClose }: Backu
     try {
       // If file is very large (> 40MB), filter client side to avoid 413 payload limit
       let payload: any;
-      if (selectedFile.size > 20 * 1024 * 1024) {
-        setProgressMsg(`Large SQL File (${(selectedFile.size / 1024 / 1024).toFixed(1)} MB) detected. Extracting 2026-2027 masters locally...`);
+      if (selectedFile.size > 15 * 1024 * 1024) {
+        setProgressMsg(`Large SQL File (${(selectedFile.size / 1024 / 1024).toFixed(1)} MB) detected. Extracting master records...`);
         const extractedTables = await filterAndExtractCoreTablesFromBrowser(selectedFile);
-        setProgressMsg('Saving extracted customers, subscriptions, hawkers & rates into database...');
-        payload = JSON.stringify({ tables: extractedTables });
+        
+        const combinedStats: Record<string, number> = {};
+        const tableEntries = Object.entries(extractedTables).filter(([_, rows]) => rows.length > 0);
+        let currentStep = 0;
 
-        const res = await fetch('/api/backup-restore', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: payload,
-        });
+        for (const [tblName, rows] of tableEntries) {
+          currentStep++;
+          setProgressMsg(`Saving table '${tblName}' (${rows.length.toLocaleString()} records) [${currentStep}/${tableEntries.length}]...`);
 
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Failed to restore SQL backup');
+          // Split into small 300-row chunks (~100KB per POST request to guarantee 0 payload limits)
+          const CHUNK_SIZE = 300;
+          for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+            const chunk = rows.slice(i, i + CHUNK_SIZE);
+            const res = await fetch('/api/backup-restore', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                tables: { [tblName]: chunk },
+                appendMode: i > 0, // Append subsequent chunks of the same table
+              }),
+            });
+
+            if (!res.ok) {
+              const text = await res.text();
+              throw new Error(`Server returned status ${res.status}: ${text.slice(0, 100)}`);
+            }
+          }
+          combinedStats[tblName] = rows.length;
         }
 
-        setRestoreStats(data.stats || {});
+        setRestoreStats(combinedStats);
         setProgressMsg('सफलतापूर्वक रिस्टोर संपन्न! (SQL Backup restored successfully into database & local records)');
         setCompleted(true);
       } else {

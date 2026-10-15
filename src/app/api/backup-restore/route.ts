@@ -19,12 +19,20 @@ function loadJson(filename: string): any[] {
   return [];
 }
 
-function saveJson(filename: string, data: any[]) {
+function saveJson(filename: string, data: any[], append = false) {
   try {
     const dataDir = path.join(process.cwd(), 'public', 'data');
     const p = path.join(dataDir, filename);
 
-    // Keep only 1 single prior backup file (prevents storage pileup and drive filling)
+    // If append mode, load existing data and concatenate
+    if (append && fs.existsSync(p)) {
+      const existing = JSON.parse(fs.readFileSync(p, 'utf-8'));
+      const combined = existing.concat(data);
+      fs.writeFileSync(p, JSON.stringify(combined, null, 2), 'utf-8');
+      return;
+    }
+
+    // First chunk / clean replace: keep 1 prior backup for safety
     const backupDir = path.join(process.cwd(), 'public', 'data_backup');
     if (!fs.existsSync(backupDir)) {
       fs.mkdirSync(backupDir, { recursive: true });
@@ -365,9 +373,11 @@ export async function POST(req: NextRequest) {
     const contentType = req.headers.get('content-type') || '';
     let parsedTables: Record<string, any[]> = {};
 
+    let isAppendMode = false;
     // 1. If JSON payload (client-side pre-filtered or server local stream)
     if (contentType.includes('application/json')) {
       const body = await req.json();
+      isAppendMode = !!body.appendMode;
 
       // Mode A: Server local file path
       if (body.filePath) {
@@ -464,7 +474,7 @@ export async function POST(req: NextRequest) {
           pyear: r.pyear ?? '',
         };
       });
-      saveJson('all_customers.json', mappedCusts);
+      saveJson('all_customers.json', mappedCusts, isAppendMode);
       stats['customer'] = mappedCusts.length;
 
       // Upsert full customer master into Supabase in batches of 500
@@ -515,7 +525,7 @@ export async function POST(req: NextRequest) {
           dely: Number(r.dely ?? 0),
         };
       });
-      saveJson('all_subscriptions.json', mappedSubs);
+      saveJson('all_subscriptions.json', mappedSubs, isAppendMode);
       stats['customer_detail'] = mappedSubs.length;
 
       // Upsert full customer_detail into Supabase in batches
@@ -564,7 +574,7 @@ export async function POST(req: NextRequest) {
           hawker_id: Number(r.hawker_id ?? r.hawkerid ?? 0),
         };
       });
-      saveJson('discontinues.json', mappedDiscs);
+      saveJson('discontinues.json', mappedDiscs, isAppendMode);
       stats['discontinue'] = mappedDiscs.length;
 
       // Upsert full discontinue into Supabase in batches
