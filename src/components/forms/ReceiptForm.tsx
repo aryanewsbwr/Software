@@ -120,6 +120,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const [updateTotalAmt, setUpdateTotalAmt] = useState<string | number>('');
   const [updateNarration, setUpdateNarration] = useState('');
   const [isUpdatingReceipt, setIsUpdatingReceipt] = useState(false);
+  const [isDeletingReceipt, setIsDeletingReceipt] = useState(false);
 
   // Refs for keyboard shortcuts & Enter/Tab navigation
   const customerInputRef = useRef<HTMLInputElement>(null);
@@ -397,9 +398,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     if (billWithNegBal) {
       return Math.abs(Number(billWithNegBal.balance));
     }
-    const lastRecp = receiptsList[0];
-    if (lastRecp && Number(lastRecp.balance) > 0 && effectiveDues < billAmount) {
-      return Number(lastRecp.balance);
+    // Most recent receipt is at the end of the sorted array
+    if (receiptsList && receiptsList.length > 0) {
+      const lastRecp = receiptsList[receiptsList.length - 1];
+      if (lastRecp && Number(lastRecp.balance) > 0 && effectiveDues < billAmount) {
+        return Number(lastRecp.balance);
+      }
     }
     return 0;
   };
@@ -428,27 +432,8 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       setBillNo(bId);
       setYear(String(matchedBill.year || matchedBill.Year || '2026'));
 
-      // Calculate accumulated bill amount up to the selected month:
-      // Include any previous months that were unpaid and transferred forward
-      const targetIndex = bList.findIndex((b: any) => String(b.bill_id || b.bill_no) === String(bId));
-      let accumulatedDueForMonth = 0;
-      if (targetIndex !== -1) {
-        // Sum all bills up to and including this selected month
-        const billsUpToMonth = bList.slice(0, targetIndex + 1);
-        const totalBillsToMonth = billsUpToMonth.reduce((sum: number, b: any) => sum + getBillDisplayAmount(b), 0);
-        
-        // Sum all receipts received before this month's bill
-        const totalReceiptsReceived = rList.reduce((sum: number, r: any) => sum + Number(r.mal_recp_amt ?? r.r_amt ?? 0), 0);
-        
-        // If there are unpaid prior dues, they transfer into this month
-        accumulatedDueForMonth = Math.max(getBillDisplayAmount(matchedBill), totalBillsToMonth - totalReceiptsReceived + Number(matchedBill.bill_amt || matchedBill.due_amt || 150));
-        // Cap at totalCustomerDue if effectiveDues is greater
-        if (effectiveDues > 0) {
-          accumulatedDueForMonth = Math.min(accumulatedDueForMonth, effectiveDues);
-        }
-      }
-
-      const amt = accumulatedDueForMonth > 0 ? accumulatedDueForMonth : getBillDisplayAmount(matchedBill);
+      // Bill Amt is always the monthly bill rate for this bill (e.g. 150)
+      const amt = getBillDisplayAmount(matchedBill);
       setBillAmt(amt);
 
       const credit = getPriorCreditBalance(bList, rList, effectiveDues, amt);
@@ -456,11 +441,16 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       setBalAmt(credit > 0 ? credit : 0);
 
       const currentLess = Number(lessAmt) || 0;
-      const netPayable = Math.max(0, amt - currentLess - credit);
+      // Net payable for this bill after deducting prior credit and discount:
+      // If customer has outstanding dues, payable is net of credit. If customer's dues are already 0, payable is 0.
+      let netPayable = Math.max(0, amt - currentLess - credit);
+      if (effectiveDues === 0) {
+        netPayable = 0;
+      }
       setTotalPayableAmt(netPayable);
 
-      setManualRcpAmt(amt);
-      setRevAmt(amt);
+      setManualRcpAmt(netPayable > 0 ? netPayable : amt);
+      setRevAmt(netPayable > 0 ? netPayable : amt);
     }
   };
 
@@ -718,11 +708,14 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     setBalAmt(credit > 0 ? credit : 0);
 
     const currentLess = Number(lessAmt) || 0;
-    const netPayable = Math.max(0, amt - currentLess - credit);
+    let netPayable = Math.max(0, amt - currentLess - credit);
+    if (totalCustomerDue === 0) {
+      netPayable = 0;
+    }
     setTotalPayableAmt(netPayable);
 
-    setManualRcpAmt(amt);
-    setRevAmt(amt);
+    setManualRcpAmt(netPayable > 0 ? netPayable : amt);
+    setRevAmt(netPayable > 0 ? netPayable : amt);
     if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
   };
 
@@ -935,6 +928,20 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         setManualRecpNo(String(nextManualNo + 1));
       }
 
+      // 6. Reset Control Section fields matching original VB6 software (video sec_22)
+      setBillNo('');
+      setSelectedBillId('');
+      setBillAmt('');
+      setManualRcpAmt('');
+      setLessAmt('');
+      setRevAmt('');
+      setBalAmt('');
+      setTotalPayableAmt(0);
+      setNarration('');
+      setChequeNo('');
+      setChequeDate('');
+      setPriorCreditBal(0);
+
       // Reset customer search box and refocus for the next customer entry!
       setCustomerSearchQuery('');
       setTimeout(() => {
@@ -1144,6 +1151,89 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     }
   };
 
+  const handleDeleteReceipt = async () => {
+    if (!updateRecpNo && !updateRepId) return;
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete Receipt Rep #${updateRepId} (Recp #${updateRecpNo})?\nThis will reverse the payment and recalculate the customer due amount.`
+    );
+    if (!confirmDelete) return;
+
+    setIsDeletingReceipt(true);
+    try {
+      const targetRepIdNum = parseInt(String(updateRepId), 10);
+      const targetDbId = !isNaN(targetRepIdNum) ? (targetRepIdNum + 18383) : null;
+
+      // 1. Delete from Supabase receipt20262027
+      let query = supabase.from('receipt20262027').delete();
+      if (targetDbId) {
+        query = query.eq('id', targetDbId);
+      } else if (updateRecpNo) {
+        query = query.eq('recp_no', updateRecpNo);
+      }
+      const { error: delErr } = await query;
+      if (delErr) {
+        console.warn('Supabase delete error on receipt20262027:', delErr);
+      }
+
+      // Also try deleting by recp_no if targetDbId was used, just in case
+      if (updateRecpNo) {
+        await supabase.from('receipt20262027').delete().eq('recp_no', updateRecpNo);
+      }
+
+      // 2. Delete from /api/receipts (all_receipts.json on disk)
+      try {
+        const queryParams = new URLSearchParams();
+        if (targetDbId) queryParams.set('id', String(targetDbId));
+        if (updateRecpNo) queryParams.set('recp_no', String(updateRecpNo));
+        if (customerId) queryParams.set('customer_id', customerId);
+
+        await fetch(`/api/receipts?${queryParams.toString()}`, {
+          method: 'DELETE'
+        });
+      } catch (apiErr) {
+        console.warn('Error calling DELETE /api/receipts:', apiErr);
+      }
+
+      // 3. Remove receipt from local customerReceipts state
+      const filteredReceipts = customerReceipts.filter(r => {
+        const rid = r.rep_id || r.receipt_id || (r.id > 18383 ? r.id - 18383 : r.id);
+        const matchRepId = String(rid) === String(updateRepId);
+        const matchRecpNo = updateRecpNo && String(r.recp_no || r.receipt_no) === String(updateRecpNo);
+        return !(matchRepId || matchRecpNo);
+      });
+      setCustomerReceipts(filteredReceipts);
+
+      // 4. Recalculate customer due balance
+      const totalBillsCalc = customerBills.reduce((sum, b) => sum + (Number(b.bill_amt) || 0), 0);
+      const totalRecpsCalc = filteredReceipts.reduce((sum, r) => sum + Number(r.mal_recp_amt ?? r.r_amt ?? 0), 0);
+      const calculatedDues = Math.max(0, Math.round((totalBillsCalc - totalRecpsCalc) * 100) / 100);
+      setTotalCustomerDue(calculatedDues);
+
+      // 5. Update customer record in Supabase customer table
+      const cid = parseInt(customerId, 10);
+      if (!isNaN(cid) && cid > 0) {
+        await supabase
+          .from('customer')
+          .update({ 
+            due_amount: calculatedDues,
+            cbal: calculatedDues
+          })
+          .eq('customer_id', cid);
+
+        setAllCustomers(prev => prev.map(c => c.customer_id === cid ? { ...c, due_amount: calculatedDues, cbal: calculatedDues } : c));
+      }
+
+      setIsUpdateModalOpen(false);
+      setMsg({ text: `Receipt Rep #${updateRepId} (Recp #${updateRecpNo}) deleted successfully!` });
+    } catch (err: any) {
+      console.error('Failed to delete receipt:', err);
+      setMsg({ text: 'Error deleting receipt: ' + err.message, isError: true });
+    } finally {
+      setIsDeletingReceipt(false);
+    }
+  };
+
   // Keyboard Shortcuts: F1=Cash, F2=Cheque, Alt+A / Alt+S -> Apply, Alt+U -> Update, Alt+E / Esc -> Exit
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1160,6 +1250,9 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         } else if (e.altKey && e.key.toLowerCase() === 'u') {
           e.preventDefault();
           handleSaveUpdate();
+        } else if (e.altKey && e.key.toLowerCase() === 'd') {
+          e.preventDefault();
+          handleDeleteReceipt();
         } else if (e.altKey && e.key.toLowerCase() === 'e') {
           e.preventDefault();
           setIsUpdateModalOpen(false);
@@ -2197,11 +2290,20 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 </div>
               </div>
 
-              <div className="col-span-3 flex justify-end">
+              <div className="col-span-3 flex justify-end gap-1.5">
+                <button 
+                  type="button"
+                  onClick={handleDeleteReceipt}
+                  disabled={isDeletingReceipt || isUpdatingReceipt}
+                  className="w-16 py-1 bg-white hover:bg-red-100 border border-red-700 text-xs font-bold text-red-700 cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Delete this receipt and restore customer balance"
+                >
+                  <u>D</u>elete
+                </button>
                 <button 
                   type="button"
                   onClick={() => setIsUpdateModalOpen(false)}
-                  className="w-20 py-1 bg-white hover:bg-rose-50 border border-[#808080] text-xs font-bold text-black cursor-pointer shadow-xs"
+                  className="w-16 py-1 bg-white hover:bg-rose-50 border border-[#808080] text-xs font-bold text-black cursor-pointer shadow-xs"
                 >
                   <u>E</u>xit
                 </button>
