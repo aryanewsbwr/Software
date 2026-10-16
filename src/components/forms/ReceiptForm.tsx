@@ -644,7 +644,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       // 3. Compute Total Dues = Total Bills - Total Receipts (Matching Original Software exactly!)
       const totalBillsCalc = bList.reduce((sum, b) => sum + (Number(b.bill_amt) || 0), 0);
       const totalRecpsCalc = rList.reduce((sum, r) => sum + Number(r.mal_recp_amt ?? r.r_amt ?? 0), 0);
-      const calculatedDues = Math.max(0, Math.round((totalBillsCalc - totalRecpsCalc) * 100) / 100);
+      const calculatedDues = Math.round((totalBillsCalc - totalRecpsCalc) * 100) / 100;
       setTotalCustomerDue(calculatedDues);
 
       // 4. Auto-select latest bill month (e.g. Sept / October)
@@ -802,7 +802,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const numLessAmt = Number(lessAmt) || 0;
   const numBillAmt = Number(billAmt) || 0;
   const effectiveReceivedForDue = numManualRcpAmt > 0 ? numManualRcpAmt : numRevAmt;
-  const calculatedRemainingBal = Math.max(0, Math.round((totalCustomerDue - effectiveReceivedForDue - numLessAmt) * 100) / 100);
+  const calculatedRemainingBal = Math.round((totalCustomerDue - effectiveReceivedForDue - numLessAmt) * 100) / 100;
 
   // 6. Save / Apply Receipt & Advance to Next Entry Instantly
   const handleApply = async () => {
@@ -1123,7 +1123,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         return r;
       });
       const totalRecpsCalc = updatedRecps.reduce((sum, r) => sum + Number(r.mal_recp_amt ?? r.r_amt ?? 0), 0);
-      const calculatedDues = Math.max(0, Math.round((totalBillsCalc - totalRecpsCalc) * 100) / 100);
+      const calculatedDues = Math.round((totalBillsCalc - totalRecpsCalc) * 100) / 100;
       setTotalCustomerDue(calculatedDues);
 
       setIsUpdateModalOpen(false);
@@ -1192,7 +1192,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       // 4. Recalculate customer due balance
       const totalBillsCalc = customerBills.reduce((sum, b) => sum + (Number(b.bill_amt) || 0), 0);
       const totalRecpsCalc = filteredReceipts.reduce((sum, r) => sum + Number(r.mal_recp_amt ?? r.r_amt ?? 0), 0);
-      const calculatedDues = Math.max(0, Math.round((totalBillsCalc - totalRecpsCalc) * 100) / 100);
+      const calculatedDues = Math.round((totalBillsCalc - totalRecpsCalc) * 100) / 100;
       setTotalCustomerDue(calculatedDues);
 
       // 5. Update customer record in Supabase customer table
@@ -1658,13 +1658,13 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
             {/* Left Grid Footer: Total Due in Red Text (Matching Video: 1055) */}
             <div className="bg-[#808080] border-t border-slate-600 px-2 py-0.5 flex justify-end items-center font-mono font-bold text-red-300 text-xs">
-              <span>{totalCustomerDue > 0 ? totalCustomerDue : 0}</span>
+              <span>{totalCustomerDue}</span>
             </div>
           </div>
 
           {/* Right Grid: Receipts History (72% width) with Footer Total */}
           <div className="flex-1 bg-[#808080] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white flex flex-col overflow-hidden">
-            <div className="bg-[#0080FF] text-white text-[10px] font-bold grid grid-cols-11 border-b border-black text-center py-0.5">
+            <div className="bg-[#0080FF] text-white text-[10px] font-bold grid grid-cols-10 border-b border-black text-center py-0.5">
               <span className="border-r border-black">Rep. Id</span>
               <span className="border-r border-black">Bill No</span>
               <span className="border-r border-black">Month</span>
@@ -1672,7 +1672,6 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               <span className="border-r border-black">Ml.Date</span>
               <span className="border-r border-black">Rp Amt.</span>
               <span className="border-r border-black">L.Amt.</span>
-              <span className="border-r border-black">Bal.</span>
               <span className="border-r border-black">Rep.Date</span>
               <span className="border-r border-black">R Amt.</span>
               <span>Cash/Chq</span>
@@ -1687,7 +1686,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                       key={idx} 
                       onClick={() => setSelectedReceiptId(rid)}
                       onDoubleClick={() => openUpdateModal(r)}
-                      className={`grid grid-cols-11 border-b border-slate-600 text-center py-0.5 cursor-pointer text-[10px] ${
+                      className={`grid grid-cols-10 border-b border-slate-600 text-center py-0.5 cursor-pointer text-[10px] ${
                         isSelected ? 'bg-blue-800 text-yellow-300 font-bold ring-1 ring-yellow-400' : 'hover:bg-blue-600'
                       }`}
                       title="Click to select, double-click to update"
@@ -1699,7 +1698,6 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                       <span className="border-r border-slate-600">{r.mal_recp_dt || '-'}</span>
                       <span className="border-r border-slate-600">{r.mal_recp_amt ?? r.bill_amt ?? r.Bill_amt ?? 0}</span>
                       <span className="border-r border-slate-600">{r.less_amt || r.Less_amt || 0}</span>
-                      <span className="border-r border-slate-600">{r.balance || r.Balance || 0}</span>
                       <span className="border-r border-slate-600">{r.recp_date || r.bill_date || r.Bill_date || '-'}</span>
                       <span className="border-r border-slate-600 font-bold text-yellow-300">{r.r_amt ?? r.mal_recp_amt ?? 0}</span>
                       <span>{r.cash_chq || r.Cash_chq || 'Cash'}</span>
@@ -1816,7 +1814,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
                 }
               }}
-              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-right text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="col-span-2 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-right text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
 
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Ml. Rcp. At.</label>
@@ -1832,7 +1830,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   if (lessAmtRef.current) lessAmtRef.current.focus();
                 }
               }}
-              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="col-span-2 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
 
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Ls. Amt</label>
@@ -1865,15 +1863,6 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 }
               }}
               className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-
-            <label className="col-span-1 font-bold text-[#000080] text-right text-xs">Bal.</label>
-            <input 
-              ref={balRef}
-              type="text" 
-              value={balAmt !== '' && balAmt !== null && balAmt !== undefined ? balAmt : ''}
-              readOnly
-              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-slate-800 text-xs"
             />
           </div>
 
@@ -1926,7 +1915,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Total Dues</label>
             <input 
               type="text" 
-              value={`${totalCustomerDue || 0}`}
+              value={`${Math.round((totalCustomerDue - (Number(manualRcpAmt) || 0) - (Number(lessAmt) || 0)) * 100) / 100}`}
               readOnly
               className="col-span-1 px-1.5 py-0.5 bg-[#FFCCCC] border border-[#808080] font-mono font-black text-center text-red-900 text-xs"
             />
