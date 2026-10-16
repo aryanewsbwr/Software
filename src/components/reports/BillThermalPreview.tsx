@@ -101,13 +101,10 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
             ARYAN NEWS AGENCY
           </div>
           <div className="text-[9.5px] text-slate-800">
-            Main Market, Clock Tower, Beawar
+            5 Old Bus stand Beawar
           </div>
           <div className="text-[9.5px] text-slate-800">
-            Ph: 9887500875, 9414958294
-          </div>
-          <div className="font-bold text-[10.5px] tracking-wider text-slate-900 pt-1">
-            *** MONTHLY BILL ***
+            Ph: 9462558949, 9829058949
           </div>
         </div>
 
@@ -115,20 +112,17 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           ================================
         </div>
 
-        {/* Bill Metadata */}
+        {/* Bill Metadata: Bill No shows Customer ID, ID column removed, Month instead of Period */}
         <div className="flex justify-between items-baseline text-[10px]">
-          <span>Bill No: <b className="font-bold">{String(b.bill_no || '-').replace(/^BILL-?/i, '')}</b></span>
-          <span>ID: <b className="font-bold">{b.customer_id}</b></span>
-        </div>
-        <div className="flex justify-between items-baseline text-[10.5px] font-bold text-slate-900">
-          <span>Period: <b className="font-bold">{b.month} {b.year}</b></span>
+          <span>Bill No: <b className="font-bold">{b.customer_id}</b></span>
+          <span>Month: <b className="font-bold">{b.month} {b.year}</b></span>
         </div>
 
         <div className="text-center text-[10px] my-1 text-slate-600">
           --------------------------------
         </div>
 
-        {/* Customer Info */}
+        {/* Customer Info (Customer Address removed as requested) */}
         <div className="space-y-0.5">
           <div className="font-black text-[12px] uppercase text-blue-950">
             {b.customer_name}
@@ -136,11 +130,6 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           {displayHindi && displayHindi !== b.customer_name && (
             <div className="font-bold text-[11px] text-slate-900">
               {displayHindi}
-            </div>
-          )}
-          {b.address && (
-            <div className="text-[10px] text-slate-700 break-words">
-              {b.address}
             </div>
           )}
           <div className="text-[9.5px] text-slate-700">
@@ -229,13 +218,13 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           ================================
         </div>
 
-        {/* Footer Note */}
-        <div className="text-center text-[9px] text-slate-700 space-y-0.5 pt-1">
-          <div>Please pay bill by due date.</div>
-          <div className="font-bold">Thank You For Reading!</div>
-          <div className="text-[8px] text-slate-400 pt-2">
-            - - - - - - - - Cut Here - - - - - - - -
-          </div>
+        {/* Footer Note with QR Code replacing previous texts */}
+        <div className="flex flex-col items-center justify-center pt-2 pb-1">
+          <img 
+            src="/bill_qr_code.jpeg" 
+            alt="Payment QR" 
+            className="w-28 h-28 object-contain rounded-sm"
+          />
         </div>
       </div>
     );

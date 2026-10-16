@@ -75,19 +75,15 @@ export function renderSingleThermalBillHtml(b: BillRecord): string {
     <div class="thermal-receipt">
       <div class="thermal-header">
         <div class="agency-title">ARYAN NEWS AGENCY</div>
-        <div class="agency-sub">Main Market, Clock Tower, Beawar</div>
-        <div class="agency-sub">Ph: 9887500875, 9414958294</div>
-        <div class="receipt-title">*** MONTHLY BILL ***</div>
+        <div class="agency-sub">5 Old Bus stand Beawar</div>
+        <div class="agency-sub">Ph: 9462558949, 9829058949</div>
       </div>
 
       <div class="divider">================================</div>
 
       <div class="receipt-row">
-        <span>Bill: <b>${String(b.bill_no || '-').replace(/^BILL-?/i, '')}</b></span>
-        <span>ID: <b>${b.customer_id}</b></span>
-      </div>
-      <div class="receipt-row font-bold">
-        <span>Period: <b>${b.month} ${b.year}</b></span>
+        <span>Bill No: <b>${b.customer_id}</b></span>
+        <span>Month: <b>${b.month} ${b.year}</b></span>
       </div>
 
       <div class="divider">--------------------------------</div>
@@ -95,7 +91,6 @@ export function renderSingleThermalBillHtml(b: BillRecord): string {
       <div class="cust-info">
         <div class="cust-name">${b.customer_name}</div>
         ${displayHindi && displayHindi !== b.customer_name ? `<div class="cust-hindi">${displayHindi}</div>` : ''}
-        ${b.address ? `<div class="cust-detail">${b.address}</div>` : ''}
         <div class="cust-detail">Region: ${b.region_name || b.region_id} ${b.priority ? `| Pr: ${b.priority}` : ''}</div>
         ${b.phone ? `<div class="cust-detail">Mob: ${b.phone}</div>` : ''}
       </div>
@@ -143,9 +138,9 @@ export function renderSingleThermalBillHtml(b: BillRecord): string {
       <div class="divider">================================</div>
 
       <div class="thermal-footer">
-        <div>Please pay bill by due date.</div>
-        <div>Thank You For Reading!</div>
-        <div class="cut-line">- - - - - - - - Cut Here - - - - - - - -</div>
+        <div style="display: flex; justify-content: center; align-items: center; padding: 4px 0;">
+          <img src="/bill_qr_code.jpeg" alt="QR Code" style="width: 100px; height: 100px; object-fit: contain;" />
+        </div>
       </div>
     </div>
   `;
