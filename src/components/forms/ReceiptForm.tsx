@@ -1656,9 +1656,9 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               )}
             </div>
 
-            {/* Left Grid Footer: Total Due in Red Text (Matching Video: 1055) */}
+            {/* Left Grid Footer: Total Bill Amount for Financial Year in Red Text */}
             <div className="bg-[#808080] border-t border-slate-600 px-2 py-0.5 flex justify-end items-center font-mono font-bold text-red-300 text-xs">
-              <span>{totalCustomerDue}</span>
+              <span>{totalBillsSum}</span>
             </div>
           </div>
 
