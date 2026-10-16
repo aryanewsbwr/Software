@@ -690,17 +690,26 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     setMonth(m);
     setYear(String(b.year || b.Year || '2026'));
     const amt = getBillDisplayAmount(b);
-    setBillAmt(amt);
 
+    // If there is no due (totalCustomerDue is 0), data in control section should NOT be there!
+    if (totalCustomerDue === 0) {
+      setBillAmt('');
+      setManualRcpAmt('');
+      setLessAmt('');
+      setRevAmt('');
+      setBalAmt('');
+      setTotalPayableAmt(0);
+      setPriorCreditBal(0);
+      return;
+    }
+
+    setBillAmt(amt);
     const credit = getPriorCreditBalance(customerBills, customerReceipts, totalCustomerDue, amt);
     setPriorCreditBal(credit);
     setBalAmt(credit > 0 ? credit : 0);
 
     const currentLess = Number(lessAmt) || 0;
-    let netPayable = Math.max(0, amt - currentLess - credit);
-    if (totalCustomerDue === 0) {
-      netPayable = 0;
-    }
+    const netPayable = Math.max(0, amt - currentLess - credit);
     setTotalPayableAmt(netPayable);
 
     setManualRcpAmt(netPayable > 0 ? netPayable : amt);

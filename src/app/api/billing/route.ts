@@ -693,16 +693,62 @@ export async function POST(request: NextRequest) {
       const billTable = `bill${fySuffix}`;
       const billdelTable = `billdel${fySuffix}`;
 
-      // Extract all DB rows
-      const billnoRows = result.bills.map(b => b.db_billno_item).filter(Boolean);
-      const billRows = result.bills.flatMap(b => b.db_bill_items || []).filter(Boolean);
-      const billdelRows = result.bills.flatMap(b => b.db_billdel_items || []).filter(Boolean);
+      // Extract all DB rows normalized to lowercase column names for PostgreSQL
+      const billnoRows = result.bills.map(b => {
+        const item = b.db_billno_item;
+        if (!item) return null;
+        return {
+          bill_id: item.bill_id ?? item.Bill_id,
+          customer_id: item.customer_id ?? item.Customer_id,
+          region_id: item.region_id ?? item.Region_id,
+          due_amt: item.due_amt ?? item.Due_Amt,
+          del_amt: item.del_amt ?? item.Del_Amt,
+          dis_amt: item.dis_amt ?? item.Dis_Amt,
+          month: item.month ?? item.Month,
+          year: String(item.year ?? item.Year ?? '2026'),
+          balance: item.balance ?? item.Balance ?? 0
+        };
+      }).filter(Boolean);
+
+      const billRows = result.bills.flatMap(b => b.db_bill_items || []).map((item: any) => {
+        if (!item) return null;
+        return {
+          bill_id: item.bill_id ?? item.Bill_id,
+          customer_id: item.customer_id ?? item.Customer_id,
+          publica_id: item.publica_id ?? item.Publica_id,
+          region_id: item.region_id ?? item.Region_id,
+          qty: item.qty ?? item.Qty,
+          rate: item.rate ?? item.Rate,
+          d_charges: item.d_charges ?? item.D_Charges,
+          total_amt: item.total_amt ?? item.TotalAmt,
+          month: item.month ?? item.Month,
+          year: String(item.year ?? item.Year ?? '2026'),
+          sno: item.sno ?? item.Sno
+        };
+      }).filter(Boolean);
+
+      const billdelRows = result.bills.flatMap(b => b.db_billdel_items || []).map((item: any) => {
+        if (!item) return null;
+        return {
+          customer_id: item.customer_id ?? item.Customer_id,
+          region_id: item.region_id ?? item.Region_id,
+          publica_id: item.publica_id ?? item.Publica_id,
+          month: item.month ?? item.Month,
+          year: String(item.year ?? item.Year ?? '2026'),
+          dely: item.dely ?? item.Dely,
+          sno: item.sno ?? item.Sno
+        };
+      }).filter(Boolean);
 
       // Insert in batches of 500 to Supabase
       const insertBatch = async (tableName: string, rows: any[]) => {
         for (let i = 0; i < rows.length; i += 500) {
           const batch = rows.slice(i, i + 500);
-          await supabase.from(tableName).upsert(batch);
+          const { error } = await supabase.from(tableName).upsert(batch);
+          if (error) {
+            console.error(`Error upserting into ${tableName}:`, error);
+            throw error;
+          }
         }
       };
 
