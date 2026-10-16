@@ -432,8 +432,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       setBillNo(bId);
       setYear(String(matchedBill.year || matchedBill.Year || '2026'));
 
-      // Keep payment fields blank initially until user enters received amount manually
-      setBillAmt('');
+      const bDisplayAmt = getBillDisplayAmount(matchedBill);
+      setBillAmt(bDisplayAmt);
+
+      // Keep payment receipt fields clean for manual entry
       setManualRcpAmt('');
       setLessAmt('');
       setRevAmt('');
@@ -723,17 +725,18 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       setManualRcpAmt('');
       setRevAmt('');
       setBalAmt('');
+      setTotalPayableAmt(0);
       return;
     }
     const val = parseFloat(valStr) || 0;
     setManualRcpAmt(val);
-    setRevAmt(val); // Cash received matches manual receipt amount!
+    setRevAmt(val); // Display in Rev.Amt box as informative entry
     setTotalPayableAmt(val);
 
     const bAmt = Number(billAmt) || (totalCustomerDue > 0 ? totalCustomerDue : 0);
     const currentLess = Number(lessAmt) || 0;
     const netDueForThisBill = bAmt - priorCreditBal;
-    // When customer pays: (received + less) - netDue
+    // Calculation: (Ml. Rcp. At. + Ls. Amt) - Bill Amt
     const bal = (val + currentLess) - netDueForThisBill;
     setBalAmt(bal);
   };
@@ -742,11 +745,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     if (valStr === '') {
       setLessAmt('');
       const bAmt = Number(billAmt) || 0;
-      const netPayable = Math.max(0, bAmt - priorCreditBal);
-      setTotalPayableAmt(netPayable);
+      const netDueForThisBill = bAmt - priorCreditBal;
+      const mVal = Number(manualRcpAmt) || 0;
       if (manualRcpAmt !== '') {
-        const mVal = Number(manualRcpAmt) || 0;
-        setBalAmt(mVal - (bAmt - priorCreditBal));
+        setBalAmt(mVal - netDueForThisBill);
       }
       return;
     }
@@ -754,22 +756,13 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     setLessAmt(discount);
 
     const bAmt = Number(billAmt) || 0;
-    const netPayable = Math.max(0, bAmt - discount - priorCreditBal);
-    setTotalPayableAmt(netPayable);
-
-    // If customer was paying full, automatically adjust manual receipt amount to net payable
+    const netDueForThisBill = bAmt - priorCreditBal;
     const curManual = Number(manualRcpAmt) || 0;
-    if (curManual === 0 || curManual === bAmt || curManual === (bAmt - priorCreditBal)) {
-      setManualRcpAmt(netPayable);
-      setRevAmt(netPayable);
-      setBalAmt(0);
-    } else {
-      const netDueForThisBill = bAmt - priorCreditBal;
-      const bal = (curManual + discount) - netDueForThisBill;
-      setBalAmt(bal);
-    }
+    const bal = (curManual + discount) - netDueForThisBill;
+    setBalAmt(bal);
   };
 
+  // Rev.Amt is just an informative display entry; it does not alter balance calculations
   const handleRevAmtChange = (valStr: string) => {
     if (valStr === '') {
       setRevAmt('');
@@ -777,11 +770,6 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     }
     const val = parseFloat(valStr) || 0;
     setRevAmt(val);
-    const bAmt = Number(billAmt) || 0;
-    const currentLess = Number(lessAmt) || 0;
-    const netDueForThisBill = bAmt - priorCreditBal;
-    const bal = (val + currentLess) - netDueForThisBill;
-    setBalAmt(bal);
   };
 
   const handleBillAmtChange = (valStr: string) => {
@@ -791,15 +779,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     }
     const val = parseFloat(valStr) || 0;
     setBillAmt(val);
-    if (totalCustomerDue === 0) {
-      setTotalCustomerDue(val);
-    }
     const currentLess = Number(lessAmt) || 0;
-    const netPayable = Math.max(0, val - currentLess - priorCreditBal);
-    setTotalPayableAmt(netPayable);
-    setManualRcpAmt(netPayable);
-    setRevAmt(netPayable);
-    setBalAmt(0);
+    const curManual = Number(manualRcpAmt) || 0;
+    const netDueForThisBill = val - priorCreditBal;
+    if (manualRcpAmt !== '') {
+      setBalAmt((curManual + currentLess) - netDueForThisBill);
+    }
   };
 
   // 5. Grid Totals Calculation (Footer)
@@ -811,11 +796,13 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     return customerReceipts.reduce((acc, r) => acc + Number(r.r_amt ?? r.mal_recp_amt ?? r.R_amt ?? 0), 0);
   }, [customerReceipts]);
 
-  // Balance Calculations
-  const numRevAmt = Number(revAmt) || 0;
+  // Balance Calculations: Effective received amount is taken from manual receipt amount
+  const numManualRcpAmt = Number(manualRcpAmt) || 0;
+  const numRevAmt = Number(revAmt) || numManualRcpAmt;
   const numLessAmt = Number(lessAmt) || 0;
   const numBillAmt = Number(billAmt) || 0;
-  const calculatedRemainingBal = Math.max(0, Math.round((totalCustomerDue - numRevAmt - numLessAmt) * 100) / 100);
+  const effectiveReceivedForDue = numManualRcpAmt > 0 ? numManualRcpAmt : numRevAmt;
+  const calculatedRemainingBal = Math.max(0, Math.round((totalCustomerDue - effectiveReceivedForDue - numLessAmt) * 100) / 100);
 
   // 6. Save / Apply Receipt & Advance to Next Entry Instantly
   const handleApply = async () => {
@@ -824,9 +811,9 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       if (customerInputRef.current) customerInputRef.current.focus();
       return;
     }
-    if (numRevAmt <= 0 && numLessAmt <= 0) {
-      setMsg({ text: 'Please enter a valid Received Amount (Rev.Amt).', isError: true });
-      if (revAmtRef.current) revAmtRef.current.focus();
+    if (effectiveReceivedForDue <= 0 && numLessAmt <= 0) {
+      setMsg({ text: 'Please enter a valid Manual Receipt Amount (Ml. Rcp. At.).', isError: true });
+      if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
       return;
     }
 
@@ -856,7 +843,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         customer_id: cid,
         bill_amt: numBillAmt || totalCustomerDue,
         less_amt: numLessAmt,
-        mal_recp_amt: numRevAmt,
+        mal_recp_amt: effectiveReceivedForDue,
         month: month || 'Sept',
         year: year || '2026',
         remarks: JSON.stringify(metadata)
@@ -902,11 +889,11 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         mal_recp_dt: manualRecpDate || receiptDate,
         bill_date: receiptDate,
         recp_date: receiptDate,
-        bill_amt: numBillAmt || numRevAmt,
+        bill_amt: numBillAmt || effectiveReceivedForDue,
         less_amt: numLessAmt,
         balance: calculatedRemainingBal,
-        r_amt: numRevAmt,
-        mal_recp_amt: numRevAmt,
+        r_amt: effectiveReceivedForDue,
+        mal_recp_amt: effectiveReceivedForDue,
         cash_chq: paymentMode
       };
       setCustomerReceipts(prev => [...prev, newReceiptGridRow]);
