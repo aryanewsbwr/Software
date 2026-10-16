@@ -432,25 +432,14 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       setBillNo(bId);
       setYear(String(matchedBill.year || matchedBill.Year || '2026'));
 
-      // Bill Amt is always the monthly bill rate for this bill (e.g. 150)
-      const amt = getBillDisplayAmount(matchedBill);
-      setBillAmt(amt);
-
-      const credit = getPriorCreditBalance(bList, rList, effectiveDues, amt);
-      setPriorCreditBal(credit);
-      setBalAmt(credit > 0 ? credit : 0);
-
-      const currentLess = Number(lessAmt) || 0;
-      // Net payable for this bill after deducting prior credit and discount:
-      // If customer has outstanding dues, payable is net of credit. If customer's dues are already 0, payable is 0.
-      let netPayable = Math.max(0, amt - currentLess - credit);
-      if (effectiveDues === 0) {
-        netPayable = 0;
-      }
-      setTotalPayableAmt(netPayable);
-
-      setManualRcpAmt(netPayable > 0 ? netPayable : amt);
-      setRevAmt(netPayable > 0 ? netPayable : amt);
+      // Keep payment fields blank initially until user enters received amount manually
+      setBillAmt('');
+      setManualRcpAmt('');
+      setLessAmt('');
+      setRevAmt('');
+      setBalAmt('');
+      setTotalPayableAmt(0);
+      setPriorCreditBal(0);
     }
   };
 
@@ -730,12 +719,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     const val = parseFloat(valStr) || 0;
     setManualRcpAmt(val);
     setRevAmt(val); // Cash received matches manual receipt amount!
+    setTotalPayableAmt(val);
 
-    const bAmt = Number(billAmt) || 0;
+    const bAmt = Number(billAmt) || (totalCustomerDue > 0 ? totalCustomerDue : 0);
     const currentLess = Number(lessAmt) || 0;
     const netDueForThisBill = bAmt - priorCreditBal;
-    // When customer pays 1 on 150 bill: 1 - 150 = -149 (matches video sec 8!)
-    // When customer pays 150 on 150 bill: 150 - 150 = 0 (matches video sec 10!)
+    // When customer pays: (received + less) - netDue
     const bal = (val + currentLess) - netDueForThisBill;
     setBalAmt(bal);
   };
@@ -1933,7 +1922,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             <label className="col-span-1 font-bold text-[#000080] text-right truncate">Total Amt</label>
             <input 
               type="text" 
-              value={`${totalPayableAmt !== null && totalPayableAmt !== undefined ? totalPayableAmt : (billAmt !== '' ? billAmt : 0)}`}
+              value={totalPayableAmt !== null && totalPayableAmt !== undefined && totalPayableAmt !== 0 ? totalPayableAmt : (manualRcpAmt !== '' ? manualRcpAmt : '')}
               readOnly
               className="col-span-1 px-1.5 py-0.5 bg-[#FFFFCC] border border-[#808080] font-mono font-black text-center text-black text-xs"
             />
