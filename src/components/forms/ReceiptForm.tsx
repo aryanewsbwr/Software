@@ -427,7 +427,28 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       setSelectedBillId(bId);
       setBillNo(bId);
       setYear(String(matchedBill.year || matchedBill.Year || '2026'));
-      const amt = getBillDisplayAmount(matchedBill);
+
+      // Calculate accumulated bill amount up to the selected month:
+      // Include any previous months that were unpaid and transferred forward
+      const targetIndex = bList.findIndex((b: any) => String(b.bill_id || b.bill_no) === String(bId));
+      let accumulatedDueForMonth = 0;
+      if (targetIndex !== -1) {
+        // Sum all bills up to and including this selected month
+        const billsUpToMonth = bList.slice(0, targetIndex + 1);
+        const totalBillsToMonth = billsUpToMonth.reduce((sum: number, b: any) => sum + getBillDisplayAmount(b), 0);
+        
+        // Sum all receipts received before this month's bill
+        const totalReceiptsReceived = rList.reduce((sum: number, r: any) => sum + Number(r.mal_recp_amt ?? r.r_amt ?? 0), 0);
+        
+        // If there are unpaid prior dues, they transfer into this month
+        accumulatedDueForMonth = Math.max(getBillDisplayAmount(matchedBill), totalBillsToMonth - totalReceiptsReceived + Number(matchedBill.bill_amt || matchedBill.due_amt || 150));
+        // Cap at totalCustomerDue if effectiveDues is greater
+        if (effectiveDues > 0) {
+          accumulatedDueForMonth = Math.min(accumulatedDueForMonth, effectiveDues);
+        }
+      }
+
+      const amt = accumulatedDueForMonth > 0 ? accumulatedDueForMonth : getBillDisplayAmount(matchedBill);
       setBillAmt(amt);
 
       const credit = getPriorCreditBalance(bList, rList, effectiveDues, amt);
@@ -1598,7 +1619,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                       <span className="border-r border-slate-600">{(r.month || r.Month || '').slice(0, 4)}</span>
                       <span className="border-r border-slate-600">{r.manual_rep_no || r.mal_rep_no || r.Manual_rep_no || '-'}</span>
                       <span className="border-r border-slate-600">{r.mal_recp_dt || '-'}</span>
-                      <span className="border-r border-slate-600">{r.bill_amt ?? r.Bill_amt ?? r.mal_recp_amt ?? r.r_amt ?? 0}</span>
+                      <span className="border-r border-slate-600">{r.mal_recp_amt ?? r.bill_amt ?? r.Bill_amt ?? 0}</span>
                       <span className="border-r border-slate-600">{r.less_amt || r.Less_amt || 0}</span>
                       <span className="border-r border-slate-600">{r.balance || r.Balance || 0}</span>
                       <span className="border-r border-slate-600">{r.recp_date || r.bill_date || r.Bill_date || '-'}</span>
