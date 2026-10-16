@@ -641,9 +641,9 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
       setCustomerReceipts(rList || []);
 
-      // 3. Compute Total Dues = Total Bills - Total Receipts (Matching Original Software exactly!)
+      // 3. Compute Total Dues = Total Bills - Total Receipts (Including Less/Discount amount)
       const totalBillsCalc = bList.reduce((sum, b) => sum + (Number(b.bill_amt) || 0), 0);
-      const totalRecpsCalc = rList.reduce((sum, r) => sum + Number(r.mal_recp_amt ?? r.r_amt ?? 0), 0);
+      const totalRecpsCalc = rList.reduce((sum, r) => sum + (Number(r.mal_recp_amt ?? r.r_amt ?? 0) + Number(r.less_amt || 0)), 0);
       const calculatedDues = Math.round((totalBillsCalc - totalRecpsCalc) * 100) / 100;
       setTotalCustomerDue(calculatedDues);
 
@@ -1118,11 +1118,11 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       const updatedRecps = customerReceipts.map(r => {
         const rid = r.rep_id || r.receipt_id || (r.id > 18383 ? r.id - 18383 : r.id);
         if (String(rid) === String(updateRepId)) {
-          return { ...r, mal_recp_amt: numRev };
+          return { ...r, mal_recp_amt: numRev, less_amt: numLess };
         }
         return r;
       });
-      const totalRecpsCalc = updatedRecps.reduce((sum, r) => sum + Number(r.mal_recp_amt ?? r.r_amt ?? 0), 0);
+      const totalRecpsCalc = updatedRecps.reduce((sum, r) => sum + (Number(r.mal_recp_amt ?? r.r_amt ?? 0) + Number(r.less_amt || 0)), 0);
       const calculatedDues = Math.round((totalBillsCalc - totalRecpsCalc) * 100) / 100;
       setTotalCustomerDue(calculatedDues);
 
@@ -1191,7 +1191,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
       // 4. Recalculate customer due balance
       const totalBillsCalc = customerBills.reduce((sum, b) => sum + (Number(b.bill_amt) || 0), 0);
-      const totalRecpsCalc = filteredReceipts.reduce((sum, r) => sum + Number(r.mal_recp_amt ?? r.r_amt ?? 0), 0);
+      const totalRecpsCalc = filteredReceipts.reduce((sum, r) => sum + (Number(r.mal_recp_amt ?? r.r_amt ?? 0) + Number(r.less_amt || 0)), 0);
       const calculatedDues = Math.round((totalBillsCalc - totalRecpsCalc) * 100) / 100;
       setTotalCustomerDue(calculatedDues);
 
@@ -1714,7 +1714,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             {/* Right Grid Footer: Total Received & Total Due (Matching Video: 905, 1055) */}
             <div className="bg-[#808080] border-t border-slate-600 px-4 py-0.5 flex justify-between items-center font-mono font-bold text-red-300 text-xs">
               <span>Total Received: {totalReceiptsReceivedSum}</span>
-              <span>Total Due: {totalCustomerDue > 0 ? totalCustomerDue : 0}</span>
+              <span>Total Due: {totalCustomerDue}</span>
             </div>
           </div>
 
