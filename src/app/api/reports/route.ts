@@ -1043,7 +1043,7 @@ export async function GET(request: NextRequest) {
         const netPayable = isGovtSupply ? currentBill : roundToFoxProRule(b.total_payable !== undefined ? b.total_payable : (currentBill + prevDue));
 
         return {
-          bill_no: `BILL-${year}-${String(b.customer_id).padStart(5, '0')}`,
+          bill_no: b.bill_no || b.customer_id,
           bill_date: `${daysInMonth}/${month}/${year}`,
           customer_id: b.customer_id,
           priority: c.priority !== undefined && c.priority !== null && Number(c.priority) > 0 ? Number(c.priority) : b.customer_id,

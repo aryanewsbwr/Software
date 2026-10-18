@@ -112,9 +112,9 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           ================================
         </div>
 
-        {/* Bill Metadata: Bill No shows Customer ID, ID column removed, Month instead of Period */}
+        {/* Bill Metadata: Bill No of each bill, Month instead of Period */}
         <div className="flex justify-between items-baseline text-[10px]">
-          <span>Bill No: <b className="font-bold">{b.customer_id}</b></span>
+          <span>Bill No: <b className="font-bold">{b.bill_no || b.customer_id}</b></span>
           <span>Month: <b className="font-bold">{b.month} {b.year}</b></span>
         </div>
 
