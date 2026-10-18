@@ -1728,51 +1728,46 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             Control Section
           </div>
 
-          {/* Control Row 1 */}
-          <div className="grid grid-cols-12 gap-2 items-center pt-1">
-            <label className="col-span-2 font-bold text-[#000080]">Recp. No</label>
+          {/* Control Row 1: Low Opacity for uneditable/system-locked fields */}
+          <div className="grid grid-cols-12 gap-1.5 items-center opacity-75">
+            <label className="col-span-1 font-bold text-[#000080] text-xs">Recp. No</label>
             <input 
               type="text" 
               value={receiptNo}
               readOnly
-              className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+              className="col-span-2 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
             />
 
-            <label className="col-span-1 font-bold text-[#000080] text-right truncate">Recp Date</label>
+            <label className="col-span-1 font-bold text-[#000080] text-right truncate text-xs">Recp Date</label>
             <input 
               type="text" 
               value={receiptDate}
-              onChange={(e) => setReceiptDate(e.target.value)}
-              className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+              readOnly
+              className="col-span-2 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
             />
 
-            <label className="col-span-1 font-bold text-[#000080] text-right truncate">Bill No</label>
+            <label className="col-span-1 font-bold text-[#000080] text-right truncate text-xs">Bill No</label>
             <input 
               ref={billNoRef}
               type="text" 
               value={billNo}
-              onChange={(e) => setBillNo(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  if (billAmtRef.current) billAmtRef.current.focus();
-                }
-              }}
+              readOnly
               placeholder=""
-              className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+              className="col-span-3 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
             />
 
-            <label className="col-span-1 font-bold text-[#000080] text-right truncate">Year</label>
+            <label className="col-span-1 font-bold text-[#000080] text-right truncate text-xs">Year</label>
             <input 
               type="text" 
               value={year}
-              onChange={(e) => setYear(e.target.value)}
-              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+              readOnly
+              className="col-span-1 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
             />
           </div>
 
-          {/* Control Row 2 */}
+          {/* Control Row 2: Fixed gaps, balanced columns across grid-cols-12 */}
           <div className="grid grid-cols-12 gap-1.5 items-center">
-            <label className="col-span-1 font-bold text-[#000080]">Month</label>
+            <label className="col-span-1 font-bold text-[#000080] text-xs">Month</label>
             <select 
               ref={monthSelectRef}
               value={month}
@@ -1788,36 +1783,27 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   e.preventDefault();
                   const prevIdx = (currentIndex - 1 + len) % len;
                   handleSelectMonth(availableMonths[prevIdx]);
-                } else if (e.key === 'Enter') {
-                  e.preventDefault();
-                  if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
-                } else if (e.key === 'Tab') {
+                } else if (e.key === 'Enter' || e.key === 'Tab') {
                   e.preventDefault();
                   if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
                 }
               }}
-              className="col-span-1 px-0.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-[11px] leading-tight focus:outline-none"
+              className="col-span-2 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-[11px] leading-tight focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               {availableMonths.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
 
-            <label className="col-span-1 font-bold text-[#000080] text-right truncate">Bill Amt</label>
+            <label className="col-span-1 font-bold text-[#000080] text-right truncate text-xs">Bill Amt</label>
             <input 
               ref={billAmtRef}
-              type="number" 
+              type="text" 
               value={billAmt === '' ? '' : billAmt}
+              readOnly
               placeholder="0"
-              onChange={(e) => handleBillAmtChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === 'Tab') {
-                  e.preventDefault();
-                  if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
-                }
-              }}
-              className="col-span-2 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-right text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="col-span-2 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-right text-xs text-slate-800 cursor-not-allowed select-none opacity-85"
             />
 
-            <label className="col-span-1 font-bold text-[#000080] text-right truncate">Ml. Rcp. At.</label>
+            <label className="col-span-1 font-bold text-[#000080] text-right truncate text-xs">Ml. Rcp. At.</label>
             <input 
               ref={manualRcpAmtRef}
               type="number" 
@@ -1830,10 +1816,10 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   if (lessAmtRef.current) lessAmtRef.current.focus();
                 }
               }}
-              className="col-span-2 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="col-span-2 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-1 focus:ring-blue-500 focus:outline-none"
             />
 
-            <label className="col-span-1 font-bold text-[#000080] text-right truncate">Ls. Amt</label>
+            <label className="col-span-1 font-bold text-[#000080] text-right truncate text-xs">Ls. Amt</label>
             <input 
               ref={lessAmtRef}
               type="number" 
@@ -1843,32 +1829,26 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === 'Tab') {
                   e.preventDefault();
-                  if (revAmtRef.current) revAmtRef.current.focus();
-                }
-              }}
-              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-red-700 font-bold text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-
-            <label className="col-span-1 font-bold text-[#000080] text-right truncate">Rev.Amt</label>
-            <input 
-              ref={revAmtRef}
-              type="number" 
-              value={revAmt === '' ? '' : revAmt}
-              placeholder="0"
-              onChange={(e) => handleRevAmtChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === 'Tab') {
-                  e.preventDefault();
                   if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
                 }
               }}
-              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="col-span-1 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-red-700 font-bold text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-1 focus:ring-blue-500 focus:outline-none"
+            />
+
+            <label className="col-span-1 font-bold text-[#000080] text-right truncate text-xs">Rev.Amt</label>
+            <input 
+              ref={revAmtRef}
+              type="text" 
+              value={revAmt === '' ? '' : revAmt}
+              readOnly
+              placeholder="0"
+              className="col-span-1 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs cursor-not-allowed select-none opacity-85"
             />
           </div>
 
-          {/* Control Row 3 */}
+          {/* Control Row 3: Low opacity for non-editable fields except Total Dues */}
           <div className="grid grid-cols-12 gap-1.5 items-center">
-            <label className="col-span-2 font-bold text-[#000080] truncate">Mal. Recp. No</label>
+            <label className="col-span-2 font-bold text-[#000080] truncate text-xs">Mal. Recp. No</label>
             <input 
               ref={manualRecpNoRef}
               type="text" 
@@ -1877,14 +1857,14 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === 'Tab') {
                   e.preventDefault();
-                  if (applyBtnRef.current) applyBtnRef.current.focus();
+                  if (manualRecpDateRef.current) manualRecpDateRef.current.focus();
                 }
               }}
               placeholder=""
-              className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs"
+              className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
             />
 
-            <label className="col-span-2 font-bold text-[#000080] text-right truncate">Mal. Recp. Dt.</label>
+            <label className="col-span-2 font-bold text-[#000080] text-right truncate text-xs">Mal. Recp. Dt.</label>
             <input 
               ref={manualRecpDateRef}
               type="text" 
@@ -1901,23 +1881,25 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 }
               }}
               placeholder="DD/MM/YYYY"
-              className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-xs"
+              className="col-span-2 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
             />
 
-            <label className="col-span-1 font-bold text-[#000080] text-right truncate">Total Amt</label>
+            {/* Total Amt: Low Opacity for uneditable/informational field */}
+            <label className="col-span-1 font-bold text-[#000080] text-right truncate text-xs opacity-70">Total Amt</label>
             <input 
               type="text" 
               value={totalPayableAmt !== null && totalPayableAmt !== undefined && totalPayableAmt !== 0 ? totalPayableAmt : (manualRcpAmt !== '' ? manualRcpAmt : '')}
               readOnly
-              className="col-span-1 px-1.5 py-0.5 bg-[#FFFFCC] border border-[#808080] font-mono font-black text-center text-black text-xs"
+              className="col-span-1 px-1.5 py-0.5 bg-[#FFFFCC] border border-[#808080] font-mono font-black text-center text-black text-xs opacity-75 cursor-not-allowed select-none"
             />
 
-            <label className="col-span-1 font-bold text-[#000080] text-right truncate">Total Dues</label>
+            {/* Total Dues: Full Vivid Opacity & High Visibility */}
+            <label className="col-span-1 font-bold text-[#000080] text-right truncate text-xs">Total Dues</label>
             <input 
               type="text" 
               value={`${Math.round((totalCustomerDue - (Number(manualRcpAmt) || 0) - (Number(lessAmt) || 0)) * 100) / 100}`}
               readOnly
-              className="col-span-1 px-1.5 py-0.5 bg-[#FFCCCC] border border-[#808080] font-mono font-black text-center text-red-900 text-xs"
+              className="col-span-1 px-1.5 py-0.5 bg-[#FFCCCC] border border-[#808080] font-mono font-black text-center text-red-900 text-xs shadow-xs"
             />
           </div>
 
