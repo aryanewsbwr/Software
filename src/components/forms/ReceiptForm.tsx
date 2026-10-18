@@ -1729,14 +1729,14 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
           </div>
 
           {/* Control Row 1: Low Opacity for uneditable/system-locked fields */}
-          <div className="flex items-center gap-2 opacity-70">
+          <div className="flex items-center gap-3 opacity-70">
             <div className="flex items-center gap-1">
               <label className="font-bold text-[#000080] text-xs shrink-0">Recp. No</label>
               <input 
                 type="text" 
                 value={receiptNo}
                 readOnly
-                className="w-24 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
+                className="w-20 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
               />
             </div>
 
@@ -1750,7 +1750,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               />
             </div>
 
-            <div className="flex items-center gap-1 flex-1">
+            <div className="flex items-center gap-1">
               <label className="font-bold text-[#000080] text-xs shrink-0">Bill No</label>
               <input 
                 ref={billNoRef}
@@ -1758,7 +1758,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 value={billNo}
                 readOnly
                 placeholder=""
-                className="w-full px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
+                className="w-24 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
               />
             </div>
 
@@ -1773,8 +1773,8 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             </div>
           </div>
 
-          {/* Control Row 2: Fixed cleanly in one single line without wrapping */}
-          <div className="flex items-center gap-2 justify-between">
+          {/* Control Row 2: Fixed cleanly to the left without big gaps or wrapping */}
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
               <label className="font-bold text-[#000080] text-xs shrink-0">Month</label>
               <select 
@@ -1811,7 +1811,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 value={billAmt === '' ? '' : billAmt}
                 readOnly
                 placeholder="0"
-                className="w-20 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-right text-xs text-slate-800 cursor-not-allowed select-none"
+                className="w-16 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-right text-xs text-slate-800 cursor-not-allowed select-none"
               />
             </div>
 
@@ -1829,7 +1829,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                     if (lessAmtRef.current) lessAmtRef.current.focus();
                   }
                 }}
-                className="w-24 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                className="w-20 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-1 focus:ring-blue-500 focus:outline-none"
               />
             </div>
 
@@ -1859,13 +1859,13 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 value={revAmt === '' ? '' : revAmt}
                 readOnly
                 placeholder="0"
-                className="w-20 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs cursor-not-allowed select-none"
+                className="w-16 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs cursor-not-allowed select-none"
               />
             </div>
           </div>
 
-          {/* Control Row 3: All 4 fields in one neat line */}
-          <div className="flex items-center gap-2 justify-between">
+          {/* Control Row 3: All 4 fields packed neatly to the left */}
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
               <label className="font-bold text-[#000080] text-xs shrink-0">Mal. Recp. No</label>
               <input 
@@ -1880,7 +1880,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   }
                 }}
                 placeholder=""
-                className="w-24 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                className="w-20 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
               />
             </div>
 
@@ -1913,7 +1913,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 type="text" 
                 value={totalPayableAmt !== null && totalPayableAmt !== undefined && totalPayableAmt !== 0 ? totalPayableAmt : (manualRcpAmt !== '' ? manualRcpAmt : '')}
                 readOnly
-                className="w-24 px-1.5 py-0.5 bg-[#E8E8E8] border border-[#808080] font-mono font-bold text-center text-slate-700 text-xs cursor-not-allowed select-none"
+                className="w-20 px-1.5 py-0.5 bg-[#E8E8E8] border border-[#808080] font-mono font-bold text-center text-slate-700 text-xs cursor-not-allowed select-none"
               />
             </div>
 
@@ -1924,7 +1924,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                 type="text" 
                 value={`${Math.round((totalCustomerDue - (Number(manualRcpAmt) || 0) - (Number(lessAmt) || 0)) * 100) / 100}`}
                 readOnly
-                className="w-28 px-1.5 py-0.5 bg-[#FFCCCC] border border-[#808080] font-mono font-black text-center text-red-900 text-xs shadow-xs"
+                className="w-24 px-1.5 py-0.5 bg-[#FFCCCC] border border-[#808080] font-mono font-black text-center text-red-900 text-xs shadow-xs"
               />
             </div>
           </div>
