@@ -753,6 +753,24 @@ export async function POST(request: NextRequest) {
       };
 
       try {
+        // When regenerating a bill for the same month/year, first remove old bill line items & delivery items
+        // so that additions or deletions (e.g. removed supplements/subscriptions) cleanly replace the old bill!
+        const targetBillIds = billnoRows.map((b: any) => b.bill_id).filter(Boolean);
+        if (targetBillIds.length > 0) {
+          for (let i = 0; i < targetBillIds.length; i += 200) {
+            const chunk = targetBillIds.slice(i, i + 200);
+            await supabase.from(billTable).delete().in('bill_id', chunk);
+          }
+        }
+
+        const targetCustIds = billnoRows.map((b: any) => b.customer_id).filter(Boolean);
+        if (targetCustIds.length > 0) {
+          for (let i = 0; i < targetCustIds.length; i += 200) {
+            const chunk = targetCustIds.slice(i, i + 200);
+            await supabase.from(billdelTable).delete().in('customer_id', chunk).eq('month', month).eq('year', String(year));
+          }
+        }
+
         await insertBatch(billnoTable, billnoRows);
         await insertBatch(billTable, billRows);
         if (billdelRows.length > 0) {
