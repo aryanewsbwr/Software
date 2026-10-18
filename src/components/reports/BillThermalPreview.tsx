@@ -118,6 +118,11 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           <span>Month: <b className="font-bold">{b.month} {b.year}</b></span>
         </div>
 
+        {/* Customer Account Number / ID */}
+        <div className="text-[10px] mt-0.5">
+          <span>Ac.no.: <b className="font-bold">{b.customer_id}</b></span>
+        </div>
+
         <div className="text-center text-[10px] my-1 text-slate-600">
           --------------------------------
         </div>

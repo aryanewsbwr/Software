@@ -86,6 +86,10 @@ export function renderSingleThermalBillHtml(b: BillRecord): string {
         <span>Month: <b>${b.month} ${b.year}</b></span>
       </div>
 
+      <div class="receipt-row" style="margin-top: 2px;">
+        <span>Ac.no.: <b>${b.customer_id}</b></span>
+      </div>
+
       <div class="divider">--------------------------------</div>
 
       <div class="cust-info">
