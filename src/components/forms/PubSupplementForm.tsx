@@ -333,6 +333,8 @@ export default function PubSupplementForm({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to delete');
 
+      // Optimistically remove from modal history state immediately
+      setSupplementsHistory(prev => prev.filter(s => s.id !== id));
       setMsg({ text: `✓ Supplement #${id} deleted successfully.`, isError: false });
       if (selectedId === id) {
         handleCancel();
