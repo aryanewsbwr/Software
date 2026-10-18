@@ -590,6 +590,23 @@ export function calculateBilling({
 
     const custRegionId = cust.region_id || cust.Region_id || 1;
 
+    // Check if customer already has a committed bill header in allHeaders for this month
+    const existingHeader = allHeaders.find(h => {
+      const hCid = Number(h.customer_id || h.Customer_id);
+      const hMonth = (h.month || h.Month || '').toLowerCase().trim();
+      const stdM = standardMonthName.toLowerCase();
+      return hCid === Number(custId) && (
+        hMonth === stdM ||
+        (stdM.startsWith('oct') && hMonth.startsWith('oct')) ||
+        (stdM.startsWith('sep') && hMonth.startsWith('sep')) ||
+        (stdM.startsWith('aug') && hMonth.startsWith('aug'))
+      );
+    });
+
+    const assignedBillId = existingHeader && (existingHeader.bill_id || existingHeader.Bill_id)
+      ? Number(existingHeader.bill_id || existingHeader.Bill_id)
+      : nextBillId;
+
     // =========================================================================
     // 1. PROCESS EACH SUBSCRIPTION LINE ITEM
     // =========================================================================
@@ -742,7 +759,7 @@ export function calculateBilling({
 
         // DB Schema for billYYYYYYYY
         dbBillItems.push({
-          Bill_id: nextBillId,
+          Bill_id: assignedBillId,
           Customer_id: custId,
           Publica_id: pubId,
           Region_id: custRegionId,
@@ -852,7 +869,7 @@ export function calculateBilling({
 
         // Add to db_bill_items with sno: null (matching historical legacy billYYYYYYYY pattern)
         dbBillItems.push({
-          Bill_id: nextBillId,
+          Bill_id: assignedBillId,
           Customer_id: custId,
           Publica_id: pubId,
           Region_id: custRegionId,
@@ -930,7 +947,7 @@ export function calculateBilling({
             });
 
             dbBillItems.push({
-              Bill_id: nextBillId,
+              Bill_id: assignedBillId,
               Customer_id: custId,
               Publica_id: suppId || parentId,
               Region_id: custRegionId,
@@ -962,22 +979,6 @@ export function calculateBilling({
         amount: -customerDiscountTotal
       });
     }
-
-    // Check if customer already has a committed bill header in allHeaders for this month
-    const existingHeader = allHeaders.find(h => {
-      const hCid = Number(h.customer_id || h.Customer_id);
-      const hMonth = (h.month || h.Month || '').toLowerCase().trim();
-      const stdM = standardMonthName.toLowerCase();
-      return hCid === Number(custId) && (
-        hMonth === stdM ||
-        (stdM.startsWith('sep') && hMonth.startsWith('sep')) ||
-        (stdM.startsWith('aug') && hMonth.startsWith('aug'))
-      );
-    });
-
-    const assignedBillId = existingHeader && (existingHeader.bill_id || existingHeader.Bill_id)
-      ? Number(existingHeader.bill_id || existingHeader.Bill_id)
-      : nextBillId;
 
     // =========================================================================
     // 2. CHARGES & TOTAL COMPUTATION (Formula 8)
