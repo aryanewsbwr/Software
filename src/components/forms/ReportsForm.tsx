@@ -90,6 +90,7 @@ export default function ReportsForm({
   // Report Data
   const [reportData, setReportData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Sync initialReport when prop changes
   useEffect(() => {
@@ -97,6 +98,7 @@ export default function ReportsForm({
       setActiveReport(initialReport);
       setCurrentPage(1);
       setViewMode('criteria');
+      setErrorMessage(null);
     }
   }, [initialReport]);
 
@@ -148,6 +150,7 @@ export default function ReportsForm({
   // Fetch Report Data from API
   const fetchReport = useCallback(async () => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
       const params = new URLSearchParams({
         type: activeReport,
@@ -162,13 +165,18 @@ export default function ReportsForm({
       });
 
       const res = await fetch(`/api/reports?${params.toString()}`);
+      const json = await res.json();
       if (res.ok) {
-        const json = await res.json();
         setReportData(json);
         setTotalPages(json.total_pages || 1);
+        setErrorMessage(null);
+      } else {
+        setReportData(null);
+        setErrorMessage(json.error || 'Failed to load report data.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load report:', err);
+      setErrorMessage(err.message || 'An error occurred while loading report.');
     } finally {
       setIsLoading(false);
     }
@@ -829,6 +837,27 @@ export default function ReportsForm({
             <div className="p-16 text-center text-slate-500 font-sans">
               <RefreshCw className="w-8 h-8 mx-auto animate-spin mb-2 text-blue-900" />
               <span>Loading authentic report data from database...</span>
+            </div>
+          ) : errorMessage ? (
+            <div className="p-10 my-8 max-w-xl mx-auto bg-[#FFF5F5] border-2 border-red-500 rounded shadow-md text-center font-sans">
+              <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3 font-bold text-2xl border border-red-300">
+                ✕
+              </div>
+              <h3 className="text-base font-bold text-red-800 mb-2">
+                Bill Not Generated Yet!
+              </h3>
+              <p className="text-xs text-red-700 leading-relaxed font-semibold">
+                {errorMessage}
+              </p>
+              <div className="mt-4 p-2.5 bg-white border border-red-200 rounded text-[11px] text-slate-700 text-left">
+                <strong>How to fix:</strong>
+                <ol className="list-decimal ml-4 mt-1 space-y-1">
+                  <li>Go to <strong>Process &rarr; Bill Generation</strong>.</li>
+                  <li>Select Month: <strong>{selectedMonth}</strong>, Financial Year: <strong>{selectedYear}</strong>.</li>
+                  <li>Click <strong>Execute Process</strong> to compute &amp; save bills to database.</li>
+                  <li>Then return to <strong>Reports &rarr; Bill Printing</strong> to preview or print.</li>
+                </ol>
+              </div>
             </div>
           ) : !reportData || !reportData.rows || reportData.rows.length === 0 ? (
             <div className="p-16 text-center text-slate-500 font-sans">

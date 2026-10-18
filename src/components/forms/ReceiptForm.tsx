@@ -797,7 +797,6 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     setBalAmt(bal);
   };
 
-  // Rev.Amt is just an informative display entry; it does not alter balance calculations
   const handleRevAmtChange = (valStr: string) => {
     if (valStr === '') {
       setRevAmt('');
@@ -805,6 +804,11 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     }
     const val = parseFloat(valStr) || 0;
     setRevAmt(val);
+    const bAmt = Number(billAmt) || (totalCustomerDue > 0 ? totalCustomerDue : 0);
+    const currentLess = Number(lessAmt) || 0;
+    const netDueForThisBill = bAmt - priorCreditBal;
+    const bal = (val + currentLess) - netDueForThisBill;
+    setBalAmt(bal);
   };
 
   const handleBillAmtChange = (valStr: string) => {
@@ -1656,14 +1660,14 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         <div className="flex gap-2 flex-1 my-0.5 overflow-hidden" style={{ minHeight: '190px', maxHeight: '250px' }}>
           
           {/* Left Grid: Bills History (28% width) with Footer Total */}
-          <div className="w-[28%] bg-[#808080] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white flex flex-col overflow-hidden">
+          <div className="w-[28%] bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white flex flex-col overflow-hidden">
             <div className="bg-[#0080FF] text-white text-[11px] font-bold grid grid-cols-4 border-b border-black text-center py-0.5">
               <span className="border-r border-black">Bill No</span>
               <span className="border-r border-black">Year</span>
               <span className="border-r border-black">Month</span>
               <span>Bill Amt.</span>
             </div>
-            <div className="flex-1 bg-[#808080] overflow-y-auto text-xs font-mono text-white">
+            <div className="flex-1 bg-white overflow-y-auto text-xs font-mono text-black">
               {customerBills.length > 0 ? (
                 customerBills.map((b, idx) => {
                   const bId = b.bill_no || b.bill_id || b.Bill_id;
@@ -1672,33 +1676,33 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                     <div 
                       key={idx} 
                       onClick={() => handleSelectBill(b)}
-                      className={`grid grid-cols-4 border-b border-slate-600 text-center py-0.5 cursor-pointer text-[10px] transition-colors ${
-                        isSelected ? 'bg-blue-800 text-yellow-300 font-bold ring-1 ring-yellow-400' : 'hover:bg-blue-600'
+                      className={`grid grid-cols-4 border-b border-slate-200 text-center py-0.5 cursor-pointer text-[10px] transition-colors ${
+                        isSelected ? 'bg-blue-800 text-white font-bold ring-1 ring-blue-900' : 'hover:bg-blue-50 text-black'
                       }`}
                       title="Click to select this bill"
                     >
-                      <span className="border-r border-slate-600">{bId}</span>
-                      <span className="border-r border-slate-600">{b.year || b.Year || '2026'}</span>
-                      <span className="border-r border-slate-600">{(b.month || b.Month || '').slice(0, 4)}</span>
+                      <span className="border-r border-slate-200">{bId}</span>
+                      <span className="border-r border-slate-200">{b.year || b.Year || '2026'}</span>
+                      <span className="border-r border-slate-200">{(b.month || b.Month || '').slice(0, 4)}</span>
                       <span className="font-bold">{getBillDisplayAmount(b)}</span>
                     </div>
                   );
                 })
               ) : (
-                <div className="p-6 text-center text-slate-300 italic text-[10px]">
+                <div className="p-6 text-center text-slate-400 italic text-[10px]">
                   {isLoadingHistory ? 'Loading bills...' : 'No pending bills'}
                 </div>
               )}
             </div>
 
             {/* Left Grid Footer: Total Bill Amount for Financial Year in Red Text */}
-            <div className="bg-[#808080] border-t border-slate-600 px-2 py-0.5 flex justify-end items-center font-mono font-bold text-red-300 text-xs">
+            <div className="bg-[#F4F4F4] border-t border-slate-300 px-2 py-0.5 flex justify-end items-center font-mono font-bold text-red-600 text-xs">
               <span>{totalBillsSum}</span>
             </div>
           </div>
 
           {/* Right Grid: Receipts History (72% width) with Footer Total */}
-          <div className="flex-1 bg-[#808080] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white flex flex-col overflow-hidden">
+          <div className="flex-1 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white flex flex-col overflow-hidden">
             <div className="bg-[#0080FF] text-white text-[10px] font-bold grid grid-cols-10 border-b border-black text-center py-0.5">
               <span className="border-r border-black">Rep. Id</span>
               <span className="border-r border-black">Bill No</span>
@@ -1711,7 +1715,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
               <span className="border-r border-black">R Amt.</span>
               <span>Cash/Chq</span>
             </div>
-            <div className="flex-1 bg-[#808080] overflow-y-auto text-xs font-mono text-white">
+            <div className="flex-1 bg-white overflow-y-auto text-xs font-mono text-black">
               {customerReceipts.length > 0 ? (
                 customerReceipts.map((r, idx) => {
                   const rid = r.rep_id || r.receipt_id || (r.id > 18383 ? r.id - 18383 : r.id);
@@ -1721,33 +1725,33 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                       key={idx} 
                       onClick={() => setSelectedReceiptId(rid)}
                       onDoubleClick={() => openUpdateModal(r)}
-                      className={`grid grid-cols-10 border-b border-slate-600 text-center py-0.5 cursor-pointer text-[10px] ${
-                        isSelected ? 'bg-blue-800 text-yellow-300 font-bold ring-1 ring-yellow-400' : 'hover:bg-blue-600'
+                      className={`grid grid-cols-10 border-b border-slate-200 text-center py-0.5 cursor-pointer text-[10px] ${
+                        isSelected ? 'bg-blue-800 text-white font-bold ring-1 ring-blue-900' : 'hover:bg-blue-50 text-black'
                       }`}
                       title="Click to select, double-click to update"
                     >
-                      <span className="border-r border-slate-600">{rid}</span>
-                      <span className="border-r border-slate-600">{r.bill_no || r.bill_id || r.Bill_id || '-'}</span>
-                      <span className="border-r border-slate-600">{(r.month || r.Month || '').slice(0, 4)}</span>
-                      <span className="border-r border-slate-600">{r.manual_rep_no || r.mal_rep_no || r.Manual_rep_no || '-'}</span>
-                      <span className="border-r border-slate-600">{r.mal_recp_dt || '-'}</span>
-                      <span className="border-r border-slate-600">{r.mal_recp_amt ?? r.bill_amt ?? r.Bill_amt ?? 0}</span>
-                      <span className="border-r border-slate-600">{r.less_amt || r.Less_amt || 0}</span>
-                      <span className="border-r border-slate-600">{r.recp_date || r.bill_date || r.Bill_date || '-'}</span>
-                      <span className="border-r border-slate-600 font-bold text-yellow-300">{r.r_amt ?? r.mal_recp_amt ?? 0}</span>
+                      <span className="border-r border-slate-200">{rid}</span>
+                      <span className="border-r border-slate-200">{r.bill_no || r.bill_id || r.Bill_id || '-'}</span>
+                      <span className="border-r border-slate-200">{(r.month || r.Month || '').slice(0, 4)}</span>
+                      <span className="border-r border-slate-200">{r.manual_rep_no || r.mal_rep_no || r.Manual_rep_no || '-'}</span>
+                      <span className="border-r border-slate-200">{r.mal_recp_dt || '-'}</span>
+                      <span className="border-r border-slate-200">{r.mal_recp_amt ?? r.bill_amt ?? r.Bill_amt ?? 0}</span>
+                      <span className="border-r border-slate-200">{r.less_amt || r.Less_amt || 0}</span>
+                      <span className="border-r border-slate-200">{r.recp_date || r.bill_date || r.Bill_date || '-'}</span>
+                      <span className={`border-r border-slate-200 font-bold ${isSelected ? 'text-yellow-300' : 'text-blue-700'}`}>{r.r_amt ?? r.mal_recp_amt ?? 0}</span>
                       <span>{r.cash_chq || r.Cash_chq || 'Cash'}</span>
                     </div>
                   );
                 })
               ) : (
-                <div className="p-6 text-center text-slate-300 italic text-[10px]">
+                <div className="p-6 text-center text-slate-400 italic text-[10px]">
                   {isLoadingHistory ? 'Loading receipts...' : 'No previous receipts'}
                 </div>
               )}
             </div>
 
             {/* Right Grid Footer: Total Received & Total Due (Matching Video: 905, 1055) */}
-            <div className="bg-[#808080] border-t border-slate-600 px-4 py-0.5 flex justify-between items-center font-mono font-bold text-red-300 text-xs">
+            <div className="bg-[#F4F4F4] border-t border-slate-300 px-4 py-0.5 flex justify-between items-center font-mono font-bold text-red-600 text-xs">
               <span>Total Received: {totalReceiptsReceivedSum}</span>
               <span>Total Due: {totalCustomerDue}</span>
             </div>
@@ -1884,22 +1888,29 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === 'Tab') {
                       e.preventDefault();
-                      if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
+                      if (revAmtRef.current) revAmtRef.current.focus();
+                      else if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
                     }
                   }}
                   className="w-16 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-red-700 font-bold text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
 
-              <div className="flex items-center gap-1 opacity-75">
+              <div className="flex items-center gap-1">
                 <label className="font-bold text-[#000080] text-xs w-16 shrink-0 text-right">Rev.Amt</label>
                 <input 
                   ref={revAmtRef}
-                  type="text" 
+                  type="number" 
                   value={revAmt === '' ? '' : revAmt}
-                  readOnly
                   placeholder="0"
-                  className="w-18 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs cursor-not-allowed select-none"
+                  onChange={(e) => handleRevAmtChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === 'Tab') {
+                      e.preventDefault();
+                      if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
+                    }
+                  }}
+                  className="w-20 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
             </div>

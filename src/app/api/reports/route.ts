@@ -873,41 +873,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 15. Bill Printing: Region Wise & Single Bill Printing (Authentic VB6 Billing Engine)
+    // 15. Bill Printing: Region Wise & Single Bill Printing
+    // ARCHITECTURE: Bills must be generated first via Process -> Bill Generation.
+    // Bill Printing in Reports only reads committed bills from database for high speed, and returns an error if not generated yet.
     if (reportType === 'bill_print_region' || reportType === 'bill_print_single') {
-      let targetCusts = data.customers;
-      if (regionId && regionId !== 'all') {
-        const rNum = parseInt(regionId, 10);
-        targetCusts = targetCusts.filter(c => c.region_id === rNum);
-      }
-      if (search) {
-        targetCusts = targetCusts.filter(c => 
-          (c.name_eng || '').toLowerCase().includes(search.toLowerCase()) || 
-          String(c.customer_id).includes(search)
-        );
-      }
-
-      // Sort strictly by Route Delivery Priority ASC (matching FoxPro)
-      targetCusts.sort((a, b) => {
-        const pA = a.priority !== undefined && a.priority !== null && Number(a.priority) > 0 ? Number(a.priority) : 999999;
-        const pB = b.priority !== undefined && b.priority !== null && Number(b.priority) > 0 ? Number(b.priority) : 999999;
-        if (pA !== pB) return pA - pB;
-        return a.customer_id - b.customer_id;
-      });
-
-      // If single bill printing and no specific customer filtered, pick first
-      if (reportType === 'bill_print_single' && targetCusts.length > 1 && !search && regionId === 'all') {
-        targetCusts = targetCusts.slice(0, 1);
-      }
-
-      // For region-specific printing or single customer, process all customers in the region
-      // so that inactive zero-charge/zero-due records are filtered out matching FoxPro
-      const isBatchRegion = regionId && regionId !== 'all';
-      const pageCusts = isBatchRegion ? targetCusts : targetCusts.slice((page - 1) * limit, page * limit);
-      const targetCustIds = pageCusts.map(c => c.customer_id);
-
-
-      // Determine fiscal year suffix (e.g. 20262027)
       let fySuffix = '20252026';
       const yStr = String(year);
       if (yStr.length === 8) {
@@ -917,68 +886,118 @@ export async function GET(request: NextRequest) {
         fySuffix = `${startY}${startY + 1}`;
       }
 
-      let custSubs: any[] = [];
-      let liveBills: any[] = [];
-      let liveBillHeaders: any[] = [];
-      let liveReceipts: any[] = [];
-      let pubDis: any[] = [];
-      let liveRetail: any[] = [];
-      let liveHolidays = data.holidays;
+      const standardMonth = month.trim();
+      const monthPrefix = standardMonth.slice(0, 3);
+      const billnoTable = `billno${fySuffix}`;
+      const billTable = `bill${fySuffix}`;
+      const billdelTable = `billdel${fySuffix}`;
 
-      try {
-        const [subsData, billsReceiptsData, pubDisRes, retailData, holidaysRes] = await Promise.all([
-          fetchSubscriptions(targetCustIds),
-          fetchBillsAndReceipts(targetCustIds, fySuffix),
-          supabase.from('publicationdis').select('*'),
-          fetchRetailSales(targetCustIds, fySuffix),
-          supabase.from('holiday').select('*')
-        ]);
-        custSubs = subsData;
-        liveBills = billsReceiptsData.bills;
-        liveBillHeaders = billsReceiptsData.billHeaders;
-        liveReceipts = billsReceiptsData.receipts;
-        pubDis = (pubDisRes && pubDisRes.data && pubDisRes.data.length > 0)
-          ? pubDisRes.data
-          : (data.publicationdis || []);
-        liveRetail = retailData || [];
-        // Merge Supabase holidays with full authoritative dataset (prevents 1000-row PostgREST truncation)
-        const holidayMap = new Map<string, any>();
-        (data.holidays || []).forEach((h: any) => {
-          const key = `${h.publica_id || h.publication_id || 0}_${h.oc_date || h.dated}`;
-          holidayMap.set(key, h);
+      // Build query for committed bill headers in the selected month
+      let query = supabase
+        .from(billnoTable)
+        .select('*');
+
+      // Month match: standard full name or prefix (e.g. 'September' or 'Sept', 'August' or 'Aug')
+      query = query.or(`month.ilike.${standardMonth},month.ilike.${monthPrefix}%`);
+
+      if (regionId && regionId !== 'all') {
+        const rNum = parseInt(regionId, 10);
+        query = query.eq('region_id', rNum);
+      }
+
+      let { data: billnoRows, error: billnoErr } = await query.order('bill_id', { ascending: true });
+
+      if (billnoErr || !billnoRows || billnoRows.length === 0) {
+        return NextResponse.json({
+          report_title: reportType === 'bill_print_single'
+            ? `SINGLE CUSTOMER BILL PRINTING (${standardMonth.toUpperCase()} ${year})`
+            : `REGION-WISE BILL PRINTING (${standardMonth.toUpperCase()} ${year})`,
+          error: `Bill is not generated yet for ${standardMonth} ${year}! Please generate the bill first from Process -> Bill Generation.`,
+          not_generated: true,
+          rows: [],
+          total_rows: 0,
+          page: 1,
+          total_pages: 1
+        }, { status: 400 });
+      }
+
+      // Filter by customer search or target customer id
+      if (search) {
+        const searchLower = search.toLowerCase();
+        billnoRows = billnoRows.filter(b => {
+          const cid = Number(b.customer_id);
+          const cust = data.customers.find(c => c.customer_id === cid);
+          return (
+            String(cid).includes(search) ||
+            (cust && cust.name_eng && cust.name_eng.toLowerCase().includes(searchLower)) ||
+            (cust && cust.phone && cust.phone.includes(search))
+          );
         });
-        if (holidaysRes && holidaysRes.data && holidaysRes.data.length > 0) {
-          holidaysRes.data.forEach((h: any) => {
-            const key = `${h.publica_id || h.publication_id || 0}_${h.oc_date || h.dated}`;
-            holidayMap.set(key, h);
-          });
-        }
-        liveHolidays = Array.from(holidayMap.values());
-      } catch (err) {
-        console.error('Error fetching billing dependencies from Supabase:', err);
       }
 
-      if (custSubs.length === 0 && targetCustIds.length > 0) {
-        custSubs = data.subscriptions.filter(s => targetCustIds.includes(s.customer_id));
+      // If single bill printing and no specific search, take the first customer
+      if (reportType === 'bill_print_single' && billnoRows.length > 1 && !search && regionId === 'all') {
+        billnoRows = billnoRows.slice(0, 1);
       }
 
-      const billingResult = calculateBilling({
-        monthName: month,
-        year: year,
-        regionId: regionId || 'all',
-        customers: pageCusts,
-        subscriptions: custSubs,
-        rates: data.rates,
-        ratechanges: data.ratechanges,
-        publications: data.publications,
-        holidays: liveHolidays || data.holidays,
-        discontinues: data.discontinues,
-        publicationDiscontinues: pubDis,
-        bills: liveBills,
-        billHeaders: liveBillHeaders,
-        receipts: liveReceipts,
-        regions: data.regions,
-        retailSales: liveRetail
+      if (billnoRows.length === 0) {
+        return NextResponse.json({
+          report_title: reportType === 'bill_print_single'
+            ? `SINGLE CUSTOMER BILL PRINTING (${standardMonth.toUpperCase()} ${year})`
+            : `REGION-WISE BILL PRINTING (${standardMonth.toUpperCase()} ${year})`,
+          error: `No generated bills found matching customer for ${standardMonth} ${year}.`,
+          not_generated: true,
+          rows: [],
+          total_rows: 0,
+          page: 1,
+          total_pages: 1
+        }, { status: 400 });
+      }
+
+      // Fetch line items and delivery charges for these bills
+      const targetBillIds = billnoRows.map(b => b.bill_id).filter(Boolean);
+      const targetCustIds = billnoRows.map(b => b.customer_id).filter(Boolean);
+
+      const allBillItems: any[] = [];
+      const allBilldelItems: any[] = [];
+
+      for (let i = 0; i < targetBillIds.length; i += 200) {
+        const chunk = targetBillIds.slice(i, i + 200);
+        const { data: bItems } = await supabase.from(billTable).select('*').in('bill_id', chunk);
+        if (bItems && bItems.length > 0) allBillItems.push(...bItems);
+      }
+
+      for (let i = 0; i < targetCustIds.length; i += 200) {
+        const chunk = targetCustIds.slice(i, i + 200);
+        const { data: delItems } = await supabase
+          .from(billdelTable)
+          .select('*')
+          .in('customer_id', chunk)
+          .or(`month.ilike.${standardMonth},month.ilike.${monthPrefix}%`);
+        if (delItems && delItems.length > 0) allBilldelItems.push(...delItems);
+      }
+
+      // Publication map
+      const pubMap = new Map<number, any>();
+      (data.publications || []).forEach((p: any) => pubMap.set(p.publica_id, p));
+
+      // Customer map
+      const custMap = new Map<number, any>();
+      (data.customers || []).forEach((c: any) => custMap.set(c.customer_id, c));
+
+      // Delivery charges map: customer_id + '_' + publica_id -> dely amount
+      const delMap = new Map<string, number>();
+      allBilldelItems.forEach(d => {
+        const key = `${d.customer_id}_${d.publica_id}`;
+        delMap.set(key, (delMap.get(key) || 0) + Number(d.dely || 0));
+      });
+
+      // Group bill line items by bill_id
+      const itemsByBillId = new Map<number, any[]>();
+      allBillItems.forEach(it => {
+        const bid = Number(it.bill_id);
+        if (!itemsByBillId.has(bid)) itemsByBillId.set(bid, []);
+        itemsByBillId.get(bid)!.push(it);
       });
 
       const monthDaysMap: Record<string, number> = {
@@ -986,74 +1005,66 @@ export async function GET(request: NextRequest) {
         'may': 31, 'june': 30, 'july': 31, 'august': 31,
         'september': 30, 'october': 31, 'november': 30, 'december': 31
       };
-      const daysInMonth = monthDaysMap[month.toLowerCase()] || 31;
+      const daysInMonth = monthDaysMap[standardMonth.toLowerCase()] || 31;
 
-      const bills = billingResult.bills.map((b) => {
-        const c = pageCusts.find(cust => cust.customer_id === b.customer_id) || {};
+      // Construct final BillRecord objects directly from committed database records
+      const bills = billnoRows.map(h => {
+        const bid = Number(h.bill_id);
+        const cid = Number(h.customer_id);
+        const c = custMap.get(cid) || {};
+        const reg = regMap.get(h.region_id);
 
-        const deliveryByPub = new Map<string, number>();
-        (b.breakup || [])
-          .filter(item => item.sort_order === 2)
-          .forEach(item => {
-            const cleanPub = item.item.replace(/ - Delivery$/i, '').trim().toLowerCase();
-            deliveryByPub.set(cleanPub, (deliveryByPub.get(cleanPub) || 0) + (item.amount || 0));
-          });
+        const rawItems = itemsByBillId.get(bid) || [];
+        rawItems.sort((a, b) => Number(a.sno || 0) - Number(b.sno || 0));
 
-        const paperItems = (b.breakup || []).filter(item => item.sort_order === 1);
-        
-        // Find the last index for each publication in paperItems so delivery is added once per pub
-        const lastIndexByPub = new Map<string, number>();
-        paperItems.forEach((item, idx) => {
-          const cleanName = item.item.trim().toLowerCase();
-          lastIndexByPub.set(cleanName, idx);
-        });
+        let paperTotal = 0;
+        const lineItems = rawItems.map((it, idx) => {
+          const pub = pubMap.get(it.publica_id);
+          const rawHindi = pub?.pub_hindi || pub?.Pub_Hindi;
+          const engName = pub?.public_name || pub?.name || `Publication #${it.publica_id}`;
+          const pubName = rawHindi && rawHindi.trim().length > 0
+            ? cleanOrTransliterateHindi(rawHindi, engName)
+            : engName;
 
-        const lineItems = paperItems.map((item, idx) => {
-          const cleanName = item.item.trim().toLowerCase();
-          const isLastLineForPub = lastIndexByPub.get(cleanName) === idx;
-          const delyAmt = isLastLineForPub ? (deliveryByPub.get(cleanName) || 0) : 0;
+          const itemAmt = Number(it.total_amt || 0);
+          paperTotal += itemAmt;
+
+          const delyAmt = delMap.get(`${cid}_${it.publica_id}`) || 0;
+
           return {
             sno: idx + 1,
-            pub_name: item.item,
-            circulation: 'Morning',
-            qty: item.qty || 1,
-            days: item.days_or_copies || item.qty || daysInMonth,
-            rate: item.rate,
-            amount: item.amount,
+            pub_name: pubName,
+            circulation: pub?.circulation || 'Morning',
+            qty: Number(it.qty || 1),
+            days: Number(it.qty || daysInMonth),
+            rate: Number(it.rate || 0),
+            amount: itemAmt,
             delivery_amount: delyAmt
           };
         });
 
-        // If customer has delivery_amount > 0 but unassigned, assign to last line item
-        const totalAssignedDely = lineItems.reduce((acc, it) => acc + (it.delivery_amount || 0), 0);
-        const unassignedDely = (b.delivery_amount || 0) - totalAssignedDely;
-        if (unassignedDely > 0 && lineItems.length > 0) {
-          lineItems[lineItems.length - 1].delivery_amount = (lineItems[lineItems.length - 1].delivery_amount || 0) + unassignedDely;
-        }
+        const deliveryCharge = roundToFoxProRule(Number(h.del_amt || 0));
+        const discountCharge = roundToFoxProRule(Number(h.dis_amt || 0));
+        const paperAmount = roundToFoxProRule(paperTotal);
+        const currentBill = roundToFoxProRule(paperAmount + deliveryCharge - discountCharge);
+        const rawPrevDue = h.balance !== null && h.balance !== undefined ? -Number(h.balance) : Number(h.due_amt || 0);
 
         const isGovtSupply = c.govt_supply === -1 || c.govt_supply === 1 || c.govt_supply === true || String(c.govt_supply) === '1' || String(c.govt_supply) === '-1';
-
-        const totalItemsAmount = Math.round(lineItems.reduce((acc, it) => acc + it.amount, 0) * 100) / 100;
-        const deliveryCharge = roundToFoxProRule(b.delivery_amount || 0);
-        const paperAmount = roundToFoxProRule(b.paper_amount !== undefined ? b.paper_amount : totalItemsAmount);
-        const currentBill = roundToFoxProRule(b.current_month_charges !== undefined ? b.current_month_charges : Math.round((paperAmount + deliveryCharge) * 100) / 100);
-        const rawPrevDue = b.previous_due !== undefined ? b.previous_due : (b.opening_balance_this_bill || 0);
-        // In FoxPro, printed bills for Govt Supply customers omit previous due (current month charges only)
-        const prevDue = isGovtSupply ? 0 : rawPrevDue;
-        const netPayable = isGovtSupply ? currentBill : roundToFoxProRule(b.total_payable !== undefined ? b.total_payable : (currentBill + prevDue));
+        const prevDue = isGovtSupply ? 0 : roundToFoxProRule(rawPrevDue);
+        const netPayable = isGovtSupply ? currentBill : roundToFoxProRule(currentBill + prevDue);
 
         return {
-          bill_no: b.bill_no || b.customer_id,
-          bill_date: `${daysInMonth}/${month}/${year}`,
-          customer_id: b.customer_id,
-          priority: c.priority !== undefined && c.priority !== null && Number(c.priority) > 0 ? Number(c.priority) : b.customer_id,
-          customer_name: b.name_eng || c.name_eng || `Customer #${b.customer_id}`,
-          customer_hindi: cleanOrTransliterateHindi(b.customer_hindi || c.name_hindi || '', b.name_eng || c.name_eng),
+          bill_no: bid,
+          bill_date: `${daysInMonth}/${standardMonth}/${year}`,
+          customer_id: cid,
+          priority: c.priority !== undefined && c.priority !== null && Number(c.priority) > 0 ? Number(c.priority) : cid,
+          customer_name: c.name_eng || `Customer #${cid}`,
+          customer_hindi: cleanOrTransliterateHindi(c.name_hindi || '', c.name_eng || `Customer #${cid}`),
           address: [c.add1, c.add2].filter(Boolean).join(', ') || 'Main Market, Beawar',
           phone: c.phone || '---',
-          region_id: b.region_id,
-          region_name: b.region_name || regMap.get(b.region_id)?.region_name || `Region #${b.region_id}`,
-          month: month,
+          region_id: h.region_id,
+          region_name: reg?.region_name || `Region #${h.region_id}`,
+          month: standardMonth,
           year: year,
           items: lineItems,
           delivery_charge: deliveryCharge,
@@ -1065,29 +1076,32 @@ export async function GET(request: NextRequest) {
         };
       });
 
-      // Filter to only printable bills (customers who have actual active newspaper items to bill)
-      // Matching FoxPro behavior where 4-in-1 bills are only printed for customers with delivered publications
-      const printableBills = bills.filter(b => b.items.length > 0);
+      // Filter to only printable bills (customers with billed items)
+      const printableBills = bills.filter(b => b.items.length > 0 || b.current_bill > 0 || b.net_payable > 0);
 
+      // Sort by Route Priority ASC
+      printableBills.sort((a, b) => {
+        const pA = Number(a.priority) > 0 ? Number(a.priority) : 999999;
+        const pB = Number(b.priority) > 0 ? Number(b.priority) : 999999;
+        if (pA !== pB) return pA - pB;
+        return a.customer_id - b.customer_id;
+      });
 
-      const regTitle = regionId && regionId !== 'all' 
+      const regTitle = regionId && regionId !== 'all'
         ? regMap.get(parseInt(regionId, 10))?.region_name || `Region #${regionId}`
         : 'ALL REGIONS';
 
-      const finalRows = isBatchRegion 
-        ? printableBills.slice((page - 1) * limit, page * limit)
-        : printableBills;
+      const finalRows = printableBills.slice((page - 1) * limit, page * limit);
 
       return NextResponse.json({
-        report_title: reportType === 'bill_print_single' 
-          ? `SINGLE CUSTOMER BILL PRINTING (${month.toUpperCase()} ${year})`
-          : `REGION-WISE BILL PRINTING: ${regTitle} (${month.toUpperCase()} ${year})`,
+        report_title: reportType === 'bill_print_single'
+          ? `SINGLE CUSTOMER BILL PRINTING (${standardMonth.toUpperCase()} ${year})`
+          : `REGION-WISE BILL PRINTING: ${regTitle} (${standardMonth.toUpperCase()} ${year})`,
         rows: finalRows,
         total_rows: printableBills.length,
         page,
         total_pages: Math.ceil(printableBills.length / limit) || 1
       });
-
     }
 
     // 16. Collection Datewise & Collection Hawker Datewise

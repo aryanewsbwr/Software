@@ -590,16 +590,14 @@ export function calculateBilling({
 
     const custRegionId = cust.region_id || cust.Region_id || 1;
 
-    // Check if customer already has a committed bill header in allHeaders for this month
+    // Check if customer already has a committed bill header in allHeaders for this EXACT month
     const existingHeader = allHeaders.find(h => {
       const hCid = Number(h.customer_id || h.Customer_id);
       const hMonth = (h.month || h.Month || '').toLowerCase().trim();
-      const stdM = standardMonthName.toLowerCase();
+      const stdM = standardMonthName.toLowerCase().trim();
       return hCid === Number(custId) && (
         hMonth === stdM ||
-        (stdM.startsWith('oct') && hMonth.startsWith('oct')) ||
-        (stdM.startsWith('sep') && hMonth.startsWith('sep')) ||
-        (stdM.startsWith('aug') && hMonth.startsWith('aug'))
+        hMonth.startsWith(stdM.slice(0, 3))
       );
     });
 
@@ -985,14 +983,71 @@ export function calculateBilling({
     // =========================================================================
     // Determine Previous Due / Opening Balance:
     let customerPreviousBalance = 0;
-    if (existingHeader && existingHeader.balance !== null && existingHeader.balance !== undefined) {
-      const recordedBalanceDue = -Number(existingHeader.balance);
-      const latePaid = lateReceiptsByCust.get(custId) || 0;
-      if (recordedBalanceDue !== 0) {
-        customerPreviousBalance = recordedBalanceDue - latePaid;
-      } else {
-        customerPreviousBalance = 0 - latePaid;
+    const latePaid = lateReceiptsByCust.get(custId) || 0;
+
+    // 1) Find the immediately preceding bill in the FY for this customer (prior to targetFyIndex)
+    let priorBillForCust: any = null;
+    let priorBillFyIdx = -2;
+
+    for (const h of allHeaders) {
+      const hCid = Number(h.customer_id || h.Customer_id);
+      if (hCid !== Number(custId)) continue;
+      const hMonth = (h.month || h.Month || '').toLowerCase().trim();
+      const mIdx = FY_MONTH_ORDER[hMonth];
+      if (mIdx !== undefined && mIdx < targetFyIndex && mIdx > priorBillFyIdx) {
+        priorBillFyIdx = mIdx;
+        priorBillForCust = h;
       }
+    }
+
+    if (priorBillForCust) {
+      // If there is an immediate prior bill, opening balance is that bill's closing balance:
+      // (Prior Bill Opening Due + Prior Bill Charges - Receipts between prior bill and this bill)
+      const priorOpeningDue = priorBillForCust.balance !== null && priorBillForCust.balance !== undefined
+        ? -Number(priorBillForCust.balance)
+        : Number(priorBillForCust.due_amt || priorBillForCust.Due_Amt || 0);
+
+      const priorDel = Number(priorBillForCust.del_amt ?? priorBillForCust.Del_Amt ?? 0);
+      const priorDis = Number(priorBillForCust.dis_amt ?? priorBillForCust.Dis_Amt ?? 0);
+
+      // Prior month charges (from line items or paper_amount)
+      let priorMonthPaper = 0;
+      if (hasLineItems) {
+        const priorMonthName = (priorBillForCust.month || priorBillForCust.Month || '').toLowerCase().trim();
+        for (const b of bills) {
+          const bCid = Number(b.customer_id || b.Customer_id);
+          const bMonth = (b.month || b.Month || '').toLowerCase().trim();
+          if (bCid === Number(custId) && (bMonth === priorMonthName || bMonth.startsWith(priorMonthName.slice(0, 3)))) {
+            const val = b.total_amt !== undefined ? b.total_amt : (b.totalamt !== undefined ? b.totalamt : b.TotalAmt);
+            if (val !== undefined) priorMonthPaper += Number(val);
+          }
+        }
+      } else {
+        priorMonthPaper = Number(priorBillForCust.paper_amount ?? priorBillForCust.paper_amt ?? priorBillForCust.Paper_Amt ?? priorBillForCust.bill_amt ?? priorBillForCust.BillAmt ?? 0);
+      }
+
+      const priorMonthCharges = priorMonthPaper + priorDel - priorDis;
+
+      // Receipts posted specifically against the prior month or between prior month and target month
+      let priorMonthReceiptsPaid = 0;
+      const priorMonthName = (priorBillForCust.month || priorBillForCust.Month || '').toLowerCase().trim();
+      for (const r of receipts) {
+        const rCid = Number(r.customer_id || r.Customer_id);
+        if (rCid !== Number(custId)) continue;
+        const rMonth = (r.month || r.Month || '').toLowerCase().trim();
+        const rIdx = FY_MONTH_ORDER[rMonth];
+        // If receipt is for the prior month or strictly between prior bill and current bill
+        if (rMonth === priorMonthName || (rIdx !== undefined && rIdx >= priorBillFyIdx && rIdx < targetFyIndex)) {
+          const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
+          const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
+          priorMonthReceiptsPaid += recpAmt + lessAmt;
+        }
+      }
+
+      customerPreviousBalance = (priorOpeningDue + priorMonthCharges - priorMonthReceiptsPaid) - latePaid;
+    } else if (existingHeader && existingHeader.balance !== null && existingHeader.balance !== undefined) {
+      const recordedBalanceDue = -Number(existingHeader.balance);
+      customerPreviousBalance = recordedBalanceDue - latePaid;
     } else {
       const rawCbal = cust.cbal !== undefined && cust.cbal !== null ? Number(cust.cbal) : null;
       if (rawCbal !== null && rawCbal !== 0) {
