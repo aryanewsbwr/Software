@@ -22,6 +22,31 @@ const ALL_FY_MONTHS = [
   'November', 'December', 'January', 'February', 'March'
 ];
 
+const FY_MONTH_ORDER: Record<string, number> = {
+  'dues': -1,
+  'april': 0, 'apr': 0,
+  'may': 1,
+  'june': 2, 'jun': 2,
+  'july': 3, 'jul': 3,
+  'august': 4, 'aug': 4,
+  'september': 5, 'sep': 5, 'sept': 5,
+  'october': 6, 'oct': 6,
+  'november': 7, 'nov': 7,
+  'december': 8, 'dec': 8,
+  'january': 9, 'jan': 9,
+  'february': 10, 'feb': 10,
+  'march': 11, 'mar': 11
+};
+
+const getFyMonthIndex = (mStr?: string | null): number => {
+  if (!mStr) return 99;
+  const clean = mStr.trim().toLowerCase();
+  if (FY_MONTH_ORDER[clean] !== undefined) return FY_MONTH_ORDER[clean];
+  const prefix = clean.slice(0, 3);
+  if (FY_MONTH_ORDER[prefix] !== undefined) return FY_MONTH_ORDER[prefix];
+  return 99;
+};
+
 const normalizeMonthName = (mStr?: string | null): string => {
   if (!mStr) return 'October';
   const clean = mStr.trim().toLowerCase();
@@ -559,6 +584,16 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             };
           });
         }
+      }
+
+      // Sort customer bills strictly in chronological monthly order (Dues -> April -> May -> ... -> March)
+      if (bList && bList.length > 0) {
+        bList.sort((a: any, b: any) => {
+          const yA = parseInt(a.year || a.Year || '2026', 10);
+          const yB = parseInt(b.year || b.Year || '2026', 10);
+          if (yA !== yB) return yA - yB;
+          return getFyMonthIndex(a.month || a.Month) - getFyMonthIndex(b.month || b.Month);
+        });
       }
 
       setCustomerBills(bList || []);
