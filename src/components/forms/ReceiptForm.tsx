@@ -1728,204 +1728,210 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
             Control Section
           </div>
 
-          {/* Control Row 1: Low Opacity for uneditable/system-locked fields */}
-          <div className="flex items-center gap-3 opacity-70">
-            <div className="flex items-center gap-1">
-              <label className="font-bold text-[#000080] text-xs shrink-0">Recp. No</label>
-              <input 
-                type="text" 
-                value={receiptNo}
-                readOnly
-                className="w-20 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
-              />
+          {/* Clean Ledger Grid: 5 columns aligned vertically across Row 1, Row 2, Row 3 */}
+          <div className="space-y-1.5 max-w-4xl">
+            {/* Control Row 1: Low Opacity for uneditable/system-locked fields */}
+            <div className="grid grid-cols-[auto_auto_auto_auto_auto] gap-x-3 items-center opacity-70">
+              <div className="flex items-center gap-1">
+                <label className="font-bold text-[#000080] text-xs w-16 shrink-0">Recp. No</label>
+                <input 
+                  type="text" 
+                  value={receiptNo}
+                  readOnly
+                  className="w-20 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-1">
+                <label className="font-bold text-[#000080] text-xs w-18 shrink-0 text-right">Recp Date</label>
+                <input 
+                  type="text" 
+                  value={receiptDate}
+                  readOnly
+                  className="w-24 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-1">
+                <label className="font-bold text-[#000080] text-xs w-18 shrink-0 text-right">Bill No</label>
+                <input 
+                  ref={billNoRef}
+                  type="text" 
+                  value={billNo}
+                  readOnly
+                  placeholder=""
+                  className="w-24 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-1">
+                <label className="font-bold text-[#000080] text-xs w-14 shrink-0 text-right">Year</label>
+                <input 
+                  type="text" 
+                  value={year}
+                  readOnly
+                  className="w-16 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
+                />
+              </div>
+
+              {/* Empty placeholder for 5th column */}
+              <div></div>
             </div>
 
-            <div className="flex items-center gap-1">
-              <label className="font-bold text-[#000080] text-xs shrink-0">Recp Date</label>
-              <input 
-                type="text" 
-                value={receiptDate}
-                readOnly
-                className="w-24 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
-              />
-            </div>
-
-            <div className="flex items-center gap-1">
-              <label className="font-bold text-[#000080] text-xs shrink-0">Bill No</label>
-              <input 
-                ref={billNoRef}
-                type="text" 
-                value={billNo}
-                readOnly
-                placeholder=""
-                className="w-24 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
-              />
-            </div>
-
-            <div className="flex items-center gap-1">
-              <label className="font-bold text-[#000080] text-xs shrink-0">Year</label>
-              <input 
-                type="text" 
-                value={year}
-                readOnly
-                className="w-16 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs text-slate-700 cursor-not-allowed select-none"
-              />
-            </div>
-          </div>
-
-          {/* Control Row 2: Fixed cleanly to the left without big gaps or wrapping */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              <label className="font-bold text-[#000080] text-xs shrink-0">Month</label>
-              <select 
-                ref={monthSelectRef}
-                value={month}
-                onChange={(e) => handleSelectMonth(e.target.value)}
-                onKeyDown={(e) => {
-                  const len = availableMonths.length || 1;
-                  const currentIndex = availableMonths.indexOf(month);
-                  if (e.key === 'ArrowRight') {
-                    e.preventDefault();
-                    const nextIdx = (currentIndex + 1) % len;
-                    handleSelectMonth(availableMonths[nextIdx]);
-                  } else if (e.key === 'ArrowLeft') {
-                    e.preventDefault();
-                    const prevIdx = (currentIndex - 1 + len) % len;
-                    handleSelectMonth(availableMonths[prevIdx]);
-                  } else if (e.key === 'Enter' || e.key === 'Tab') {
-                    e.preventDefault();
-                    if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
-                  }
-                }}
-                className="w-24 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-[11px] leading-tight focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                {availableMonths.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1 opacity-75">
-              <label className="font-bold text-[#000080] text-xs shrink-0">Bill Amt</label>
-              <input 
-                ref={billAmtRef}
-                type="text" 
-                value={billAmt === '' ? '' : billAmt}
-                readOnly
-                placeholder="0"
-                className="w-16 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-right text-xs text-slate-800 cursor-not-allowed select-none"
-              />
-            </div>
-
-            <div className="flex items-center gap-1">
-              <label className="font-bold text-[#000080] text-xs shrink-0">Ml. Rcp. At.</label>
-              <input 
-                ref={manualRcpAmtRef}
-                type="number" 
-                value={manualRcpAmt === '' ? '' : manualRcpAmt}
-                placeholder="0"
-                onChange={(e) => handleManualRcpAmtChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === 'Tab') {
-                    e.preventDefault();
-                    if (lessAmtRef.current) lessAmtRef.current.focus();
-                  }
-                }}
-                className="w-20 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-1 focus:ring-blue-500 focus:outline-none"
-              />
-            </div>
-
-            <div className="flex items-center gap-1">
-              <label className="font-bold text-[#000080] text-xs shrink-0">Ls. Amt</label>
-              <input 
-                ref={lessAmtRef}
-                type="number" 
-                value={lessAmt === '' ? '' : lessAmt}
-                placeholder="0"
-                onChange={(e) => handleLessAmtChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === 'Tab') {
-                    e.preventDefault();
-                    if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
-                  }
-                }}
-                className="w-16 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-red-700 font-bold text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-1 focus:ring-blue-500 focus:outline-none"
-              />
-            </div>
-
-            <div className="flex items-center gap-1 opacity-75">
-              <label className="font-bold text-[#000080] text-xs shrink-0">Rev.Amt</label>
-              <input 
-                ref={revAmtRef}
-                type="text" 
-                value={revAmt === '' ? '' : revAmt}
-                readOnly
-                placeholder="0"
-                className="w-16 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs cursor-not-allowed select-none"
-              />
-            </div>
-          </div>
-
-          {/* Control Row 3: All 4 fields packed neatly to the left */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              <label className="font-bold text-[#000080] text-xs shrink-0">Mal. Recp. No</label>
-              <input 
-                ref={manualRecpNoRef}
-                type="text" 
-                value={manualRecpNo}
-                onChange={(e) => setManualRecpNo(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === 'Tab') {
-                    e.preventDefault();
-                    if (manualRecpDateRef.current) manualRecpDateRef.current.focus();
-                  }
-                }}
-                placeholder=""
-                className="w-20 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-              />
-            </div>
-
-            <div className="flex items-center gap-1">
-              <label className="font-bold text-[#000080] text-xs shrink-0">Mal. Recp. Dt.</label>
-              <input 
-                ref={manualRecpDateRef}
-                type="text" 
-                value={manualRecpDate}
-                onChange={(e) => setManualRecpDate(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === 'Tab') {
-                    e.preventDefault();
-                    if (paymentMode === 'Cheque') {
-                      if (chequeNoRef.current) chequeNoRef.current.focus();
-                    } else {
-                      if (applyBtnRef.current) applyBtnRef.current.focus();
+            {/* Control Row 2: Active inputs & Read-only Amounts */}
+            <div className="grid grid-cols-[auto_auto_auto_auto_auto] gap-x-3 items-center">
+              <div className="flex items-center gap-1">
+                <label className="font-bold text-[#000080] text-xs w-16 shrink-0">Month</label>
+                <select 
+                  ref={monthSelectRef}
+                  value={month}
+                  onChange={(e) => handleSelectMonth(e.target.value)}
+                  onKeyDown={(e) => {
+                    const len = availableMonths.length || 1;
+                    const currentIndex = availableMonths.indexOf(month);
+                    if (e.key === 'ArrowRight') {
+                      e.preventDefault();
+                      const nextIdx = (currentIndex + 1) % len;
+                      handleSelectMonth(availableMonths[nextIdx]);
+                    } else if (e.key === 'ArrowLeft') {
+                      e.preventDefault();
+                      const prevIdx = (currentIndex - 1 + len) % len;
+                      handleSelectMonth(availableMonths[prevIdx]);
+                    } else if (e.key === 'Enter' || e.key === 'Tab') {
+                      e.preventDefault();
+                      if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
                     }
-                  }
-                }}
-                placeholder="DD/MM/YYYY"
-                className="w-24 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-              />
+                  }}
+                  className="w-20 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-bold text-[11px] leading-tight focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  {availableMonths.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1 opacity-75">
+                <label className="font-bold text-[#000080] text-xs w-18 shrink-0 text-right">Bill Amt</label>
+                <input 
+                  ref={billAmtRef}
+                  type="text" 
+                  value={billAmt === '' ? '' : billAmt}
+                  readOnly
+                  placeholder="0"
+                  className="w-24 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-right text-xs text-slate-800 cursor-not-allowed select-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-1">
+                <label className="font-bold text-[#000080] text-xs w-18 shrink-0 text-right">Ml. Rcp. At.</label>
+                <input 
+                  ref={manualRcpAmtRef}
+                  type="number" 
+                  value={manualRcpAmt === '' ? '' : manualRcpAmt}
+                  placeholder="0"
+                  onChange={(e) => handleManualRcpAmtChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === 'Tab') {
+                      e.preventDefault();
+                      if (lessAmtRef.current) lessAmtRef.current.focus();
+                    }
+                  }}
+                  className="w-24 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-1">
+                <label className="font-bold text-[#000080] text-xs w-14 shrink-0 text-right">Ls. Amt</label>
+                <input 
+                  ref={lessAmtRef}
+                  type="number" 
+                  value={lessAmt === '' ? '' : lessAmt}
+                  placeholder="0"
+                  onChange={(e) => handleLessAmtChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === 'Tab') {
+                      e.preventDefault();
+                      if (manualRecpNoRef.current) manualRecpNoRef.current.focus();
+                    }
+                  }}
+                  className="w-16 px-1 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-red-700 font-bold text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-1 opacity-75">
+                <label className="font-bold text-[#000080] text-xs w-16 shrink-0 text-right">Rev.Amt</label>
+                <input 
+                  ref={revAmtRef}
+                  type="text" 
+                  value={revAmt === '' ? '' : revAmt}
+                  readOnly
+                  placeholder="0"
+                  className="w-18 px-1 py-0.5 bg-[#E8E8E8] border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-blue-900 text-xs cursor-not-allowed select-none"
+                />
+              </div>
             </div>
 
-            {/* Total Amt: Low Opacity for uneditable/informational field */}
-            <div className="flex items-center gap-1 opacity-70">
-              <label className="font-bold text-[#000080] text-xs shrink-0">Total Amt</label>
-              <input 
-                type="text" 
-                value={totalPayableAmt !== null && totalPayableAmt !== undefined && totalPayableAmt !== 0 ? totalPayableAmt : (manualRcpAmt !== '' ? manualRcpAmt : '')}
-                readOnly
-                className="w-20 px-1.5 py-0.5 bg-[#E8E8E8] border border-[#808080] font-mono font-bold text-center text-slate-700 text-xs cursor-not-allowed select-none"
-              />
-            </div>
+            {/* Control Row 3: Mal. Recp, Total Amt, Total Dues */}
+            <div className="grid grid-cols-[auto_auto_auto_auto_auto] gap-x-3 items-center">
+              <div className="flex items-center gap-1">
+                <label className="font-bold text-[#000080] text-xs w-16 shrink-0 truncate">Mal. Recp</label>
+                <input 
+                  ref={manualRecpNoRef}
+                  type="text" 
+                  value={manualRecpNo}
+                  onChange={(e) => setManualRecpNo(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === 'Tab') {
+                      e.preventDefault();
+                      if (manualRecpDateRef.current) manualRecpDateRef.current.focus();
+                    }
+                  }}
+                  placeholder=""
+                  className="w-20 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono font-bold text-center text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
 
-            {/* Total Dues: Full Vivid Opacity & Prominent Visibility */}
-            <div className="flex items-center gap-1">
-              <label className="font-bold text-[#000080] text-xs shrink-0">Total Dues</label>
-              <input 
-                type="text" 
-                value={`${Math.round((totalCustomerDue - (Number(manualRcpAmt) || 0) - (Number(lessAmt) || 0)) * 100) / 100}`}
-                readOnly
-                className="w-24 px-1.5 py-0.5 bg-[#FFCCCC] border border-[#808080] font-mono font-black text-center text-red-900 text-xs shadow-xs"
-              />
+              <div className="flex items-center gap-1">
+                <label className="font-bold text-[#000080] text-xs w-18 shrink-0 text-right truncate">Mal. Date</label>
+                <input 
+                  ref={manualRecpDateRef}
+                  type="text" 
+                  value={manualRecpDate}
+                  onChange={(e) => setManualRecpDate(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === 'Tab') {
+                      e.preventDefault();
+                      if (paymentMode === 'Cheque') {
+                        if (chequeNoRef.current) chequeNoRef.current.focus();
+                      } else {
+                        if (applyBtnRef.current) applyBtnRef.current.focus();
+                      }
+                    }
+                  }}
+                  placeholder="DD/MM/YYYY"
+                  className="w-24 px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-center text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Total Amt: Low Opacity for uneditable/informational field */}
+              <div className="flex items-center gap-1 opacity-70">
+                <label className="font-bold text-[#000080] text-xs w-18 shrink-0 text-right">Total Amt</label>
+                <input 
+                  type="text" 
+                  value={totalPayableAmt !== null && totalPayableAmt !== undefined && totalPayableAmt !== 0 ? totalPayableAmt : (manualRcpAmt !== '' ? manualRcpAmt : '')}
+                  readOnly
+                  className="w-24 px-1.5 py-0.5 bg-[#E8E8E8] border border-[#808080] font-mono font-bold text-center text-slate-700 text-xs cursor-not-allowed select-none"
+                />
+              </div>
+
+              {/* Total Dues: Full Vivid Opacity & Prominent Visibility */}
+              <div className="flex items-center gap-1 col-span-2">
+                <label className="font-bold text-[#000080] text-xs w-14 shrink-0 text-right">Total Dues</label>
+                <input 
+                  type="text" 
+                  value={`${Math.round((totalCustomerDue - (Number(manualRcpAmt) || 0) - (Number(lessAmt) || 0)) * 100) / 100}`}
+                  readOnly
+                  className="w-24 px-1.5 py-0.5 bg-[#FFCCCC] border border-[#808080] font-mono font-black text-center text-red-900 text-xs shadow-xs"
+                />
+              </div>
             </div>
           </div>
 
