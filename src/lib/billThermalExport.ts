@@ -1,4 +1,4 @@
-import { BillRecord } from './bill4in1Export';
+import { BillRecord, BillPrintMode } from './bill4in1Export';
 import { cleanOrTransliterateHindi } from './transliteration';
 import { roundToFoxProRule } from './billingEngine';
 
@@ -11,65 +11,95 @@ function formatMoney(n: number | undefined | null): string {
  * Renders HTML for a single 58mm (203 dpi) thermal bill receipt.
  * 58mm paper width has ~48mm printable area (approx. 384px at 203dpi or 32-35 characters across in monospace).
  * In Simple mode: Delivery charge is merged into the publication line item / monthly bill amount.
+ * In Detail mode: Shows exact lines with days, rates, pure paper amounts, and explicit Delivery Charge row.
  */
-export function renderSingleThermalBillHtml(b: BillRecord): string {
+export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintMode = 'simple'): string {
   const displayHindi = cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name);
-  
-  // Consolidate publication items and merge delivery into publication amount (Simple Bill requirement)
   const items = b.items || [];
-  const pubConsolidatedMap = new Map<string, {
-    pub_name: string;
-    totalQty: number;
-    totalAmount: number;
-  }>();
-
-  const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
   const totalDelivery = b.delivery_charge || 0;
 
-  items.forEach((it, idx) => {
-    const cleanPub = it.pub_name.trim();
-    const pubKey = cleanPub.toLowerCase();
-    const qty = Number(it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1));
-    
-    let itemDelivery = 0;
-    if (hasItemDelivery) {
-      itemDelivery = it.delivery_amount || 0;
-    } else if (totalDelivery > 0 && idx === 0) {
-      itemDelivery = totalDelivery;
-    }
-    const itemAmt = roundToFoxProRule(it.amount + itemDelivery);
+  let itemsRowsHtml = '';
 
-    const existing = pubConsolidatedMap.get(pubKey);
-    if (existing) {
-      existing.totalQty += qty;
-      existing.totalAmount = roundToFoxProRule(existing.totalAmount + itemAmt);
-    } else {
-      pubConsolidatedMap.set(pubKey, {
-        pub_name: cleanPub,
-        totalQty: qty,
-        totalAmount: itemAmt
-      });
-    }
-  });
+  if (printMode === 'simple') {
+    // Consolidate publication items and merge delivery into publication amount (Simple Bill requirement)
+    const pubConsolidatedMap = new Map<string, {
+      pub_name: string;
+      totalQty: number;
+      totalAmount: number;
+    }>();
 
-  const displayItems = Array.from(pubConsolidatedMap.values());
-  const monthBillAmount = roundToFoxProRule((b.paper_amount || 0) + (b.delivery_charge || 0));
+    const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
+
+    items.forEach((it, idx) => {
+      const cleanPub = it.pub_name.trim();
+      const pubKey = cleanPub.toLowerCase();
+      const qty = Number(it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1));
+      
+      let itemDelivery = 0;
+      if (hasItemDelivery) {
+        itemDelivery = it.delivery_amount || 0;
+      } else if (totalDelivery > 0 && idx === 0) {
+        itemDelivery = totalDelivery;
+      }
+      const itemAmt = roundToFoxProRule(it.amount + itemDelivery);
+
+      const existing = pubConsolidatedMap.get(pubKey);
+      if (existing) {
+        existing.totalQty += qty;
+        existing.totalAmount = roundToFoxProRule(existing.totalAmount + itemAmt);
+      } else {
+        pubConsolidatedMap.set(pubKey, {
+          pub_name: cleanPub,
+          totalQty: qty,
+          totalAmount: itemAmt
+        });
+      }
+    });
+
+    const displayItems = Array.from(pubConsolidatedMap.values());
+    const monthBillAmount = roundToFoxProRule((b.paper_amount || 0) + (b.delivery_charge || 0));
+
+    itemsRowsHtml = displayItems.length > 0
+      ? displayItems.map(it => `
+          <div class="receipt-row">
+            <span class="col-item">${it.pub_name} (${it.totalQty}d)</span>
+            <span class="col-val">${formatMoney(it.totalAmount)}</span>
+          </div>
+        `).join('')
+      : `
+          <div class="receipt-row">
+            <span class="col-item">Newspaper / Monthly</span>
+            <span class="col-val">${formatMoney(monthBillAmount)}</span>
+          </div>
+        `;
+  } else {
+    // Detail Mode: Each item shown separately with days, rate, and pure paper amount
+    itemsRowsHtml = items.length > 0
+      ? items.map(it => {
+          const qtyOrDays = it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1);
+          const rateStr = it.rate !== null && it.rate !== undefined && Number(it.rate) > 0
+            ? `@${Number(it.rate).toFixed(2)}`
+            : '';
+          return `
+            <div class="receipt-row">
+              <span class="col-item">${it.pub_name} (${qtyOrDays}d ${rateStr})</span>
+              <span class="col-val">${formatMoney(roundToFoxProRule(it.amount))}</span>
+            </div>
+          `;
+        }).join('')
+      : `
+          <div class="receipt-row">
+            <span class="col-item">Newspaper / Monthly</span>
+            <span class="col-val">${formatMoney(roundToFoxProRule(b.paper_amount || 0))}</span>
+          </div>
+        `;
+  }
+
+  const paperAmount = roundToFoxProRule(b.paper_amount || 0);
+  const deliveryCharge = roundToFoxProRule(b.delivery_charge || 0);
+  const monthBillAmount = roundToFoxProRule(paperAmount + deliveryCharge);
   const previousDue = roundToFoxProRule(b.previous_due || 0);
   const netPayable = roundToFoxProRule(b.net_payable || (monthBillAmount + previousDue));
-
-  const itemsRowsHtml = displayItems.length > 0
-    ? displayItems.map(it => `
-        <div class="receipt-row">
-          <span class="col-item">${it.pub_name} (${it.totalQty}d)</span>
-          <span class="col-val">${formatMoney(it.totalAmount)}</span>
-        </div>
-      `).join('')
-    : `
-        <div class="receipt-row">
-          <span class="col-item">Newspaper / Monthly</span>
-          <span class="col-val">${formatMoney(monthBillAmount)}</span>
-        </div>
-      `;
 
   return `
     <div class="thermal-receipt">
@@ -113,6 +143,17 @@ export function renderSingleThermalBillHtml(b: BillRecord): string {
 
       <div class="divider">--------------------------------</div>
 
+      ${printMode === 'detail' && deliveryCharge > 0 ? `
+        <div class="receipt-row">
+          <span>Paper Total:</span>
+          <span>₹ ${formatMoney(paperAmount)}</span>
+        </div>
+        <div class="receipt-row">
+          <span>Delivery Charge:</span>
+          <span>₹ ${formatMoney(deliveryCharge)}</span>
+        </div>
+      ` : ''}
+
       <div class="receipt-row font-bold">
         <span>Current Month Amt:</span>
         <span>₹ ${formatMoney(monthBillAmount)}</span>
@@ -153,8 +194,12 @@ export function renderSingleThermalBillHtml(b: BillRecord): string {
 /**
  * Full HTML page for printing 58mm continuous roll or PDF export
  */
-export function generateThermal58mmFullHtml(bills: BillRecord[], title: string = '58mm Thermal Bill Print'): string {
-  const receiptsHtml = bills.map((b) => renderSingleThermalBillHtml(b)).join('\n<div class="page-break"></div>\n');
+export function generateThermal58mmFullHtml(
+  bills: BillRecord[],
+  title: string = '58mm Thermal Bill Print',
+  printMode: BillPrintMode = 'simple'
+): string {
+  const receiptsHtml = bills.map((b) => renderSingleThermalBillHtml(b, printMode)).join('\n<div class="page-break"></div>\n');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -454,7 +499,7 @@ export function generateThermal58mmFullHtml(bills: BillRecord[], title: string =
   <div class="print-toolbar no-print">
     <div>
       <div style="font-weight: bold; font-size: 13px;">🧾 58mm Thermal Bill Print (203 DPI)</div>
-      <div style="font-size: 11px; opacity: 0.8;">Simple Bill Format • Total ${bills.length} Bill${bills.length > 1 ? 's' : ''}</div>
+      <div style="font-size: 11px; opacity: 0.8;">${printMode === 'detail' ? 'Detail Bill Format' : 'Simple Bill Format'} • Total ${bills.length} Bill${bills.length > 1 ? 's' : ''}</div>
     </div>
     <div>
       <button class="btn-action btn-print" onclick="window.print()">Print / Save PDF</button>
@@ -482,13 +527,17 @@ export function generateThermal58mmFullHtml(bills: BillRecord[], title: string =
 /**
  * Triggers printing of 58mm thermal bills
  */
-export function printBillsThermal58mm(bills: BillRecord[], title: string = 'Aryan News Agency - 58mm Thermal Bills'): void {
+export function printBillsThermal58mm(
+  bills: BillRecord[],
+  title: string = 'Aryan News Agency - 58mm Thermal Bills',
+  printMode: BillPrintMode = 'simple'
+): void {
   if (!bills || bills.length === 0) {
     alert('No bills available to print.');
     return;
   }
 
-  const html = generateThermal58mmFullHtml(bills, title);
+  const html = generateThermal58mmFullHtml(bills, title, printMode);
   const printWindow = window.open('', '_blank');
   if (printWindow) {
     printWindow.document.open();

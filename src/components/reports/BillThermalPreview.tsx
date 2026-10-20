@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Printer, ChevronLeft, ChevronRight, Download, FileText, Check } from 'lucide-react';
-import { BillRecord } from '@/lib/bill4in1Export';
+import { BillRecord, BillPrintMode } from '@/lib/bill4in1Export';
 import { printBillsThermal58mm } from '@/lib/billThermalExport';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { roundToFoxProRule } from '@/lib/billingEngine';
@@ -9,6 +9,7 @@ interface BillThermalPreviewProps {
   bills: BillRecord[];
   title?: string;
   zoomLevel?: number;
+  initialPrintMode?: BillPrintMode;
 }
 
 function formatMoney(n: number | undefined | null): string {
@@ -20,9 +21,11 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
   bills,
   title = 'Region Wise Bill Printing (58mm Thermal)',
   zoomLevel = 100,
+  initialPrintMode = 'simple',
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
+  const [printMode, setPrintMode] = useState<BillPrintMode>(initialPrintMode);
 
   if (!bills || bills.length === 0) {
     return (
@@ -35,57 +38,107 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
   const currentBill = bills[currentIndex] || bills[0];
 
   const handlePrint = () => {
-    printBillsThermal58mm(bills, title);
+    printBillsThermal58mm(bills, title, printMode);
   };
 
   const handlePrintCurrent = () => {
-    printBillsThermal58mm([currentBill], `Bill_${currentBill.customer_id}`);
+    printBillsThermal58mm([currentBill], `Bill_${currentBill.customer_id}`, printMode);
   };
 
   const renderReceiptCard = (b: BillRecord, idx: number) => {
     const displayHindi = cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name);
-    const monthBillAmount = roundToFoxProRule((b.paper_amount || 0) + (b.delivery_charge || 0));
-    const previousDue = roundToFoxProRule(b.previous_due || 0);
-    const netPayable = roundToFoxProRule(b.net_payable || (monthBillAmount + previousDue));
-
-    // Consolidate publication items for simple display
     const items = b.items || [];
-    const pubConsolidatedMap = new Map<string, {
-      pub_name: string;
-      totalQty: number;
-      totalAmount: number;
-    }>();
-
-    const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
     const totalDelivery = b.delivery_charge || 0;
 
-    items.forEach((it, itemIdx) => {
-      const cleanPub = it.pub_name.trim();
-      const pubKey = cleanPub.toLowerCase();
-      const qty = Number(it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1));
-      
-      let itemDelivery = 0;
-      if (hasItemDelivery) {
-        itemDelivery = it.delivery_amount || 0;
-      } else if (totalDelivery > 0 && itemIdx === 0) {
-        itemDelivery = totalDelivery;
-      }
-      const itemAmt = roundToFoxProRule(it.amount + itemDelivery);
+    let itemsElements: React.ReactNode = null;
 
-      const existing = pubConsolidatedMap.get(pubKey);
-      if (existing) {
-        existing.totalQty += qty;
-        existing.totalAmount = roundToFoxProRule(existing.totalAmount + itemAmt);
-      } else {
-        pubConsolidatedMap.set(pubKey, {
-          pub_name: cleanPub,
-          totalQty: qty,
-          totalAmount: itemAmt
-        });
-      }
-    });
+    if (printMode === 'simple') {
+      // Consolidate publication items for simple display
+      const pubConsolidatedMap = new Map<string, {
+        pub_name: string;
+        totalQty: number;
+        totalAmount: number;
+      }>();
 
-    const displayItems = Array.from(pubConsolidatedMap.values());
+      const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
+
+      items.forEach((it, itemIdx) => {
+        const cleanPub = it.pub_name.trim();
+        const pubKey = cleanPub.toLowerCase();
+        const qty = Number(it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1));
+        
+        let itemDelivery = 0;
+        if (hasItemDelivery) {
+          itemDelivery = it.delivery_amount || 0;
+        } else if (totalDelivery > 0 && itemIdx === 0) {
+          itemDelivery = totalDelivery;
+        }
+        const itemAmt = roundToFoxProRule(it.amount + itemDelivery);
+
+        const existing = pubConsolidatedMap.get(pubKey);
+        if (existing) {
+          existing.totalQty += qty;
+          existing.totalAmount = roundToFoxProRule(existing.totalAmount + itemAmt);
+        } else {
+          pubConsolidatedMap.set(pubKey, {
+            pub_name: cleanPub,
+            totalQty: qty,
+            totalAmount: itemAmt
+          });
+        }
+      });
+
+      const displayItems = Array.from(pubConsolidatedMap.values());
+
+      itemsElements = displayItems.length > 0 ? (
+        displayItems.map((it, pIdx) => (
+          <div key={pIdx} className="flex justify-between items-baseline text-[10.5px]">
+            <span className="max-w-[70%] break-words">
+              {it.pub_name} ({it.totalQty}d)
+            </span>
+            <span className="font-bold">
+              {formatMoney(it.totalAmount)}
+            </span>
+          </div>
+        ))
+      ) : (
+        <div className="flex justify-between items-baseline text-[10.5px]">
+          <span>Newspaper / Monthly</span>
+          <span className="font-bold">{formatMoney(roundToFoxProRule((b.paper_amount || 0) + (b.delivery_charge || 0)))}</span>
+        </div>
+      );
+    } else {
+      // Detail Mode: Each item with days, rate, pure paper amount
+      itemsElements = items.length > 0 ? (
+        items.map((it, pIdx) => {
+          const qtyOrDays = it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1);
+          const rateStr = it.rate !== null && it.rate !== undefined && Number(it.rate) > 0
+            ? `@${Number(it.rate).toFixed(2)}`
+            : '';
+          return (
+            <div key={pIdx} className="flex justify-between items-baseline text-[10.5px]">
+              <span className="max-w-[70%] break-words">
+                {it.pub_name} ({qtyOrDays}d {rateStr})
+              </span>
+              <span className="font-bold">
+                {formatMoney(roundToFoxProRule(it.amount))}
+              </span>
+            </div>
+          );
+        })
+      ) : (
+        <div className="flex justify-between items-baseline text-[10.5px]">
+          <span>Newspaper / Monthly</span>
+          <span className="font-bold">{formatMoney(roundToFoxProRule(b.paper_amount || 0))}</span>
+        </div>
+      );
+    }
+
+    const paperAmount = roundToFoxProRule(b.paper_amount || 0);
+    const deliveryCharge = roundToFoxProRule(b.delivery_charge || 0);
+    const monthBillAmount = roundToFoxProRule(paperAmount + deliveryCharge);
+    const previousDue = roundToFoxProRule(b.previous_due || 0);
+    const netPayable = roundToFoxProRule(b.net_payable || (monthBillAmount + previousDue));
 
     return (
       <div 
@@ -162,23 +215,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 
         {/* Publications List */}
         <div className="space-y-1 mb-1">
-          {displayItems.length > 0 ? (
-            displayItems.map((it, pIdx) => (
-              <div key={pIdx} className="flex justify-between items-baseline text-[10.5px]">
-                <span className="max-w-[70%] break-words">
-                  {it.pub_name} ({it.totalQty}d)
-                </span>
-                <span className="font-bold">
-                  {formatMoney(it.totalAmount)}
-                </span>
-              </div>
-            ))
-          ) : (
-            <div className="flex justify-between items-baseline text-[10.5px]">
-              <span>Newspaper / Monthly</span>
-              <span className="font-bold">{formatMoney(monthBillAmount)}</span>
-            </div>
-          )}
+          {itemsElements}
         </div>
 
         <div className="text-center text-[10px] my-1 text-slate-600">
@@ -187,6 +224,19 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 
         {/* Calculation summary */}
         <div className="space-y-0.5 text-[10.5px]">
+          {printMode === 'detail' && deliveryCharge > 0 && (
+            <>
+              <div className="flex justify-between text-slate-800">
+                <span>Paper Total:</span>
+                <span>₹ {formatMoney(paperAmount)}</span>
+              </div>
+              <div className="flex justify-between text-slate-800">
+                <span>Delivery Charge:</span>
+                <span>₹ {formatMoney(deliveryCharge)}</span>
+              </div>
+            </>
+          )}
+
           <div className="flex justify-between font-bold">
             <span>Current Month Amt:</span>
             <span>₹ {formatMoney(monthBillAmount)}</span>
@@ -249,6 +299,34 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 
         {/* Navigation & View Controls */}
         <div className="flex items-center gap-2">
+          {/* Format Toggle: Simple vs Detail */}
+          <div className="flex items-center bg-slate-900 p-0.5 border border-slate-700 rounded text-[11px]">
+            <button
+              type="button"
+              onClick={() => setPrintMode('simple')}
+              className={`px-2 py-0.5 font-bold cursor-pointer rounded transition-colors ${
+                printMode === 'simple'
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Simple: Delivery charge is merged into publication prices"
+            >
+              Simple
+            </button>
+            <button
+              type="button"
+              onClick={() => setPrintMode('detail')}
+              className={`px-2 py-0.5 font-bold cursor-pointer rounded transition-colors ${
+                printMode === 'detail'
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="Detail: Separate rate per line & separate delivery charge row"
+            >
+              Detail
+            </button>
+          </div>
+
           <button
             onClick={() => setViewMode(v => v === 'single' ? 'all' : 'single')}
             className="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-[11px] font-medium border border-slate-600 cursor-pointer"
