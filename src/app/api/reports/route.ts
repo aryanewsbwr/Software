@@ -1015,7 +1015,12 @@ export async function GET(request: NextRequest) {
         const reg = regMap.get(h.region_id);
 
         const rawItems = itemsByBillId.get(bid) || [];
-        rawItems.sort((a, b) => Number(a.sno || 0) - Number(b.sno || 0));
+        // Keep rate tiers for the same publication grouped together (sorted by id / insertion sequence, or by publication + sno)
+        rawItems.sort((a, b) => {
+          if (a.id && b.id) return Number(a.id) - Number(b.id);
+          if (a.publica_id !== b.publica_id) return Number(a.publica_id) - Number(b.publica_id);
+          return Number(a.sno || 0) - Number(b.sno || 0);
+        });
 
         let paperTotal = 0;
         const lineItems = rawItems.map((it, idx) => {
