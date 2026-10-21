@@ -186,6 +186,31 @@ export function calculateBilling({
     if (pid) pubMap.set(pid, p);
   }
 
+  // Pre-index magazine frequency / periodicity from rate table (dayofweek mapping)
+  // DayOfWeek in rate table for magazines:
+  // 1 = Weekly
+  // 2 = Fortnightly
+  // 3 = Monthly
+  // 4 = Quarterly
+  // 6 = Special / Book / CD / One-off
+  const magFrequencyFromRates = new Map<number, string>();
+  for (const r of rates) {
+    const rPub = Number(r.Publica_id || r.publica_id);
+    const rDow = Number(r.Dayofweek !== undefined ? r.Dayofweek : r.dayofweek);
+    if (!rPub) continue;
+    const pubObj = pubMap.get(rPub);
+    const pType = String(pubObj?.type_p || pubObj?.TypeP || '').toLowerCase();
+    const isMag = pType.includes('mag') || pType.includes('periodical');
+
+    if (isMag && !magFrequencyFromRates.has(rPub)) {
+      if (rDow === 1) magFrequencyFromRates.set(rPub, 'weekly');
+      else if (rDow === 2) magFrequencyFromRates.set(rPub, 'fortnightly');
+      else if (rDow === 3) magFrequencyFromRates.set(rPub, 'monthly');
+      else if (rDow === 4) magFrequencyFromRates.set(rPub, 'quarterly');
+      else if (rDow === 6) magFrequencyFromRates.set(rPub, 'special');
+    }
+  }
+
   // Index Regions
   const regMap = new Map<number, any>();
   for (const r of regions) {
@@ -619,10 +644,23 @@ export function calculateBilling({
         : englishName;
       const typeP = pub?.type_p || pub?.TypeP || pub?.frequency || 'Daily';
       const is513 = pubId === 513;
-      const isFortnightly = FORTNIGHTLY_PUBS.has(pubId) || typeP.toLowerCase().includes('fortnight') || typeP.toLowerCase().includes('bi-month') || typeP.toLowerCase().includes('bi-weekly');
-      const magzineDay = is513 ? 2 : (pub?.magzine_day || pub?.MagzineDay || 0);
+      const rateDerivedFreq = magFrequencyFromRates.get(pubId);
+
+      // Determine periodicity based on rate table dayofweek logic:
+      // 1 = Weekly, 2 = Fortnightly, 3 = Monthly, 4 = Quarterly, 6 = Special
+      const isFortnightly = rateDerivedFreq === 'fortnightly' || (
+        !rateDerivedFreq && (
+          FORTNIGHTLY_PUBS.has(pubId) ||
+          typeP.toLowerCase().includes('fortnight') ||
+          typeP.toLowerCase().includes('bi-month') ||
+          typeP.toLowerCase().includes('bi-weekly')
+        )
+      );
+
+      const magzineDay = is513 ? 2 : (pub?.magzine_day || pub?.MagzineDay || (rateDerivedFreq === 'weekly' ? 1 : 0));
       const isDaily = !is513 && !isFortnightly && (typeP.toLowerCase() === 'daily' || typeP.toLowerCase() === 'newspaper');
-      const isWeekly = (is513 || (magzineDay >= 1 && !isFortnightly) || typeP.toLowerCase() === 'weekly') && !isFortnightly;
+      const isWeekly = !isDaily && !isFortnightly && (rateDerivedFreq === 'weekly' || is513 || (magzineDay >= 1 && rateDerivedFreq !== 'monthly') || typeP.toLowerCase() === 'weekly');
+      const isQuarterly = rateDerivedFreq === 'quarterly' || pubId === 75;
 
       const sDateIso = parseLegacyDateToIso(cd.s_date || cd.S_Date) || '2000-01-01';
       const cDateIso = parseLegacyDateToIso(cd.c_date || cd.C_Date);
@@ -717,7 +755,7 @@ export function calculateBilling({
         }
 
         const pDateIso = `${calendarYear}-${String(monthNum).padStart(2, '0')}-01`;
-        const isQuarterlyAllowed = pubId !== 75 || [1, 4, 7, 10].includes(monthNum);
+        const isQuarterlyAllowed = !isQuarterly || [1, 4, 7, 10].includes(monthNum);
 
         if (isQuarterlyAllowed && sDateIso <= monthStartIso && (!cDateIso || cDateIso > monthStartIso)) {
           if (!isPubDiscontinued(pubId, pDateIso, false) && !isHoliday(pubId, pDateIso, false) && !isDiscontinued(custId, pubId, pDateIso, sDateIso)) {
