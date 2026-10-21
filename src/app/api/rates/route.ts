@@ -187,9 +187,17 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      // 2. Insert into Supabase ratechange table
+      // 2. Insert or Update Supabase ratechange table
+      // If updating a rate change for this effective_date, delete older duplicates for this date first so it acts as a clean update
       if (rateChangeRows.length > 0) {
         try {
+          if (is_rate_change && effDateIso) {
+            await supabase
+              .from('ratechange')
+              .delete()
+              .eq('publica_id', pubId)
+              .eq('effective_date', effDateIso);
+          }
           const { error: rcErr } = await supabase.from('ratechange').insert(rateChangeRows);
           if (rcErr) console.warn('Supabase ratechange insert error:', rcErr);
         } catch (rcErr) {
@@ -231,7 +239,14 @@ export async function POST(request: NextRequest) {
         const rcsFile = path.join(process.cwd(), 'public', 'data', 'ratechanges.json');
 
         if (fs.existsSync(rcsFile)) {
-          const currentRcs = JSON.parse(fs.readFileSync(rcsFile, 'utf-8'));
+          let currentRcs = JSON.parse(fs.readFileSync(rcsFile, 'utf-8'));
+          if (is_rate_change && effDateIso) {
+            currentRcs = currentRcs.filter((rc: any) => {
+              const rPub = rc.publica_id || rc.Publica_id;
+              const rEff = (rc.effective_date || rc.Dated || rc.dated || '').split('T')[0];
+              return !(rPub === pubId && rEff === effDateIso);
+            });
+          }
           jsonRateChanges.forEach(rc => {
             currentRcs.push(rc);
           });
@@ -262,6 +277,47 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ error: 'day_rates or new_rates object is required' }, { status: 400 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// DELETE a specific rate change revision (by publica_id and effective_date or by id)
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const pubIdStr = searchParams.get('publica_id');
+    const effDate = searchParams.get('effective_date');
+    const rcIdStr = searchParams.get('id');
+
+    if (!pubIdStr && !rcIdStr) {
+      return NextResponse.json({ error: 'publica_id or id is required' }, { status: 400 });
+    }
+
+    if (rcIdStr) {
+      const rcId = parseInt(rcIdStr, 10);
+      await supabase.from('ratechange').delete().eq('id', rcId);
+    } else if (pubIdStr && effDate) {
+      const pubId = parseInt(pubIdStr, 10);
+      const effIso = effDate.split('T')[0];
+      await supabase.from('ratechange').delete().eq('publica_id', pubId).eq('effective_date', effIso);
+
+      // Also clean local JSON
+      try {
+        const rcsFile = path.join(process.cwd(), 'public', 'data', 'ratechanges.json');
+        if (fs.existsSync(rcsFile)) {
+          let currentRcs = JSON.parse(fs.readFileSync(rcsFile, 'utf-8'));
+          currentRcs = currentRcs.filter((rc: any) => {
+            const rPub = rc.publica_id || rc.Publica_id;
+            const rEff = (rc.effective_date || rc.Dated || rc.dated || '').split('T')[0];
+            return !(rPub === pubId && rEff === effIso);
+          });
+          fs.writeFileSync(rcsFile, JSON.stringify(currentRcs, null, 2), 'utf-8');
+        }
+      } catch (_) {}
+    }
+
+    return NextResponse.json({ success: true, message: 'Rate change revision deleted successfully' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

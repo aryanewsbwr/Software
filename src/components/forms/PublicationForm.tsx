@@ -372,6 +372,72 @@ export default function PublicationForm({
     }
   };
 
+  // Load a historical revision into the Rate Change editor for fixing/editing
+  const handleSelectHistoryRevision = (effDate: string) => {
+    if (!effDate) return;
+    const cleanDate = effDate.split('T')[0];
+    const parts = cleanDate.split('-'); // YYYY-MM-DD
+    const ddmmyyyy = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : cleanDate;
+
+    // Filter all changes for this publication on this date
+    const dateChanges = historyList.filter(h => {
+      const hDate = (h.dated || h.Dated || h.effective_date || '').split('T')[0];
+      return hDate === cleanDate;
+    });
+
+    const loadedNewRates: Record<number, number> = { ...weekdayRates };
+    const loadedOldRates: Record<number, number> = { ...weekdayRates };
+
+    dateChanges.forEach(dc => {
+      const dow = Number(dc.dayofweek !== undefined ? dc.dayofweek : dc.Dayofweek);
+      const newVal = Number(dc.new_rate ?? dc.NewRate ?? dc.newrate ?? 0);
+      const oldVal = Number(dc.oldrate ?? dc.OldRate ?? 0);
+
+      if (dow === 0) {
+        WEEKDAYS.forEach(w => {
+          loadedNewRates[w.id] = newVal;
+          if (oldVal > 0) loadedOldRates[w.id] = oldVal;
+        });
+      } else if (dow >= 1 && dow <= 7) {
+        loadedNewRates[dow] = newVal;
+        if (oldVal > 0) loadedOldRates[dow] = oldVal;
+      }
+    });
+
+    setRateChangeEffDate(ddmmyyyy);
+    setNewWeekdayRates(loadedNewRates);
+    setWeekdayRates(loadedOldRates);
+    setIsRateChangeMode(true);
+    setIsHistoryOpen(false);
+    setMsg(`Loaded Rate Change Revision from ${ddmmyyyy}. You can now edit rates or date, and click Save to update!`);
+    setTimeout(() => setMsg(''), 5000);
+  };
+
+  // Delete an accidental rate change revision
+  const handleDeleteHistoryRevision = async (effDate: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!effDate || !selectedPub.publica_id) return;
+    const cleanDate = effDate.split('T')[0];
+    const confirmDelete = window.confirm(`Are you sure you want to delete rate change revision for date ${cleanDate}?`);
+    if (!confirmDelete) return;
+
+    try {
+      const res = await fetch(`/api/rates?publica_id=${selectedPub.publica_id}&effective_date=${cleanDate}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setHistoryList(prev => prev.filter(h => {
+          const hDate = (h.dated || h.Dated || h.effective_date || '').split('T')[0];
+          return hDate !== cleanDate;
+        }));
+        setMsg(`Rate change revision for ${cleanDate} deleted.`);
+        setTimeout(() => setMsg(''), 3000);
+      }
+    } catch (err) {
+      console.error('Error deleting rate change:', err);
+    }
+  };
+
   const loadPublication = (p: Publication) => {
     setIsNewMode(false);
     setIsRateChangeMode(false);
@@ -1842,20 +1908,21 @@ export default function PublicationForm({
                       <th className="p-1 border-r text-center w-10">#</th>
                       <th className="p-1 border-r text-left">Effective Date (दिनांक)</th>
                       <th className="p-1 border-r text-left">Day / Weekday (दिन)</th>
-                      <th className="p-1 border-r text-right w-24">Old Rate (₹)</th>
-                      <th className="p-1 text-right w-24 text-emerald-800">New Rate (₹)</th>
+                      <th className="p-1 border-r text-right w-20">Old Rate (₹)</th>
+                      <th className="p-1 border-r text-right w-20 text-emerald-800">New Rate (₹)</th>
+                      <th className="p-1 text-center w-24">Action (कार्य)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoadingHistory ? (
                       <tr>
-                        <td colSpan={5} className="p-4 text-center text-slate-500 font-bold">
+                        <td colSpan={6} className="p-4 text-center text-slate-500 font-bold">
                           Loading rate change history...
                         </td>
                       </tr>
                     ) : historyList.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="p-4 text-center text-slate-500 font-bold">
+                        <td colSpan={6} className="p-4 text-center text-slate-500 font-bold">
                           No previous rate change revisions found for this publication.
                         </td>
                       </tr>
@@ -1869,12 +1936,37 @@ export default function PublicationForm({
                         const newVal = Number(h.new_rate ?? h.NewRate ?? 0);
 
                         return (
-                          <tr key={idx} className="border-b border-slate-200 hover:bg-blue-50">
+                          <tr 
+                            key={idx} 
+                            onClick={() => handleSelectHistoryRevision(effDate)}
+                            title="Click row to edit this rate change revision"
+                            className="border-b border-slate-200 hover:bg-blue-100/70 cursor-pointer transition-colors"
+                          >
                             <td className="p-1 border-r text-center font-mono text-slate-500">{idx + 1}</td>
                             <td className="p-1 border-r font-mono font-bold text-blue-900">{effDate}</td>
                             <td className="p-1 border-r font-bold text-slate-700">{dayLabel}</td>
                             <td className="p-1 border-r text-right font-mono text-slate-500">₹{oldVal.toFixed(2)}</td>
-                            <td className="p-1 text-right font-mono font-bold text-emerald-700 bg-emerald-50/50">₹{newVal.toFixed(2)}</td>
+                            <td className="p-1 border-r text-right font-mono font-bold text-emerald-700 bg-emerald-50/50">₹{newVal.toFixed(2)}</td>
+                            <td className="p-1 text-center" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectHistoryRevision(effDate)}
+                                  className="px-1.5 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-400 rounded-xs text-[10px] font-bold cursor-pointer"
+                                  title="Edit / Correct this rate change"
+                                >
+                                  ✏️ Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteHistoryRevision(effDate, e)}
+                                  className="px-1.5 py-0.5 bg-red-100 hover:bg-red-200 text-red-900 border border-red-400 rounded-xs text-[10px] font-bold cursor-pointer"
+                                  title="Delete this revision"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         );
                       })
