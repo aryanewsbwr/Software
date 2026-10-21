@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       effective_date: (r.effective_date || r.dated || r.Dated || '').split('T')[0]
     }));
 
-    // Fetch latest rate changes from Supabase
+    // Fetch latest rate changes from Supabase (Supabase is source of truth for ratechange)
     try {
       const { data: sbRc } = await supabase
         .from('ratechange')
@@ -37,30 +37,15 @@ export async function GET(request: NextRequest) {
         .order('effective_date', { ascending: false });
 
       if (sbRc && sbRc.length > 0) {
-        const seenKeys = new Set(
-          ratechanges.map((r: any) => `${r.publica_id}-${r.dayofweek}-${r.effective_date}-${r.new_rate}`)
-        );
-
-        sbRc.forEach((r: any) => {
-          const pid = r.publica_id ?? r.Publica_id;
-          const dow = r.dayofweek ?? r.Dayofweek;
-          const effD = (r.effective_date || r.Dated || r.dated || '').split('T')[0];
-          const newR = Number(r.newrate ?? r.new_rate ?? r.NewRate ?? 0);
-          const oldR = Number(r.oldrate ?? r.old_rate ?? r.OldRate ?? 0);
-          const key = `${pid}-${dow}-${effD}-${newR}`;
-
-          if (!seenKeys.has(key)) {
-            ratechanges.push({
-              publica_id: pid,
-              dayofweek: dow,
-              oldrate: oldR,
-              new_rate: newR,
-              dated: effD,
-              effective_date: effD
-            });
-            seenKeys.add(key);
-          }
-        });
+        ratechanges = sbRc.map((r: any) => ({
+          id: r.id,
+          publica_id: r.publica_id ?? r.Publica_id,
+          dayofweek: r.dayofweek ?? r.Dayofweek,
+          oldrate: Number(r.oldrate ?? r.old_rate ?? r.OldRate ?? 0),
+          new_rate: Number(r.newrate ?? r.new_rate ?? r.NewRate ?? 0),
+          dated: (r.effective_date || r.Dated || r.dated || '').split('T')[0],
+          effective_date: (r.effective_date || r.Dated || r.dated || '').split('T')[0]
+        }));
       }
     } catch (sbErr) {
       console.warn('Supabase ratechange fetch notice:', sbErr);
