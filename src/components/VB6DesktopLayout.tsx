@@ -426,9 +426,6 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
                 <span>Payment Receipt</span>
                 <span className="text-slate-600 font-mono text-[11px] ml-6">Ctrl+R</span>
               </button>
-              <button onClick={() => { setActiveWindow('receipts'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">
-                New Payment Receipt
-              </button>
             </div>
           )}
         </div>
