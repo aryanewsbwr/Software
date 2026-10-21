@@ -37,6 +37,7 @@ import { AppUser } from '@/lib/auth';
 
 import PublisherForm from './forms/PublisherForm';
 import PublicationForm from './forms/PublicationForm';
+import RateChangeForm from './forms/RateChangeForm';
 import CustomerForm from './forms/CustomerForm';
 import SubscriptionsModal from './forms/SubscriptionsModal';
 import DailyProcessForm from './forms/DailyProcessForm';
@@ -742,14 +743,14 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
         )}
 
         {/* 3. Publication Master & Weekday Rates (screenshot_02.jpg) */}
-        {(activeWindow === 'publications' || activeWindow === 'ratechanges' || activeWindow === 'ratechange') && (
+        {activeWindow === 'publications' && (
           <PublicationForm 
             onClose={() => setActiveWindow(null)} 
             publications={publications}
             publishers={publishers}
             rates={rates}
             ratechanges={ratechanges}
-            initialRateChangeMode={activeWindow === 'ratechanges' || activeWindow === 'ratechange'}
+            initialRateChangeMode={false}
             onSave={(savedPub) => {
               setPublications(prev => [savedPub, ...prev.filter(p => p.publica_id !== savedPub.publica_id)]);
               fetch('/api/publications?with_rates=true')
@@ -769,6 +770,25 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
               fetch('/data/rates.json').then(r => r.json()).then(setRates).catch(() => {});
               fetch('/data/ratechanges.json').then(r => r.json()).then(setRatechanges).catch(() => {});
               setStatusMessage(`Publication #${pubId} deleted.`);
+            }}
+          />
+        )}
+
+        {/* 3b. Dedicated Rate Change Master Form */}
+        {(activeWindow === 'ratechanges' || activeWindow === 'ratechange') && (
+          <RateChangeForm 
+            onClose={() => setActiveWindow(null)} 
+            publications={publications}
+            rates={rates}
+            ratechanges={ratechanges}
+            onSave={(pubId, newRates, effDateIso) => {
+              fetch('/api/publications?with_rates=true')
+                .then(r => r.json())
+                .then(data => { if (data.publications) setPublications(normalizeAndSortPubList(data.publications)); })
+                .catch(() => {});
+              fetch('/data/rates.json').then(r => r.json()).then(setRates).catch(() => {});
+              fetch('/data/ratechanges.json').then(r => r.json()).then(setRatechanges).catch(() => {});
+              setStatusMessage(`Rate change for publication #${pubId} saved.`);
             }}
           />
         )}
