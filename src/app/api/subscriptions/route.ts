@@ -57,12 +57,15 @@ export async function GET(request: NextRequest) {
       subs = cachedAllSubs.filter((s: any) => Number(s.customer_id || s.Customer_id) === cid);
     }
 
-    // 2. Find customer discontinues (Fetch live from Supabase merged with local)
+    // 2. Find customer discontinues & publication discontinues (Fetch live from Supabase merged with local)
     let custDiscs: any[] = [];
+    const pubDisMap = new Map<number, any>();
+
     try {
-      const [dRes, cdRes] = await Promise.all([
+      const [dRes, cdRes, pdRes] = await Promise.all([
         supabase.from('discontinue').select('*').eq('customer_id', cid),
-        supabase.from('customer_discontinue').select('*').eq('customer_id', cid)
+        supabase.from('customer_discontinue').select('*').eq('customer_id', cid),
+        supabase.from('publicationdis').select('*')
       ]);
       const liveDiscs = [...(dRes.data || []), ...(cdRes.data || [])];
       const localDiscs = (cachedDiscontinues || []).filter(d => (d.customer_id || d.Customer_id) === cid);
@@ -75,6 +78,16 @@ export async function GET(request: NextRequest) {
           seen.add(key);
         }
       }
+
+      // Map permanent publication discontinues
+      const allPubDis = pdRes.data || [];
+      allPubDis.forEach((pd: any) => {
+        const pid = Number(pd.publica_id || pd.Publica_id);
+        const isPerm = (pd.dis_type || pd.Dis_Type || '').toUpperCase().startsWith('P');
+        if (pid && isPerm) {
+          pubDisMap.set(pid, pd);
+        }
+      });
     } catch {
       custDiscs = (cachedDiscontinues || []).filter(d => (d.customer_id || d.Customer_id) === cid);
     }
@@ -140,6 +153,15 @@ export async function GET(request: NextRequest) {
             to: tTo,
             type: 'Temporary Vacation Hold'
           };
+        }
+      }
+
+      // Check if publication is globally discontinued (publicationdis)
+      const matchingPubDis = pubDisMap.get(Number(pId));
+      if (matchingPubDis) {
+        is_active = false;
+        if (!effectiveCloseDate) {
+          effectiveCloseDate = matchingPubDis.entry_date || matchingPubDis.Entry_Date || 'Discontinued';
         }
       }
 

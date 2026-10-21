@@ -57,7 +57,7 @@ export const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-const FORTNIGHTLY_PUBS = new Set([11, 13, 17, 18, 23, 24, 33, 109]);
+const FORTNIGHTLY_PUBS = new Set([11, 13, 17, 18, 23, 24, 33, 109, 216]);
 
 // Parse DD/MM/YYYY or YYYY-MM-DD to YYYY-MM-DD
 export function parseLegacyDateToIso(dStr: string | null | undefined): string | null {
