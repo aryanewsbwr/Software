@@ -712,11 +712,6 @@ export default function CustomerForm({
                                   बंद / Stopped
                                 </span>
                               )}
-                              {sub.hold_info && !isDiscontinued && (
-                                <span className="px-1 py-0.2 bg-amber-100 text-amber-900 border border-amber-300 rounded text-[9px] font-bold">
-                                  छुट्टी ({sub.hold_info.to})
-                                </span>
-                              )}
                             </div>
                           </td>
                           <td className="p-1 border-r font-mono text-center">HW</td>

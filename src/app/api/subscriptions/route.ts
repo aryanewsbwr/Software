@@ -81,10 +81,17 @@ export async function GET(request: NextRequest) {
 
       // Map permanent publication discontinues
       const allPubDis = pdRes.data || [];
+      const todayIsoNow = new Date().toISOString().split('T')[0];
       allPubDis.forEach((pd: any) => {
         const pid = Number(pd.publica_id || pd.Publica_id);
         const isPerm = (pd.dis_type || pd.Dis_Type || '').toUpperCase().startsWith('P');
-        if (pid && isPerm) {
+        const fromIso = parseDateToIso(pd.from_date || pd.FromDate || pd.fromdate || pd.entry_date);
+        const toIso = parseDateToIso(pd.to_date || pd.ToDate || pd.todate || pd.oc_date);
+
+        // If toIso exists and has already passed in the past, the suspension is EXPIRED (not currently discontinued)
+        const isExpired = toIso && toIso < todayIsoNow;
+
+        if (pid && isPerm && !isExpired) {
           pubDisMap.set(pid, pd);
         }
       });
