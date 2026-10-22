@@ -656,7 +656,6 @@ export default function CustomerForm({
                 <tr>
                   <th className="p-1 border-r text-center">S No</th>
                   <th className="p-1 border-r">Item (Publication)</th>
-                  <th className="p-1 border-r text-center">HW/SA</th>
                   <th className="p-1 border-r">Hawker</th>
                   <th className="p-1 border-r text-center">Qty</th>
                   <th className="p-1 border-r text-center">Circulation</th>
@@ -671,7 +670,7 @@ export default function CustomerForm({
               <tbody>
                 {isLoadingSubs ? (
                   <tr>
-                    <td colSpan={12} className="p-4 text-center text-slate-500 font-bold">Loading subscriptions...</td>
+                    <td colSpan={11} className="p-4 text-center text-slate-500 font-bold">Loading subscriptions...</td>
                   </tr>
                 ) : subscriptions.length > 0 ? (
                   (() => {
@@ -682,7 +681,7 @@ export default function CustomerForm({
                     if (displayed.length === 0) {
                       return (
                         <tr>
-                          <td colSpan={12} className="p-4 text-center text-slate-500 italic">
+                          <td colSpan={11} className="p-4 text-center text-slate-500 italic">
                             No active subscriptions. Switch to "All Subscription History" to view stopped papers.
                           </td>
                         </tr>
@@ -714,7 +713,6 @@ export default function CustomerForm({
                               )}
                             </div>
                           </td>
-                          <td className="p-1 border-r font-mono text-center">HW</td>
                           <td className="p-1 border-r text-slate-700">{sub.hawker_name || `Hwk #${sub.hawker_id}`}</td>
                           <td className="p-1 border-r font-bold text-center font-mono">{sub.qty}</td>
                           <td className="p-1 border-r text-center">{sub.circulation || 'Morning'}</td>
