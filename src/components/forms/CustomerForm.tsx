@@ -867,28 +867,31 @@ export default function CustomerForm({
                       <th className="p-1.5 border-r">ID</th>
                       <th className="p-1.5 border-r">Customer Name</th>
                       <th className="p-1.5 border-r">Hindi Name</th>
-                      <th className="p-1.5 border-r">Phone</th>
+                      <th className="p-1.5 border-r">Region</th>
                       <th className="p-1.5">Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {searchResults.map(c => (
-                      <tr 
-                        key={c.customer_id}
-                        onClick={() => handleSelectFoundCustomer(c)}
-                        className="border-b hover:bg-blue-100 cursor-pointer"
-                      >
-                        <td className="p-1.5 border-r font-mono font-bold text-blue-900">#{c.customer_id}</td>
-                        <td className="p-1.5 border-r font-bold text-slate-800">{c.name_eng}</td>
-                        <td className="p-1.5 border-r text-indigo-900 font-bold">{cleanOrTransliterateHindi(c.name_hindi || '', c.name_eng)}</td>
-                        <td className="p-1.5 border-r font-mono text-slate-600">{c.phone || '-'}</td>
-                        <td className="p-1.5">
-                          <span className="px-2 py-0.5 bg-blue-700 text-white font-bold text-[10px] rounded-xs">
-                            Select
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {searchResults.map(c => {
+                      const regName = regions.find(r => r.region_id === c.region_id)?.region_name || (c as any).region_name || '-';
+                      return (
+                        <tr 
+                          key={c.customer_id}
+                          onClick={() => handleSelectFoundCustomer(c)}
+                          className="border-b hover:bg-blue-100 cursor-pointer"
+                        >
+                          <td className="p-1.5 border-r font-mono font-bold text-blue-900">#{c.customer_id}</td>
+                          <td className="p-1.5 border-r font-bold text-slate-800">{c.name_eng}</td>
+                          <td className="p-1.5 border-r text-indigo-900 font-bold">{cleanOrTransliterateHindi(c.name_hindi || '', c.name_eng)}</td>
+                          <td className="p-1.5 border-r text-slate-700 font-medium">{regName}</td>
+                          <td className="p-1.5">
+                            <span className="px-2 py-0.5 bg-blue-700 text-white font-bold text-[10px] rounded-xs">
+                              Select
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               ) : (
