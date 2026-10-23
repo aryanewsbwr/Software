@@ -7,17 +7,12 @@ export const UPI_PAYEE_NAME = 'ARYAN NEWS AGENCY';
  * Builds the standard dynamic UPI payment URL
  * Format: upi://pay?pa=<VPA>&pn=<PAYEE>&am=<AMOUNT>&cu=INR&tn=<NOTE>
  */
-export function buildUpiPaymentUri(amount: number, billNoOrCustId: string | number, month?: string): string {
+export function buildUpiPaymentUri(amount: number, billNoOrCustId?: string | number, month?: string): string {
   const cleanAmt = Math.max(0, Number(amount || 0)).toFixed(2);
-  const noteText = month 
-    ? `Bill ${billNoOrCustId} ${month}` 
-    : `Bill ${billNoOrCustId}`;
-
-  // Standard %20 encoding for maximum compatibility with PhonePe, Google Pay, Paytm, BHIM
   const pn = encodeURIComponent(UPI_PAYEE_NAME);
-  const tn = encodeURIComponent(noteText);
 
-  return `upi://pay?pa=${UPI_VPA}&pn=${pn}&am=${cleanAmt}&cu=INR&tn=${tn}`;
+  // Pure dynamic payment: Payee + VPA + Amount only (no note / remark)
+  return `upi://pay?pa=${UPI_VPA}&pn=${pn}&am=${cleanAmt}&cu=INR`;
 }
 
 /**
