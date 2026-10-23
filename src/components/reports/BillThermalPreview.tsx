@@ -292,12 +292,6 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
               )
             }}
           />
-          <div className="text-[9px] font-bold text-slate-900 mt-1 text-center">
-            SCAN & PAY: ₹ {formatMoney(netPayable)}
-          </div>
-          <div className="text-[8px] text-slate-600 text-center">
-            UPI: {UPI_VPA}
-          </div>
         </div>
       </div>
     );

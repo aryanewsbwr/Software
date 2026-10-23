@@ -189,15 +189,9 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
       <div class="divider">================================</div>
 
       <div class="thermal-footer">
-        <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 4px 0;">
+        <div style="display: flex; justify-content: center; align-items: center; padding: 4px 0;">
           <div style="width: 110px; height: 110px; display: flex; align-items: center; justify-content: center;">
             ${generateDynamicUpiQrSvg(netPayable, b.bill_no || b.customer_id, `${b.month || ''} ${b.year || ''}`.trim(), 110)}
-          </div>
-          <div style="font-size: 8px; font-weight: bold; margin-top: 2px; text-align: center; color: #000;">
-            SCAN & PAY: ₹ ${formatMoney(netPayable)}
-          </div>
-          <div style="font-size: 7.5px; color: #333; text-align: center;">
-            UPI: ${UPI_VPA}
           </div>
         </div>
       </div>
