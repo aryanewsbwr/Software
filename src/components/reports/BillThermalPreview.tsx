@@ -149,11 +149,11 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         }}
       >
         {/* Receipt Header */}
-        <div className="flex items-center justify-between mb-1">
-          <div className="w-6 shrink-0 flex items-center justify-start">
-            <img src={BOY_LOGO_B64} alt="logo" className="h-9 w-auto object-contain block" />
+        <div className="flex items-center justify-start gap-2 mb-1">
+          <div className="w-7 shrink-0 flex items-center justify-center">
+            <img src={BOY_LOGO_B64} alt="logo" className="h-12 w-auto object-contain block" />
           </div>
-          <div className="flex-1 text-center pl-1 space-y-0.5">
+          <div className="flex-1 text-center space-y-0.5">
             <div className="font-black text-sm tracking-tight text-slate-950 uppercase">
               ARYAN NEWS AGENCY
             </div>

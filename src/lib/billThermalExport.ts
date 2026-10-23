@@ -103,11 +103,11 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
 
   return `
     <div class="thermal-receipt">
-      <div class="thermal-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
-        <div class="thermal-logo-box" style="width: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-start;">
-          <img src="${BOY_LOGO_B64}" alt="logo" style="height: 38px; width: auto; object-fit: contain; display: block; image-rendering: pixelated;" />
+      <div class="thermal-header" style="display: flex; align-items: center; justify-content: flex-start; gap: 8px; margin-bottom: 2px;">
+        <div class="thermal-logo-box" style="width: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+          <img src="${BOY_LOGO_B64}" alt="logo" style="height: 48px; width: auto; object-fit: contain; display: block;" />
         </div>
-        <div style="flex: 1; text-align: center; padding-left: 4px;">
+        <div style="flex: 1; text-align: center;">
           <div class="agency-title">ARYAN NEWS AGENCY</div>
           <div class="agency-sub">5 Old Bus stand Beawar</div>
           <div class="agency-sub">Ph: 9462558949, 9829058949</div>
