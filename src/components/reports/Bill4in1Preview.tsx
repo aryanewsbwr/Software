@@ -259,29 +259,35 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                       </div>
                     </div>
 
-                    {/* S.NO / BILL NO / REGION / MONTH */}
+                    {/* BILL NO / MONTH / AC.NO / REGION / CUSTOMER */}
                     <div className="border-t border-black pt-1 mb-1 text-[9px] space-y-0.5">
                       <div className="flex justify-between items-baseline">
-                        <div className="truncate max-w-[65%]">
-                          <span className="font-bold">S. No. </span>
-                          <span className="font-mono"><b>{b.priority !== undefined && b.priority !== null ? b.priority : b.customer_id}</b> - {b.customer_name}</span>
-                          {displayHindi && <span className="text-[8px] text-slate-600 ml-1">({displayHindi})</span>}
-                        </div>
-
                         <div>
-                          <span className="font-bold">Bill No. </span>
-                          <span className="font-mono"><b>{b.bill_no}</b></span>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-baseline">
-                        <div>
-                          <span className="font-bold">Region </span>
-                          <span><b>{b.region_name}</b></span>
+                          <span className="font-bold">Bill No: </span>
+                          <span className="font-mono"><b>{b.bill_no || b.customer_id}</b></span>
                         </div>
                         <div>
-                          <span className="font-bold">Month </span>
+                          <span className="font-bold">Month: </span>
                           <span><b>{b.month} {b.year}</b></span>
                         </div>
+                      </div>
+
+                      <div className="flex justify-between items-baseline">
+                        <div>
+                          <span className="font-bold">Ac.no.: </span>
+                          <span className="font-mono"><b>{b.customer_id}</b></span>
+                        </div>
+                        <div>
+                          <span className="font-bold">Region: </span>
+                          <span><b>{b.region_name}</b></span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-baseline truncate">
+                        <span className="font-bold mr-1">Customer: </span>
+                        <span className="font-bold text-slate-900 truncate">
+                          {b.customer_name} {displayHindi && <span className="text-[8px] text-slate-600 font-normal ml-1">({displayHindi})</span>} {b.priority ? `| Pr: ${b.priority}` : ''}
+                        </span>
                       </div>
                     </div>
 

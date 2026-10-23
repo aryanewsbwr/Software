@@ -176,27 +176,34 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
         </div>
       </div>
 
-      <!-- S.NO / BILL NO / REGION / MONTH BAR -->
+      <!-- S.NO / BILL NO / AC.NO / REGION / MONTH BAR -->
       <div class="bill-meta">
         <div class="meta-row">
           <div class="meta-left">
-            <span class="meta-lbl">S. No.</span>
-            <span class="meta-val"><b>${b.priority !== undefined && b.priority !== null ? b.priority : b.customer_id}</b> - ${b.customer_name} ${displayHindi ? `<span class="hindi-name">(${displayHindi})</span>` : ''}</span>
+            <span class="meta-lbl">Bill No:</span>
+            <span class="meta-val"><b>${b.bill_no || b.customer_id}</b></span>
           </div>
-
           <div class="meta-right">
-            <span class="meta-lbl">Bill No.</span>
-            <span class="meta-val"><b>${b.bill_no}</b></span>
+            <span class="meta-lbl">Month:</span>
+            <span class="meta-val"><b>${b.month} ${b.year}</b></span>
           </div>
         </div>
+
         <div class="meta-row">
           <div class="meta-left">
-            <span class="meta-lbl">Region</span>
-            <span class="meta-val"><b>${b.region_name}</b></span>
+            <span class="meta-lbl">Ac.no.:</span>
+            <span class="meta-val"><b>${b.customer_id}</b></span>
           </div>
           <div class="meta-right">
-            <span class="meta-lbl">Month</span>
-            <span class="meta-val"><b>${b.month} ${b.year}</b></span>
+            <span class="meta-lbl">Region:</span>
+            <span class="meta-val"><b>${b.region_name}</b></span>
+          </div>
+        </div>
+
+        <div class="meta-row" style="margin-top: 1px;">
+          <div class="meta-left" style="max-width: 100%;">
+            <span class="meta-lbl">Customer:</span>
+            <span class="meta-val"><b>${b.customer_name}</b> ${displayHindi ? `<span class="hindi-name">(${displayHindi})</span>` : ''} ${b.priority ? `| Pr: ${b.priority}` : ''}</span>
           </div>
         </div>
       </div>
