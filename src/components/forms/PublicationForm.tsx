@@ -452,12 +452,30 @@ export default function PublicationForm({
     const dayName = ID_TO_DAY_NAME[magDay] || '';
     setPublishingDay(dayName);
 
+    const isMag = (p.type_p || '').toLowerCase().includes('mag') || (p.type_p || '').toLowerCase().includes('periodical');
+
+    // Deduce duration if missing
+    let deducedDuration = p.duration || '';
+    if (!deducedDuration && isMag) {
+      const activeRates = (rates && rates.length > 0) ? rates : localRates;
+      const activeRateChanges = (ratechanges && ratechanges.length > 0) ? ratechanges : localRatechanges;
+      const pRates = activeRates.filter(r => (r.publica_id || (r as any).Publica_id) === p.publica_id);
+      const pRcs = activeRateChanges.filter(r => (r.publica_id || (r as any).Publica_id) === p.publica_id);
+      const dow = pRates[0]?.dayofweek || (pRates[0] as any)?.Dayofweek || pRcs[pRcs.length - 1]?.dayofweek;
+      if (dow === 1) deducedDuration = 'Weekly';
+      else if (dow === 2) deducedDuration = 'Fortnightly';
+      else if (dow === 3) deducedDuration = 'Monthly';
+      else if (dow === 4) deducedDuration = 'Quarterly';
+      else if (dow === 6) deducedDuration = 'Special';
+      else deducedDuration = 'Fortnightly';
+    }
+
     setSelectedPub({
       ...p,
       pub_hindi: hindiName,
       type_p: p.type_p || '',
       circulation: p.circulation || '',
-      duration: p.duration || '',
+      duration: deducedDuration,
       publish_id: p.publish_id || 0,
       magzine_day: magDay,
       is_closed: isClsd,
@@ -469,12 +487,34 @@ export default function PublicationForm({
     setClosedFrom(p.closed_from || '');
     setClosedTo(p.closed_to || '');
 
-    // Load effective 7-day weekday rates with rate changes aligned to publishing day
+    // Load effective rates
     const activeRates = (rates && rates.length > 0) ? rates : localRates;
     const activeRateChanges = (ratechanges && ratechanges.length > 0) ? ratechanges : localRatechanges;
     const effectiveRates = (p.current_rates && Object.values(p.current_rates).some(v => v > 0))
       ? { ...p.current_rates }
       : getEffectiveWeekdayRates(p.publica_id, '2099-12-31', activeRates, activeRateChanges, magDay);
+
+    // If Magazine and Fortnightly, scan ratechanges for Issue 1 (1-15) vs Issue 2 (16-31) rates
+    if (isMag && (deducedDuration === 'Fortnightly' || deducedDuration === ' पाक्षिक')) {
+      const pRcs = activeRateChanges
+        .filter(r => (r.publica_id || (r as any).Publica_id) === p.publica_id)
+        .sort((a: any, b: any) => ((a.effective_date || a.dated || '')).localeCompare(b.effective_date || b.dated || ''));
+      
+      let r1 = 0;
+      let r2 = 0;
+      for (let i = pRcs.length - 1; i >= 0; i--) {
+        const rc: any = pRcs[i];
+        const dStr = (rc.effective_date || rc.dated || '').split('T')[0];
+        const day = parseInt(dStr.split('-')[2], 10);
+        const val = Number(rc.new_rate ?? rc.NewRate ?? 0);
+        if (day <= 15 && !r1) r1 = val;
+        if (day > 15 && !r2) r2 = val;
+        if (r1 && r2) break;
+      }
+      const base = activeRates.find(r => (r.publica_id || (r as any).Publica_id) === p.publica_id)?.rate || 0;
+      effectiveRates[1] = r1 || r2 || base || 0;
+      effectiveRates[2] = r2 || r1 || base || 0;
+    }
 
     setWeekdayRates(effectiveRates);
     setNewWeekdayRates({ ...effectiveRates });
@@ -964,7 +1004,17 @@ export default function PublicationForm({
           <label className="col-span-4 text-right pr-2 text-[#800000]">Rate</label>
           <div className="col-span-8 flex items-center gap-2">
             {(() => {
-              const activeRateDay = (publishingDay && DAY_NAME_TO_ID[publishingDay]) || selectedDayRow || 1;
+              const isMag = (selectedPub.type_p || '').toLowerCase().includes('mag') || 
+                            (selectedPub.type_p || '').toLowerCase().includes('periodical') ||
+                            selectedPub.duration === 'Fortnightly' ||
+                            selectedPub.duration === 'Monthly' ||
+                            selectedPub.duration === 'Weekly' ||
+                            selectedPub.duration === 'Quarterly';
+
+              const activeRateDay = isMag 
+                ? (selectedDayRow || 1)
+                : ((publishingDay && DAY_NAME_TO_ID[publishingDay]) || selectedDayRow || 1);
+
               const curRateVal = weekdayRates[activeRateDay] ?? (Object.values(weekdayRates).find(v => v > 0) ?? 0);
               return (
                 <input 
@@ -994,6 +1044,7 @@ export default function PublicationForm({
               <option value="Weekly">Weekly</option>
               <option value="Monthly">Monthly</option>
               <option value="Fortnightly">Fortnightly</option>
+              <option value="Quarterly">Quarterly</option>
             </select>
           </div>
 
@@ -1183,70 +1234,175 @@ export default function PublicationForm({
             </div>
           )}
 
-          {/* Weekdays Rate Grid and Shortcuts */}
+          {/* Weekdays or Magazine Issue Rate Grid and Shortcuts */}
           <div className="flex items-center justify-center gap-6 pt-1 pb-1 w-full max-w-[620px]">
-            {/* Weekdays Grid */}
+            {/* Grid Container */}
             <div className={`${isRateChangeMode ? 'w-[370px]' : 'w-[300px]'} bg-white border border-[#808080] shadow-sm transition-all`}>
-              <div className="bg-[#ECE9D8] text-center font-bold text-xs py-1 border-b border-[#808080] text-[#000080] flex items-center justify-between px-2">
-                <span>Weekdays Rate (दर विवरण)</span>
-                <span className="text-[10px] text-slate-600">
-                  {isRateChangeMode ? 'Enter New Rates' : 'Effective Rates'}
-                </span>
-              </div>
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-[#ECE9D8] border-b border-[#808080]">
-                    <th className="p-1 border-r text-left">Weekdays</th>
-                    {isRateChangeMode ? (
-                      <>
-                        <th className="p-1 border-r text-center w-20 text-slate-600">Current (₹)</th>
-                        <th className="p-1 text-center w-24 text-emerald-800 bg-emerald-50">New Rate (₹)</th>
-                      </>
-                    ) : (
-                      <th className="p-1 text-center w-24">Rate (₹)</th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {WEEKDAYS.map((d) => (
-                    <tr 
-                      key={d.id}
-                      onClick={() => setSelectedDayRow(d.id)}
-                      className={`cursor-pointer border-b border-slate-200 ${selectedDayRow === d.id ? 'bg-blue-50 font-bold' : 'hover:bg-blue-50 text-black'}`}
-                    >
-                      <td className="p-1 border-r">{d.name} ({d.hindi})</td>
-                      {isRateChangeMode ? (
-                        <>
-                          <td className="p-1 border-r text-center font-bold text-slate-600 bg-slate-50">
-                            {weekdayRates[d.id] ?? 0}
-                          </td>
-                          <td className="p-0.5 text-center bg-emerald-50/40">
-                            <input 
-                              type="number"
-                              step="0.25"
-                              value={newWeekdayRates[d.id] ? newWeekdayRates[d.id] : (newWeekdayRates[d.id] === 0 ? '0' : '')}
-                              placeholder="0.00"
-                              onChange={(e) => setNewWeekdayRates({ ...newWeekdayRates, [d.id]: parseFloat(e.target.value) || 0 })}
-                              className="w-full text-center text-xs font-bold outline-none bg-white border border-emerald-500 text-emerald-900 shadow-inner focus:bg-yellow-50"
-                            />
-                          </td>
-                        </>
-                      ) : (
-                        <td className="p-0.5 text-center">
-                          <input 
-                            type="number"
-                            step="0.25"
-                            value={weekdayRates[d.id] ? weekdayRates[d.id] : (weekdayRates[d.id] === 0 ? '0' : '')}
-                            placeholder="0.00"
-                            onChange={(e) => setWeekdayRates({ ...weekdayRates, [d.id]: parseFloat(e.target.value) || 0 })}
-                            className="w-full text-center text-xs font-bold outline-none bg-transparent text-black"
-                          />
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {(() => {
+                const isMagazineType = (selectedPub.type_p || '').toLowerCase().includes('mag') || 
+                                       (selectedPub.type_p || '').toLowerCase().includes('periodical') ||
+                                       selectedPub.duration === 'Fortnightly' ||
+                                       selectedPub.duration === 'Monthly' ||
+                                       selectedPub.duration === 'Weekly' ||
+                                       selectedPub.duration === 'Quarterly';
+
+                if (isMagazineType) {
+                  // Determine magazine periodicity rows
+                  const dur = selectedPub.duration || 'Fortnightly';
+                  const magRows: { id: number; label: string; sub: string }[] = [];
+
+                  if (dur === 'Fortnightly' || dur === ' पाक्षिक') {
+                    magRows.push({ id: 1, label: 'Issue 1 (प्रथम अंक)', sub: '1st - 15th' });
+                    magRows.push({ id: 2, label: 'Issue 2 (द्वितीय अंक)', sub: '16th - End' });
+                  } else if (dur === 'Monthly' || dur === 'मासिक') {
+                    magRows.push({ id: 1, label: 'Monthly Issue (मासिक अंक)', sub: 'Full Month' });
+                  } else if (dur === 'Quarterly' || dur === 'त्रैमासिक') {
+                    magRows.push({ id: 1, label: 'Quarterly Issue (त्रैमासिक अंक)', sub: '3 Months' });
+                  } else {
+                    magRows.push({ id: 1, label: 'Regular Issue (अंक दर)', sub: dur });
+                  }
+
+                  return (
+                    <div>
+                      <div className="bg-[#ECE9D8] text-center font-bold text-xs py-1 border-b border-[#808080] text-[#800000] flex items-center justify-between px-2">
+                        <span>Magazine Issue Rate ({dur})</span>
+                        <span className="text-[10px] text-slate-600">
+                          {isRateChangeMode ? 'Enter New Rates' : 'Effective Rates'}
+                        </span>
+                      </div>
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-[#ECE9D8] border-b border-[#808080]">
+                            <th className="p-1 border-r text-left">Period / Issue</th>
+                            {isRateChangeMode ? (
+                              <>
+                                <th className="p-1 border-r text-center w-20 text-slate-600">Current (₹)</th>
+                                <th className="p-1 text-center w-24 text-emerald-800 bg-emerald-50">New Rate (₹)</th>
+                              </>
+                            ) : (
+                              <th className="p-1 text-center w-24">Rate (₹)</th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {magRows.map((r) => (
+                            <tr 
+                              key={r.id}
+                              onClick={() => setSelectedDayRow(r.id)}
+                              className={`cursor-pointer border-b border-slate-200 ${selectedDayRow === r.id ? 'bg-amber-50 font-bold' : 'hover:bg-amber-50 text-black'}`}
+                            >
+                              <td className="p-1 border-r">
+                                <div className="font-bold text-blue-900">{r.label}</div>
+                                <div className="text-[10px] text-slate-500">{r.sub}</div>
+                              </td>
+                              {isRateChangeMode ? (
+                                <>
+                                  <td className="p-1 border-r text-center font-bold text-slate-600 bg-slate-50">
+                                    {weekdayRates[r.id] ?? 0}
+                                  </td>
+                                  <td className="p-0.5 text-center bg-emerald-50/40">
+                                    <input 
+                                      type="number"
+                                      step="0.25"
+                                      value={newWeekdayRates[r.id] ? newWeekdayRates[r.id] : (newWeekdayRates[r.id] === 0 ? '0' : '')}
+                                      placeholder="0.00"
+                                      onChange={(e) => {
+                                        const val = parseFloat(e.target.value) || 0;
+                                        setNewWeekdayRates(prev => ({ ...prev, [r.id]: val }));
+                                      }}
+                                      className="w-full text-center text-xs font-bold outline-none bg-white border border-emerald-500 text-emerald-900 shadow-inner focus:bg-yellow-50"
+                                    />
+                                  </td>
+                                </>
+                              ) : (
+                                <td className="p-0.5 text-center">
+                                  <input 
+                                    type="number"
+                                    step="0.25"
+                                    value={weekdayRates[r.id] ? weekdayRates[r.id] : (weekdayRates[r.id] === 0 ? '0' : '')}
+                                    placeholder="0.00"
+                                    onChange={(e) => {
+                                      const val = parseFloat(e.target.value) || 0;
+                                      setWeekdayRates(prev => ({ ...prev, [r.id]: val }));
+                                    }}
+                                    className="w-full text-center text-xs font-bold outline-none bg-transparent text-black"
+                                  />
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                }
+
+                // Standard Newspaper 7-day Weekdays table
+                return (
+                  <div>
+                    <div className="bg-[#ECE9D8] text-center font-bold text-xs py-1 border-b border-[#808080] text-[#000080] flex items-center justify-between px-2">
+                      <span>Weekdays Rate (दर विवरण)</span>
+                      <span className="text-[10px] text-slate-600">
+                        {isRateChangeMode ? 'Enter New Rates' : 'Effective Rates'}
+                      </span>
+                    </div>
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-[#ECE9D8] border-b border-[#808080]">
+                          <th className="p-1 border-r text-left">Weekdays</th>
+                          {isRateChangeMode ? (
+                            <>
+                              <th className="p-1 border-r text-center w-20 text-slate-600">Current (₹)</th>
+                              <th className="p-1 text-center w-24 text-emerald-800 bg-emerald-50">New Rate (₹)</th>
+                            </>
+                          ) : (
+                            <th className="p-1 text-center w-24">Rate (₹)</th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {WEEKDAYS.map((d) => (
+                          <tr 
+                            key={d.id}
+                            onClick={() => setSelectedDayRow(d.id)}
+                            className={`cursor-pointer border-b border-slate-200 ${selectedDayRow === d.id ? 'bg-blue-50 font-bold' : 'hover:bg-blue-50 text-black'}`}
+                          >
+                            <td className="p-1 border-r">{d.name} ({d.hindi})</td>
+                            {isRateChangeMode ? (
+                              <>
+                                <td className="p-1 border-r text-center font-bold text-slate-600 bg-slate-50">
+                                  {weekdayRates[d.id] ?? 0}
+                                </td>
+                                <td className="p-0.5 text-center bg-emerald-50/40">
+                                  <input 
+                                    type="number"
+                                    step="0.25"
+                                    value={newWeekdayRates[d.id] ? newWeekdayRates[d.id] : (newWeekdayRates[d.id] === 0 ? '0' : '')}
+                                    placeholder="0.00"
+                                    onChange={(e) => setNewWeekdayRates({ ...newWeekdayRates, [d.id]: parseFloat(e.target.value) || 0 })}
+                                    className="w-full text-center text-xs font-bold outline-none bg-white border border-emerald-500 text-emerald-900 shadow-inner focus:bg-yellow-50"
+                                  />
+                                </td>
+                              </>
+                            ) : (
+                              <td className="p-0.5 text-center">
+                                <input 
+                                  type="number"
+                                  step="0.25"
+                                  value={weekdayRates[d.id] ? weekdayRates[d.id] : (weekdayRates[d.id] === 0 ? '0' : '')}
+                                  placeholder="0.00"
+                                  onChange={(e) => setWeekdayRates({ ...weekdayRates, [d.id]: parseFloat(e.target.value) || 0 })}
+                                  className="w-full text-center text-xs font-bold outline-none bg-transparent text-black"
+                                />
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Right Side Shortcut Labels & Checkbox */}
