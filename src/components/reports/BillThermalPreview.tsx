@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Printer, ChevronLeft, ChevronRight, Download, FileText, Check } from 'lucide-react';
-import { BillRecord, BillPrintMode } from '@/lib/bill4in1Export';
+import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from '@/lib/bill4in1Export';
 import { printBillsThermal58mm } from '@/lib/billThermalExport';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { roundToFoxProRule } from '@/lib/billingEngine';
@@ -149,15 +149,20 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         }}
       >
         {/* Receipt Header */}
-        <div className="text-center space-y-0.5">
-          <div className="font-black text-sm tracking-tight text-slate-950 uppercase">
-            ARYAN NEWS AGENCY
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-8 shrink-0 flex justify-center">
+            <img src={BOY_LOGO_B64} alt="logo" className="h-8 w-auto object-contain" />
           </div>
-          <div className="text-[9.5px] text-slate-800">
-            5 Old Bus stand Beawar
-          </div>
-          <div className="text-[9.5px] text-slate-800">
-            Ph: 9462558949, 9829058949
+          <div className="text-center space-y-0.5 flex-1">
+            <div className="font-black text-sm tracking-tight text-slate-950 uppercase">
+              ARYAN NEWS AGENCY
+            </div>
+            <div className="text-[9.5px] text-slate-800">
+              5 Old Bus stand Beawar
+            </div>
+            <div className="text-[9.5px] text-slate-800">
+              Ph: 9462558949, 9829058949
+            </div>
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import { BillRecord, BillPrintMode } from './bill4in1Export';
+import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from './bill4in1Export';
 import { cleanOrTransliterateHindi } from './transliteration';
 import { roundToFoxProRule } from './billingEngine';
 
@@ -103,10 +103,15 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
 
   return `
     <div class="thermal-receipt">
-      <div class="thermal-header">
-        <div class="agency-title">ARYAN NEWS AGENCY</div>
-        <div class="agency-sub">5 Old Bus stand Beawar</div>
-        <div class="agency-sub">Ph: 9462558949, 9829058949</div>
+      <div class="thermal-header" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <div class="thermal-logo-box" style="flex-shrink: 0;">
+          <img src="${BOY_LOGO_B64}" alt="logo" style="height: 38px; width: auto; object-fit: contain;" />
+        </div>
+        <div style="flex: 1; text-align: center;">
+          <div class="agency-title">ARYAN NEWS AGENCY</div>
+          <div class="agency-sub">5 Old Bus stand Beawar</div>
+          <div class="agency-sub">Ph: 9462558949, 9829058949</div>
+        </div>
       </div>
 
       <div class="divider">================================</div>

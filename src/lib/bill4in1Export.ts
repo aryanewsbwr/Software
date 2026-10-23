@@ -171,8 +171,8 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
           <div class="agency-title">
             ARYAN NEWS AGENCY<span class="reg-mark">®</span>
           </div>
-          <div class="agency-sub">Netaji Subhash Marg, BEAWAR (Raj.)</div>
-          <div class="agency-sub">Ph.: (01462) 258949</div>
+          <div class="agency-sub">5 Old Bus stand Beawar</div>
+          <div class="agency-sub">Ph: 9462558949, 9829058949</div>
         </div>
       </div>
 

@@ -251,10 +251,10 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                           ARYAN NEWS AGENCY<sup className="text-[9px]">®</sup>
                         </div>
                         <div className="text-[9px] text-slate-900 leading-tight font-medium">
-                          Netaji Subhash Marg, BEAWAR (Raj.)
+                          5 Old Bus stand Beawar
                         </div>
                         <div className="text-[9px] text-slate-900 leading-tight font-medium">
-                          Ph.: (01462) 258949
+                          Ph: 9462558949, 9829058949
                         </div>
                       </div>
                     </div>
