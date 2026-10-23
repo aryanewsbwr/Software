@@ -83,6 +83,11 @@ export default function ReportsForm({
   const [selectedMonth, setSelectedMonth] = useState<string>('September');
   const [selectedYear, setSelectedYear] = useState<string>('2026');
   const [targetCustId, setTargetCustId] = useState<string>('');
+  const [selectedCustName, setSelectedCustName] = useState<string>('');
+  const [customerSuggestions, setCustomerSuggestions] = useState<any[]>([]);
+  const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState<boolean>(false);
+  const [isSearchingCustomers, setIsSearchingCustomers] = useState<boolean>(false);
+  const [highlightedCustIndex, setHighlightedCustIndex] = useState<number>(0);
   const [billBatchLimit, setBillBatchLimit] = useState<number>(0);
   const [billPrintMode, setBillPrintMode] = useState<'detail' | 'simple'>('simple');
   const [billPrinterType, setBillPrinterType] = useState<'4in1_a4' | 'thermal_58mm'>('4in1_a4');
@@ -146,6 +151,38 @@ export default function ReportsForm({
         });
     }
   }, [propsRegions, propsHawkers, propsPubs]);
+
+  // Live search customers for autocomplete in Single Bill Printing
+  const handleCustomerSearch = useCallback(async (query: string) => {
+    setTargetCustId(query);
+    setSelectedCustName('');
+    const q = query.trim();
+    if (!q) {
+      setCustomerSuggestions([]);
+      setIsCustomerDropdownOpen(false);
+      return;
+    }
+
+    setIsSearchingCustomers(true);
+    try {
+      const res = await fetch(`/api/customers?search=${encodeURIComponent(q)}&limit=15`);
+      const data = await res.json();
+      const list = data?.customers || (Array.isArray(data) ? data : []);
+      setCustomerSuggestions(list);
+      setHighlightedCustIndex(0);
+      setIsCustomerDropdownOpen(list.length > 0);
+    } catch (err) {
+      console.warn('Customer search error:', err);
+    } finally {
+      setIsSearchingCustomers(false);
+    }
+  }, []);
+
+  const handleSelectCustomer = (cust: any) => {
+    setTargetCustId(String(cust.customer_id));
+    setSelectedCustName(cust.name_eng || cust.name_hindi || `Customer #${cust.customer_id}`);
+    setIsCustomerDropdownOpen(false);
+  };
 
   // Fetch Report Data from API
   const fetchReport = useCallback(async () => {
@@ -336,17 +373,77 @@ export default function ReportsForm({
               </div>
             )}
 
-            {/* Customer ID Filter for Single Bill Printing */}
+            {/* Customer ID / Name Filter for Single Bill Printing with live autocomplete dropdown */}
             {(currentMeta.hasCustId || activeReport === 'bill_print_single') && (
-              <div className="flex items-center">
+              <div className="flex items-center relative">
                 <label className="w-28 font-bold text-[#800000] shrink-0">Customer ID</label>
-                <input 
-                  type="text"
-                  placeholder="e.g. 24669 or Name"
-                  value={targetCustId}
-                  onChange={(e) => setTargetCustId(e.target.value)}
-                  className="w-48 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold font-mono outline-none"
-                />
+                <div className="relative flex-1 flex items-center gap-2 max-w-sm">
+                  <input 
+                    type="text"
+                    placeholder="e.g. 24669 or Customer Name..."
+                    value={targetCustId}
+                    onChange={(e) => handleCustomerSearch(e.target.value)}
+                    onFocus={() => {
+                      if (targetCustId.trim() && customerSuggestions.length > 0) {
+                        setIsCustomerDropdownOpen(true);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (isCustomerDropdownOpen && customerSuggestions.length > 0) {
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          setHighlightedCustIndex(prev => (prev + 1) % customerSuggestions.length);
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          setHighlightedCustIndex(prev => (prev - 1 + customerSuggestions.length) % customerSuggestions.length);
+                        } else if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSelectCustomer(customerSuggestions[highlightedCustIndex]);
+                        } else if (e.key === 'Escape') {
+                          setIsCustomerDropdownOpen(false);
+                        }
+                      }
+                    }}
+                    className="w-48 px-2 py-1 border border-[#7F9DB9] bg-white text-black font-bold font-mono outline-none text-xs"
+                    autoFocus
+                  />
+                  {selectedCustName && (
+                    <span className="text-xs font-bold text-blue-900 bg-blue-50 px-2 py-0.5 border border-blue-200 rounded truncate">
+                      ✓ {selectedCustName}
+                    </span>
+                  )}
+
+                  {/* Autocomplete suggestions dropdown */}
+                  {isCustomerDropdownOpen && customerSuggestions.length > 0 && (
+                    <div className="absolute left-0 top-full mt-1 w-80 bg-white border-2 border-[#0A246A] shadow-2xl max-h-56 overflow-y-auto z-50 text-xs">
+                      {customerSuggestions.map((cust, idx) => {
+                        const isHighlighted = idx === highlightedCustIndex;
+                        return (
+                          <div 
+                            key={cust.customer_id}
+                            onClick={() => handleSelectCustomer(cust)}
+                            onMouseEnter={() => setHighlightedCustIndex(idx)}
+                            className={`px-2.5 py-1.5 cursor-pointer font-bold border-b border-slate-100 flex items-center justify-between text-xs ${
+                              isHighlighted ? 'bg-[#0A246A] text-white' : 'hover:bg-blue-50 text-slate-900'
+                            }`}
+                          >
+                            <div className="flex flex-col truncate pr-2">
+                              <span className="truncate">{cust.name_eng}</span>
+                              {cust.name_hindi && (
+                                <span className="text-[10px] text-slate-500 font-normal">
+                                  {cust.name_hindi}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] font-mono shrink-0 opacity-80">
+                              #{cust.customer_id}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
