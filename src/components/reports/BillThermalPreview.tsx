@@ -4,6 +4,7 @@ import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from '@/lib/bill4in1Export';
 import { printBillsThermal58mm } from '@/lib/billThermalExport';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { roundToFoxProRule } from '@/lib/billingEngine';
+import { generateDynamicUpiQrSvg, UPI_VPA } from '@/lib/upiQrHelper';
 
 interface BillThermalPreviewProps {
   bills: BillRecord[];
@@ -278,13 +279,25 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           ================================
         </div>
 
-        {/* Footer Note with QR Code replacing previous texts */}
+        {/* Footer Note with Dynamic UPI QR Code */}
         <div className="flex flex-col items-center justify-center pt-2 pb-1">
-          <img 
-            src="/bill_qr_code.jpeg" 
-            alt="Payment QR" 
-            className="w-28 h-28 object-contain rounded-sm"
+          <div 
+            className="w-28 h-28 flex items-center justify-center bg-white p-1 rounded-xs border border-slate-200 shadow-xs"
+            dangerouslySetInnerHTML={{
+              __html: generateDynamicUpiQrSvg(
+                netPayable,
+                b.bill_no || b.customer_id,
+                `${b.month || ''} ${b.year || ''}`.trim(),
+                110
+              )
+            }}
           />
+          <div className="text-[9px] font-bold text-slate-900 mt-1 text-center">
+            SCAN & PAY: ₹ {formatMoney(netPayable)}
+          </div>
+          <div className="text-[8px] text-slate-600 text-center">
+            UPI: {UPI_VPA}
+          </div>
         </div>
       </div>
     );
