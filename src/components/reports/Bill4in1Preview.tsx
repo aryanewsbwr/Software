@@ -242,11 +242,11 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                     style={{ height: '148.5mm', maxHeight: '148.5mm' }}
                   >
                     {/* TOP HEADER */}
-                    <div className="flex items-start gap-1.5 mb-1">
-                      <div className="w-8 shrink-0 flex justify-center">
-                        <img src={BOY_LOGO_B64} alt="logo" className="h-9 w-auto object-contain" />
+                    <div className="relative flex items-center justify-center mb-1">
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-7 shrink-0 flex items-center justify-center">
+                        <img src={BOY_LOGO_B64} alt="logo" className="h-9 w-auto object-contain block" />
                       </div>
-                      <div className="flex-1 text-center">
+                      <div className="w-full text-center px-8">
                         <div className="text-sm font-black text-[#004B87] uppercase tracking-wider font-serif leading-tight">
                           ARYAN NEWS AGENCY<sup className="text-[9px]">®</sup>
                         </div>

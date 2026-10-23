@@ -909,6 +909,38 @@ export async function GET(request: NextRequest) {
         query = query.eq('region_id', rNum);
       }
 
+      // If user searched by Customer ID or numeric input, filter directly at DB level
+      const trimmedSearch = (search || '').trim();
+      const isNumericSearch = /^\d+$/.test(trimmedSearch);
+      if (isNumericSearch) {
+        query = query.eq('customer_id', parseInt(trimmedSearch, 10));
+      } else if (trimmedSearch) {
+        // If searching by customer name or phone, first find matching customer_ids from customer table
+        const { data: matchedCusts } = await supabase
+          .from('customer')
+          .select('customer_id')
+          .or(`name_eng.ilike.%${trimmedSearch}%,phone.ilike.%${trimmedSearch}%`)
+          .limit(200);
+
+        const matchedIds = (matchedCusts || []).map(c => c.customer_id).filter(Boolean);
+        if (matchedIds.length > 0) {
+          query = query.in('customer_id', matchedIds);
+        } else {
+          // No customer matched text search
+          return NextResponse.json({
+            report_title: reportType === 'bill_print_single'
+              ? `SINGLE CUSTOMER BILL PRINTING (${standardMonth.toUpperCase()} ${year})`
+              : `REGION-WISE BILL PRINTING (${standardMonth.toUpperCase()} ${year})`,
+            error: `No customer found matching "${trimmedSearch}".`,
+            not_generated: true,
+            rows: [],
+            total_rows: 0,
+            page: 1,
+            total_pages: 1
+          }, { status: 400 });
+        }
+      }
+
       let { data: billnoRows, error: billnoErr } = await query.order('bill_id', { ascending: true });
 
       if (billnoErr || !billnoRows || billnoRows.length === 0) {
@@ -923,20 +955,6 @@ export async function GET(request: NextRequest) {
           page: 1,
           total_pages: 1
         }, { status: 400 });
-      }
-
-      // Filter by customer search or target customer id
-      if (search) {
-        const searchLower = search.toLowerCase();
-        billnoRows = billnoRows.filter(b => {
-          const cid = Number(b.customer_id);
-          const cust = data.customers.find(c => c.customer_id === cid);
-          return (
-            String(cid).includes(search) ||
-            (cust && cust.name_eng && cust.name_eng.toLowerCase().includes(searchLower)) ||
-            (cust && cust.phone && cust.phone.includes(search))
-          );
-        });
       }
 
       // If single bill printing and no specific search, take the first customer
@@ -985,9 +1003,21 @@ export async function GET(request: NextRequest) {
       const pubMap = new Map<number, any>();
       (data.publications || []).forEach((p: any) => pubMap.set(p.publica_id, p));
 
-      // Customer map
+      // Customer map: merge from cache and also fetch any missing customer details directly from Supabase
       const custMap = new Map<number, any>();
       (data.customers || []).forEach((c: any) => custMap.set(c.customer_id, c));
+
+      const missingCustIds = targetCustIds.filter(id => !custMap.has(Number(id)));
+      if (missingCustIds.length > 0) {
+        for (let i = 0; i < missingCustIds.length; i += 200) {
+          const chunk = missingCustIds.slice(i, i + 200);
+          const { data: fetchedCusts } = await supabase
+            .from('customer')
+            .select('*')
+            .in('customer_id', chunk);
+          (fetchedCusts || []).forEach(c => custMap.set(c.customer_id, c));
+        }
+      }
 
       // Delivery charges map: customer_id + '_' + publica_id -> dely amount
       const delMap = new Map<string, number>();

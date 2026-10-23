@@ -433,24 +433,33 @@ export function generateFullPrintHtml(bills: BillRecord[], title: string = 'Arya
     /* HEADER */
     .bill-header {
       display: flex;
-      align-items: flex-start;
-      gap: 6px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       margin-bottom: 2px;
+      position: relative;
     }
     .logo-box {
-      width: 32px;
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 28px;
       flex-shrink: 0;
       display: flex;
+      align-items: center;
       justify-content: center;
     }
     .agency-logo {
-      height: 40px;
+      height: 38px;
       width: auto;
       object-fit: contain;
+      display: block;
     }
     .agency-info {
-      flex: 1;
+      width: 100%;
       text-align: center;
+      padding: 0 32px;
     }
     .agency-title {
       font-size: 15px;
