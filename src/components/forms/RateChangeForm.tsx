@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { TrendingUp, Calendar, Search, RefreshCw, X, History, Trash2, Edit3, ArrowRight } from 'lucide-react';
+import { TrendingUp, Calendar, Search, RefreshCw, X, History, Trash2, Edit3, ArrowRight, BookOpen } from 'lucide-react';
 import { Publication, Rate, RateChange } from '@/lib/types';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
-import { getEffectiveWeekdayRates } from '@/lib/rateEngine';
+import { getPublicationPeriodicityAndRates, PeriodicityInfo } from '@/lib/rateEngine';
 
 interface RateChangeFormProps {
   onClose: () => void;
@@ -41,10 +41,13 @@ export default function RateChangeForm({
   const [selectedPub, setSelectedPub] = useState<Publication | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Periodicity info
+  const [periodInfo, setPeriodInfo] = useState<PeriodicityInfo | null>(null);
+
   // Rate states
   const [effectiveDate, setEffectiveDate] = useState<string>(todayDdmmyyyy);
-  const [currentWeekdayRates, setCurrentWeekdayRates] = useState<Record<number, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 });
-  const [newWeekdayRates, setNewWeekdayRates] = useState<Record<number, number>>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 });
+  const [currentRates, setCurrentRates] = useState<Record<number, number>>({});
+  const [newRates, setNewRates] = useState<Record<number, number>>({});
 
   // Rate Change History
   const [historyList, setHistoryList] = useState<any[]>([]);
@@ -77,17 +80,16 @@ export default function RateChangeForm({
     }
   }, [publications]);
 
-  // Load publication and resolve effective rates
+  // Load publication and resolve effective rates based on periodicity
   const loadPublicationRates = async (pub: Publication) => {
     setSelectedPub(pub);
     setSearchTerm('');
     setEffectiveDate(todayDdmmyyyy);
 
-    const magDay = pub.magzine_day ? Number(pub.magzine_day) : 0;
-    const baseRates = getEffectiveWeekdayRates(pub.publica_id, todayIso, rates, ratechanges, magDay);
-
-    setCurrentWeekdayRates(baseRates);
-    setNewWeekdayRates({ ...baseRates });
+    const info = getPublicationPeriodicityAndRates(pub, todayIso, rates, ratechanges);
+    setPeriodInfo(info);
+    setCurrentRates(info.rates);
+    setNewRates({ ...info.rates });
 
     // Fetch history
     fetchHistory(pub.publica_id);
@@ -130,13 +132,17 @@ export default function RateChangeForm({
     return val;
   };
 
-  // F1 copy Sunday rate to all 7 days
+  // F1 copy first rate across all rows (if daily or multiple rows)
   const copySundayRate = () => {
-    const sun = newWeekdayRates[1] || 0;
+    const sun = newRates[1] || 0;
     const updated: Record<number, number> = {};
-    WEEKDAYS.forEach(d => { updated[d.id] = sun; });
-    setNewWeekdayRates(updated);
-    setMsg({ text: `F1 Pressed: Copied Sunday Rate (₹${sun.toFixed(2)}) across all 7 days!` });
+    if (periodInfo?.rows) {
+      periodInfo.rows.forEach(r => { updated[r.id] = sun; });
+    } else {
+      WEEKDAYS.forEach(d => { updated[d.id] = sun; });
+    }
+    setNewRates(updated);
+    setMsg({ text: `F1 Pressed: Copied ₹${sun.toFixed(2)} across all slots!` });
     setTimeout(() => setMsg(null), 3000);
   };
 
@@ -154,11 +160,11 @@ export default function RateChangeForm({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [newWeekdayRates, isHistoryOpen]);
+  }, [newRates, isHistoryOpen, periodInfo]);
 
   // Load a historical revision into editor for fixing
   const handleSelectHistoryRevision = (effDate: string) => {
-    if (!effDate) return;
+    if (!effDate || !periodInfo) return;
     const cleanDate = effDate.split('T')[0];
     const parts = cleanDate.split('-');
     const ddmmyyyy = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : cleanDate;
@@ -168,28 +174,35 @@ export default function RateChangeForm({
       return hDate === cleanDate;
     });
 
-    const loadedNewRates: Record<number, number> = { ...currentWeekdayRates };
-    const loadedOldRates: Record<number, number> = { ...currentWeekdayRates };
+    const loadedNewRates: Record<number, number> = { ...currentRates };
+    const loadedOldRates: Record<number, number> = { ...currentRates };
 
     dateChanges.forEach(dc => {
       const dow = Number(dc.dayofweek !== undefined ? dc.dayofweek : dc.Dayofweek);
       const newVal = Number(dc.new_rate ?? dc.NewRate ?? dc.newrate ?? 0);
       const oldVal = Number(dc.oldrate ?? dc.OldRate ?? 0);
 
-      if (dow === 0) {
-        WEEKDAYS.forEach(w => {
-          loadedNewRates[w.id] = newVal;
-          if (oldVal > 0) loadedOldRates[w.id] = oldVal;
-        });
-      } else if (dow >= 1 && dow <= 7) {
-        loadedNewRates[dow] = newVal;
-        if (oldVal > 0) loadedOldRates[dow] = oldVal;
+      if (periodInfo.isDaily) {
+        if (dow === 0) {
+          WEEKDAYS.forEach(w => {
+            loadedNewRates[w.id] = newVal;
+            if (oldVal > 0) loadedOldRates[w.id] = oldVal;
+          });
+        } else if (dow >= 1 && dow <= 7) {
+          loadedNewRates[dow] = newVal;
+          if (oldVal > 0) loadedOldRates[dow] = oldVal;
+        }
+      } else {
+        // Periodical (Fortnightly, Monthly, etc.)
+        const slot = periodInfo.periodicity === 'Fortnightly' ? (dow === 2 ? 2 : 1) : 1;
+        loadedNewRates[slot] = newVal;
+        if (oldVal > 0) loadedOldRates[slot] = oldVal;
       }
     });
 
     setEffectiveDate(ddmmyyyy);
-    setNewWeekdayRates(loadedNewRates);
-    setCurrentWeekdayRates(loadedOldRates);
+    setNewRates(loadedNewRates);
+    setCurrentRates(loadedOldRates);
     setIsHistoryOpen(false);
     setMsg({ text: `Loaded Revision from ${ddmmyyyy}. You can now edit rates or date, and click Save / Update!` });
     setTimeout(() => setMsg(null), 5000);
@@ -222,7 +235,7 @@ export default function RateChangeForm({
 
   // Save / Update Rate Change
   const handleSaveRateChange = async () => {
-    if (!selectedPub) {
+    if (!selectedPub || !periodInfo) {
       setMsg({ text: 'Please select a publication first.', isError: true });
       return;
     }
@@ -230,6 +243,44 @@ export default function RateChangeForm({
     const effIso = toIso(effectiveDate);
     setIsSaving(true);
     setMsg(null);
+
+    // Map rates to appropriate dayofweek for FoxPro database alignment:
+    // Daily: { 1..7 }
+    // Fortnightly: Issue 1 -> dayofweek=1 (or 2), Issue 2 -> dayofweek=2
+    // Monthly: dayofweek=3
+    // Quarterly: dayofweek=4
+    // Special: dayofweek=6
+    // Weekly: dayofweek=1 (or magzine_day)
+    let payloadRates: Record<number, number> = {};
+    let payloadOldRates: Record<number, number> = {};
+
+    if (periodInfo.isDaily) {
+      payloadRates = { ...newRates };
+      payloadOldRates = { ...currentRates };
+    } else if (periodInfo.periodicity === 'Fortnightly') {
+      // Slot 1 and Slot 2
+      payloadRates = {
+        1: newRates[1] || newRates[2] || 0,
+        2: newRates[2] || newRates[1] || 0
+      };
+      payloadOldRates = {
+        1: currentRates[1] || currentRates[2] || 0,
+        2: currentRates[2] || currentRates[1] || 0
+      };
+    } else {
+      // Single issue rate for Monthly (3), Quarterly (4), Special (6), Weekly (1)
+      const pRates = rates.filter(r => (r.publica_id || (r as any).Publica_id) === selectedPub.publica_id);
+      const targetDow = pRates[0]?.dayofweek || (pRates[0] as any)?.Dayofweek || (
+        periodInfo.periodicity === 'Monthly' ? 3 :
+        periodInfo.periodicity === 'Quarterly' ? 4 :
+        periodInfo.periodicity === 'Special' ? 6 : 1
+      );
+      const rateVal = newRates[1] || Object.values(newRates)[0] || 0;
+      const oldVal = currentRates[1] || Object.values(currentRates)[0] || 0;
+
+      payloadRates[targetDow] = rateVal;
+      payloadOldRates[targetDow] = oldVal;
+    }
 
     try {
       const res = await fetch('/api/rates', {
@@ -239,8 +290,8 @@ export default function RateChangeForm({
           publica_id: selectedPub.publica_id,
           is_rate_change: true,
           effective_date: effIso,
-          new_rates: newWeekdayRates,
-          old_rates: currentWeekdayRates
+          new_rates: payloadRates,
+          old_rates: payloadOldRates
         })
       });
 
@@ -248,14 +299,14 @@ export default function RateChangeForm({
       if (data.error) throw new Error(data.error);
 
       if (effIso <= todayIso) {
-        setCurrentWeekdayRates({ ...newWeekdayRates });
+        setCurrentRates({ ...newRates });
       }
 
       // Refresh history
       fetchHistory(selectedPub.publica_id);
 
       if (onSave) {
-        onSave(selectedPub.publica_id, newWeekdayRates, effIso);
+        onSave(selectedPub.publica_id, payloadRates, effIso);
       }
 
       setMsg({ text: `✓ Rate change for "${selectedPub.public_name}" effective from ${effectiveDate} saved successfully!` });
@@ -267,17 +318,14 @@ export default function RateChangeForm({
     }
   };
 
-  const filteredPubs = pubList.filter(p => 
-    p.public_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    String(p.publica_id).includes(searchTerm)
-  );
+  const rows = periodInfo?.rows || [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 select-none">
       <div className="w-[720px] max-w-full bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma text-xs">
         
         {/* Title Bar */}
-        <div className="bg-linear-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2.5 py-1 font-bold flex justify-between items-center shadow-xs">
+        <div className="bg-gradient-to-r from-[#0A246A] to-[#A6CAF0] text-white px-2.5 py-1 font-bold flex justify-between items-center shadow-xs">
           <div className="flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4 text-yellow-300" />
             <span>Rate Change Master (अखबार / पत्रिका दर परिवर्तन मास्टर)</span>
@@ -323,6 +371,19 @@ export default function RateChangeForm({
             </button>
           </div>
 
+          {/* Periodicity & Classification Badge */}
+          {periodInfo && (
+            <div className="flex items-center justify-between px-3 py-1 bg-blue-50 border border-blue-200 text-blue-950 font-bold text-[11px] rounded-xs shadow-xs">
+              <div className="flex items-center gap-1.5">
+                <BookOpen className="w-4 h-4 text-blue-800" />
+                <span>Classification: <span className="text-blue-900 underline font-black">{periodInfo.label}</span></span>
+              </div>
+              <span className="text-[10px] text-slate-600 font-normal">
+                {periodInfo.isDaily ? '7-Day Weekday Schedule' : `${periodInfo.periodicity} Periodical Schedule`}
+              </span>
+            </div>
+          )}
+
           {/* Effective Date Row */}
           <div className="flex items-center justify-between px-3 py-1.5 bg-amber-50 border border-amber-300 rounded-xs text-xs font-bold text-amber-950 shadow-xs">
             <div className="flex items-center gap-2">
@@ -343,41 +404,46 @@ export default function RateChangeForm({
               </span>
             </div>
 
-            <button 
-              type="button"
-              onClick={copySundayRate}
-              className="px-2.5 py-0.5 bg-[#FFF4C8] hover:bg-[#FFE99A] border border-[#CCA000] text-black text-[11px] font-bold shadow-xs cursor-pointer rounded-xs"
-              title="Press F1 to copy Sunday new rate to Monday through Saturday"
-            >
-              Press F1: Copy Sunday Rate
-            </button>
+            {periodInfo?.isDaily && (
+              <button 
+                type="button"
+                onClick={copySundayRate}
+                className="px-2.5 py-0.5 bg-[#FFF4C8] hover:bg-[#FFE99A] border border-[#CCA000] text-black text-[11px] font-bold shadow-xs cursor-pointer rounded-xs"
+                title="Press F1 to copy Sunday new rate to Monday through Saturday"
+              >
+                Press F1: Copy Sunday Rate
+              </button>
+            )}
           </div>
 
-          {/* Weekdays Rate Grid */}
+          {/* Rate Grid: Smart Daily vs Magazine/Periodical */}
           <div className="bg-white border border-[#808080] shadow-sm">
             <div className="bg-[#ECE9D8] text-center font-bold text-xs py-1 border-b border-[#808080] text-[#000080] flex items-center justify-between px-3">
-              <span>Weekdays Rate (दर विवरण)</span>
-              <span className="text-[10px] text-slate-600">Enter New Rates for each day</span>
+              <span>{periodInfo?.isDaily ? 'Weekdays Rate (दर विवरण)' : `Periodical Rate (${periodInfo?.periodicity || 'Magazine'})`}</span>
+              <span className="text-[10px] text-slate-600">Enter New Rate(s)</span>
             </div>
 
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-[#ECE9D8] border-b border-[#808080]">
                   <th className="p-1.5 border-r text-left w-12 text-center">#</th>
-                  <th className="p-1.5 border-r text-left">Weekday (दिन)</th>
+                  <th className="p-1.5 border-r text-left">
+                    {periodInfo?.isDaily ? 'Weekday (दिन)' : 'Issue / Frequency (अंक / आवृति)'}
+                  </th>
                   <th className="p-1.5 border-r text-center w-28 text-slate-700 bg-slate-50">Current Rate (₹)</th>
                   <th className="p-1.5 text-center w-36 text-emerald-900 bg-emerald-50">New Rate (₹)</th>
                 </tr>
               </thead>
               <tbody>
-                {WEEKDAYS.map((d, idx) => (
-                  <tr key={d.id} className="border-b border-slate-200 hover:bg-blue-50/60">
+                {rows.map((r, idx) => (
+                  <tr key={r.id} className="border-b border-slate-200 hover:bg-blue-50/60">
                     <td className="p-1.5 border-r text-center font-mono text-slate-500">{idx + 1}</td>
                     <td className="p-1.5 border-r font-bold text-slate-900">
-                      {d.name} ({d.hindi})
+                      <div>{r.label}</div>
+                      {r.sub && <div className="text-[10px] text-slate-500 font-normal">{r.sub}</div>}
                     </td>
                     <td className="p-1.5 border-r text-center font-mono font-bold text-slate-600 bg-slate-50/50">
-                      ₹{(currentWeekdayRates[d.id] ?? 0).toFixed(2)}
+                      ₹{((currentRates[r.id] ?? 0)).toFixed(2)}
                     </td>
                     <td className="p-1 text-center bg-emerald-50/30">
                       <div className="flex items-center justify-center">
@@ -385,9 +451,9 @@ export default function RateChangeForm({
                         <input 
                           type="number"
                           step="0.25"
-                          value={newWeekdayRates[d.id] ? newWeekdayRates[d.id] : (newWeekdayRates[d.id] === 0 ? '0' : '')}
+                          value={newRates[r.id] ? newRates[r.id] : (newRates[r.id] === 0 ? '0' : '')}
                           placeholder="0.00"
-                          onChange={(e) => setNewWeekdayRates({ ...newWeekdayRates, [d.id]: parseFloat(e.target.value) || 0 })}
+                          onChange={(e) => setNewRates({ ...newRates, [r.id]: parseFloat(e.target.value) || 0 })}
                           className="w-24 text-center text-xs font-mono font-bold outline-none bg-white border border-emerald-500 text-emerald-950 py-0.5 shadow-inner focus:bg-yellow-50"
                         />
                       </div>
@@ -442,7 +508,7 @@ export default function RateChangeForm({
 
               <div className="p-2.5 space-y-2 flex-1 overflow-hidden flex flex-col">
                 <div className="bg-white p-2 border border-slate-300 text-xs text-blue-900 font-bold flex justify-between items-center">
-                  <span>Publication: #{selectedPub.publica_id} - {selectedPub.public_name}</span>
+                  <span>Publication: #{selectedPub.publica_id} - {selectedPub.public_name} ({periodInfo?.periodicity || 'Magazine'})</span>
                   <span className="text-slate-600 font-normal">Recorded Changes: {historyList.length}</span>
                 </div>
 
@@ -452,7 +518,9 @@ export default function RateChangeForm({
                       <tr>
                         <th className="p-1 border-r text-center w-10">#</th>
                         <th className="p-1 border-r text-left">Effective Date (दिनांक)</th>
-                        <th className="p-1 border-r text-left">Day / Weekday (दिन)</th>
+                        <th className="p-1 border-r text-left">
+                          {periodInfo?.isDaily ? 'Day / Weekday (दिन)' : 'Issue / Frequency'}
+                        </th>
                         <th className="p-1 border-r text-right w-20">Old Rate (₹)</th>
                         <th className="p-1 border-r text-right w-20 text-emerald-800">New Rate (₹)</th>
                         <th className="p-1 text-center w-24">Action (कार्य)</th>
@@ -474,8 +542,16 @@ export default function RateChangeForm({
                       ) : (
                         historyList.map((h, idx) => {
                           const dayNum = h.dayofweek !== undefined ? h.dayofweek : h.Dayofweek;
-                          const dayObj = WEEKDAYS.find(w => w.id === dayNum);
-                          const dayLabel = dayNum === 0 ? 'All Days (सभी दिन)' : (dayObj ? `${dayObj.name} (${dayObj.hindi})` : `Day ${dayNum}`);
+                          let dayLabel = '';
+                          if (periodInfo?.isDaily) {
+                            const dayObj = WEEKDAYS.find(w => w.id === dayNum);
+                            dayLabel = dayNum === 0 ? 'All Days (सभी दिन)' : (dayObj ? `${dayObj.name} (${dayObj.hindi})` : `Day ${dayNum}`);
+                          } else if (periodInfo?.periodicity === 'Fortnightly') {
+                            dayLabel = dayNum === 2 ? 'Issue 2 (16th-End)' : 'Issue 1 (1st-15th)';
+                          } else {
+                            dayLabel = `${periodInfo?.periodicity || 'Monthly'} Issue`;
+                          }
+
                           const effDate = (h.dated || h.Dated || h.effective_date || '').split('T')[0];
                           const oldVal = Number(h.oldrate ?? h.OldRate ?? 0);
                           const newVal = Number(h.new_rate ?? h.NewRate ?? 0);
