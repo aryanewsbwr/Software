@@ -9,19 +9,15 @@ export const UPI_PAYEE_NAME = 'ARYAN NEWS AGENCY';
  */
 export function buildUpiPaymentUri(amount: number, billNoOrCustId: string | number, month?: string): string {
   const cleanAmt = Math.max(0, Number(amount || 0)).toFixed(2);
-  const note = month 
+  const noteText = month 
     ? `Bill ${billNoOrCustId} ${month}` 
     : `Bill ${billNoOrCustId}`;
-  
-  const params = new URLSearchParams({
-    pa: UPI_VPA,
-    pn: UPI_PAYEE_NAME,
-    am: cleanAmt,
-    cu: 'INR',
-    tn: note
-  });
 
-  return `upi://pay?${params.toString()}`;
+  // Standard %20 encoding for maximum compatibility with PhonePe, Google Pay, Paytm, BHIM
+  const pn = encodeURIComponent(UPI_PAYEE_NAME);
+  const tn = encodeURIComponent(noteText);
+
+  return `upi://pay?pa=${UPI_VPA}&pn=${pn}&am=${cleanAmt}&cu=INR&tn=${tn}`;
 }
 
 /**

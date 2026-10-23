@@ -275,10 +275,6 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           </span>
         </div>
 
-        <div className="text-center font-bold tracking-tighter text-[10px] my-1 text-slate-700">
-          ================================
-        </div>
-
         {/* Footer Note with Dynamic UPI QR Code */}
         <div className="flex flex-col items-center justify-center pt-2 pb-1">
           <div 
