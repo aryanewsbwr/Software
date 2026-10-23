@@ -150,8 +150,8 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
       >
         {/* Receipt Header */}
         <div className="flex items-center justify-start gap-2 mb-1">
-          <div className="w-7 shrink-0 flex items-center justify-center">
-            <img src={BOY_LOGO_B64} alt="logo" className="h-12 w-auto object-contain block" />
+          <div className="w-8 shrink-0 flex items-center justify-center">
+            <img src={BOY_LOGO_B64} alt="logo" className="h-14 w-auto object-contain block" style={{ imageRendering: 'crisp-edges' }} />
           </div>
           <div className="flex-1 text-center space-y-0.5">
             <div className="font-black text-sm tracking-tight text-slate-950 uppercase">

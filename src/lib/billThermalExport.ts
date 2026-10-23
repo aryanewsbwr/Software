@@ -104,8 +104,8 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
   return `
     <div class="thermal-receipt">
       <div class="thermal-header" style="display: flex; align-items: center; justify-content: flex-start; gap: 8px; margin-bottom: 2px;">
-        <div class="thermal-logo-box" style="width: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
-          <img src="${BOY_LOGO_B64}" alt="logo" style="height: 48px; width: auto; object-fit: contain; display: block;" />
+        <div class="thermal-logo-box" style="width: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+          <img src="${BOY_LOGO_B64}" alt="logo" style="height: 54px; width: auto; object-fit: contain; display: block; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;" />
         </div>
         <div style="flex: 1; text-align: center;">
           <div class="agency-title">ARYAN NEWS AGENCY</div>
