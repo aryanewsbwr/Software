@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { 
   getAllUsers, 
-  saveLocalUsers, 
-  getLocalUsers, 
   hashPassword, 
   AppUser, 
   DEFAULT_ADMIN_PERMISSIONS, 
@@ -14,7 +12,6 @@ import { supabase } from '@/lib/supabaseClient';
 export async function GET() {
   try {
     const users = await getAllUsers();
-    // Return users without exposing password hashes
     const safeUsers = users.map(({ password_hash, ...u }) => u);
     return NextResponse.json({ users: safeUsers });
   } catch (error: any) {
@@ -30,7 +27,7 @@ export async function POST(req: NextRequest) {
       username, 
       password, 
       name, 
-      role = 'hawker', 
+      role = 'operator', 
       hawker_id, 
       phone, 
       is_active = true, 
@@ -42,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanUsername = username.trim().toLowerCase();
-    const users = getLocalUsers();
+    const users = await getAllUsers();
     const now = new Date().toISOString();
 
     let targetPermissions = permissions;
@@ -55,7 +52,6 @@ export async function POST(req: NextRequest) {
     const existingIndex = users.findIndex(u => u.id === id || u.username.toLowerCase() === cleanUsername);
 
     if (existingIndex >= 0) {
-      // Update existing user
       const existing = users[existingIndex];
       const updatedUser: AppUser = {
         ...existing,
@@ -69,20 +65,18 @@ export async function POST(req: NextRequest) {
         updated_at: now
       };
 
-      users[existingIndex] = updatedUser;
-      saveLocalUsers(users);
-
       try {
         await supabase.from('app_users').upsert({
           ...updatedUser,
           permissions: JSON.stringify(updatedUser.permissions)
         });
-      } catch (_) {}
+      } catch (err: any) {
+        console.warn('Supabase app_users upsert warning:', err?.message || err);
+      }
 
       const { password_hash, ...safe } = updatedUser;
       return NextResponse.json({ success: true, user: safe, message: 'User updated successfully' });
     } else {
-      // Create new user
       if (!password || !password.trim()) {
         return NextResponse.json({ error: 'Password is required for new user' }, { status: 400 });
       }
@@ -101,15 +95,14 @@ export async function POST(req: NextRequest) {
         updated_at: now
       };
 
-      users.push(newUser);
-      saveLocalUsers(users);
-
       try {
         await supabase.from('app_users').insert({
           ...newUser,
           permissions: JSON.stringify(newUser.permissions)
         });
-      } catch (_) {}
+      } catch (err: any) {
+        console.warn('Supabase app_users insert warning:', err?.message || err);
+      }
 
       const { password_hash, ...safe } = newUser;
       return NextResponse.json({ success: true, user: safe, message: 'User created successfully' });
@@ -134,17 +127,16 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Main administrator account cannot be deleted' }, { status: 403 });
     }
 
-    let users = getLocalUsers();
-    users = users.filter(u => u.id !== id && u.username.toLowerCase() !== username?.toLowerCase());
-    saveLocalUsers(users);
-
     try {
       if (id) await supabase.from('app_users').delete().eq('id', id);
       if (username) await supabase.from('app_users').delete().eq('username', username.toLowerCase());
-    } catch (_) {}
+    } catch (err: any) {
+      console.warn('Supabase app_users delete warning:', err?.message || err);
+    }
 
     return NextResponse.json({ success: true, message: 'User deleted successfully' });
   } catch (error: any) {
+    console.error('Error deleting user:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -28,10 +28,15 @@ export interface AppUser {
   updated_at: string;
 }
 
-const AUTH_SALT = process.env.AUTH_SECRET_SALT || 'aryan_news_secure_salt_2026_!@#$';
+const AUTH_SALT = process.env.AUTH_SECRET_SALT || '';
+
+if (!AUTH_SALT && process.env.NODE_ENV === 'production') {
+  console.warn('WARNING: AUTH_SECRET_SALT is not set in environment variables!');
+}
 
 export function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(AUTH_SALT + password.trim()).digest('hex');
+  const salt = AUTH_SALT || 'fallback_dev_salt';
+  return crypto.createHash('sha256').update(salt + password.trim()).digest('hex');
 }
 
 export function verifyPassword(password: string, hash: string): boolean {
@@ -75,7 +80,7 @@ const DEFAULT_USERS: AppUser[] = [
   {
     id: 'user_admin_001',
     username: 'ananews',
-    password_hash: 'cf30f21542c8c5e293074eba4401e2dde57b9f0975c368dcef5f21268ae2c23b', // Salted hash for Himanshu@321
+    password_hash: 'cf30f21542c8c5e293074eba4401e2dde57b9f0975c368dcef5f21268ae2c23b',
     name: 'Main Administrator',
     role: 'admin',
     is_active: true,
@@ -85,55 +90,22 @@ const DEFAULT_USERS: AppUser[] = [
   }
 ];
 
-const USERS_FILE_PATH = path.join(process.cwd(), 'public', 'data', 'users.json');
-
-export function getLocalUsers(): AppUser[] {
-  try {
-    if (fs.existsSync(USERS_FILE_PATH)) {
-      const content = fs.readFileSync(USERS_FILE_PATH, 'utf-8');
-      const parsed = JSON.parse(content);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        // Ensure admin account always exists
-        const adminExists = parsed.some(u => u.username?.toLowerCase() === 'ananews');
-        if (!adminExists) {
-          parsed.unshift(DEFAULT_USERS[0]);
-          saveLocalUsers(parsed);
-        }
-        return parsed;
-      }
-    }
-  } catch (err) {
-    console.error('Error reading users.json:', err);
-  }
-  saveLocalUsers(DEFAULT_USERS);
-  return DEFAULT_USERS;
-}
-
-export function saveLocalUsers(users: AppUser[]): void {
-  try {
-    const dir = path.dirname(USERS_FILE_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(USERS_FILE_PATH, JSON.stringify(users, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error writing users.json:', err);
-  }
-}
-
 export async function getAllUsers(): Promise<AppUser[]> {
-  // Try fetching from Supabase first
   try {
     const { data, error } = await supabase.from('app_users').select('*');
-    if (!error && data && data.length > 0) {
+    if (error) {
+      console.warn('Supabase app_users query notice:', error.message || error);
+    } else if (data && data.length > 0) {
       return data.map(u => ({
         ...u,
         permissions: typeof u.permissions === 'string' ? JSON.parse(u.permissions) : (u.permissions || DEFAULT_HAWKER_PERMISSIONS)
       }));
     }
-  } catch (_) {}
+  } catch (err: any) {
+    console.warn('Error reading from app_users:', err?.message || err);
+  }
 
-  return getLocalUsers();
+  return DEFAULT_USERS;
 }
 
 export async function authenticateUser(username: string, password: string): Promise<AppUser | null> {

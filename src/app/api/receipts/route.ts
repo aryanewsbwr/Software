@@ -8,7 +8,10 @@ let cachedReceipts: any[] | null = null;
 let lastMtime: number = 0;
 
 function loadReceipts() {
-  const f = path.join(process.cwd(), 'public', 'data', 'all_receipts.json');
+  const srcF = path.join(process.cwd(), 'src', 'data', 'all_receipts.json');
+  const pubF = path.join(process.cwd(), 'public', 'data', 'all_receipts.json');
+  const f = fs.existsSync(srcF) ? srcF : pubF;
+
   if (fs.existsSync(f)) {
     const stats = fs.statSync(f);
     if (!cachedReceipts || stats.mtimeMs !== lastMtime) {

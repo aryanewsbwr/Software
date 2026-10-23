@@ -50,6 +50,10 @@ async function getCacheAsync() {
 
   const load = (file: string) => {
     try {
+      const srcP = path.join(process.cwd(), 'src', 'data', file);
+      if (fs.existsSync(srcP)) {
+        return JSON.parse(fs.readFileSync(srcP, 'utf-8'));
+      }
       const p = path.join(process.cwd(), 'public', 'data', file);
       if (fs.existsSync(p)) {
         return JSON.parse(fs.readFileSync(p, 'utf-8'));

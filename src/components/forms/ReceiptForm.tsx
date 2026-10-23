@@ -255,35 +255,20 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         if (data) setAllRegions(data);
       });
 
-    // Load All Customers Master for instant typeahead search (Load entire 24,630+ customer database)
-    fetch('/data/all_customers.json')
-      .then(res => {
-        if (!res.ok) throw new Error('Static file not available');
-        return res.json();
-      })
+    // Load All Customers Master via secured API
+    fetch('/api/customers?limit=30000')
+      .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setAllCustomers(data);
-        } else {
-          throw new Error('Empty static data');
-        }
+        if (data?.customers) setAllCustomers(data.customers);
       })
       .catch(() => {
-        // Fallback to Supabase API
-        fetch('/api/customers?limit=30000')
-          .then(res => res.json())
-          .then(data => {
-            if (data?.customers) setAllCustomers(data.customers);
-          })
-          .catch(() => {
-            supabase
-              .from('customer')
-              .select('*')
-              .order('priority', { ascending: true })
-              .limit(5000)
-              .then(({ data }) => {
-                if (data) setAllCustomers(data);
-              });
+        supabase
+          .from('customer')
+          .select('*')
+          .order('priority', { ascending: true })
+          .limit(5000)
+          .then(({ data }) => {
+            if (data) setAllCustomers(data);
           });
       });
 

@@ -11,10 +11,19 @@ let cachedCustomers: any[] | null = null;
 
 function loadLocalBackup(): any[] {
   if (cachedCustomers) return cachedCustomers;
+  const srcPath = path.join(process.cwd(), 'src', 'data', 'all_customers.json');
+  if (fs.existsSync(srcPath)) {
+    try {
+      cachedCustomers = JSON.parse(fs.readFileSync(srcPath, 'utf-8'));
+      return cachedCustomers || [];
+    } catch {}
+  }
   const filePath = path.join(process.cwd(), 'public', 'data', 'all_customers.json');
   if (fs.existsSync(filePath)) {
-    cachedCustomers = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-    return cachedCustomers || [];
+    try {
+      cachedCustomers = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      return cachedCustomers || [];
+    } catch {}
   }
   return [];
 }

@@ -29,6 +29,12 @@ function loadJson(filename: string): any[] {
       if (Array.isArray(data) && data.length > 0) return data;
     } catch {}
   }
+  const srcF = path.join(process.cwd(), 'src', 'data', filename);
+  if (fs.existsSync(srcF)) {
+    try {
+      return JSON.parse(fs.readFileSync(srcF, 'utf-8'));
+    } catch {}
+  }
   const f = path.join(process.cwd(), 'public', 'data', filename);
   if (fs.existsSync(f)) {
     try {

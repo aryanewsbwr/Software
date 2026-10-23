@@ -7,3 +7,9 @@ out
 *.tsbuildinfo
 scripts/
 archives/
+src/data/
+public/data_backup/
+public/data/all_*.json
+public/data/apr_jul_*.json
+public/data/customer_detailback.json
+public/data/customers_sample.json

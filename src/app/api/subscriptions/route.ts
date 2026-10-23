@@ -13,8 +13,18 @@ let cachedAllSubs: any[] | null = null;
 
 function loadLocalData() {
   const loadJson = (filename: string) => {
+    const srcF = path.join(process.cwd(), 'src', 'data', filename);
+    if (fs.existsSync(srcF)) {
+      try {
+        return JSON.parse(fs.readFileSync(srcF, 'utf-8'));
+      } catch {}
+    }
     const f = path.join(process.cwd(), 'public', 'data', filename);
-    if (fs.existsSync(f)) return JSON.parse(fs.readFileSync(f, 'utf-8'));
+    if (fs.existsSync(f)) {
+      try {
+        return JSON.parse(fs.readFileSync(f, 'utf-8'));
+      } catch {}
+    }
     return [];
   };
 
