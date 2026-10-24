@@ -434,7 +434,29 @@ const ENGLISH_INITIALS: Record<string, string> = {
 
 // 5. Authentic Susha 05 Decoding Dictionary & Regex Replacements
 const SUSHA_PATTERNS: [RegExp, string][] = [
-  [/vaIAa[\x00-\xFF]?pI/gi, 'वीआईपी'],
+  [/e[nN]Trp`*a?[\uFFFD]?jaosa/gi, 'एंटरप्राइजेज'],
+  [/enaTrp`*a?[\uFFFD]?jaosa/gi, 'एंटरप्राइजेज'],
+  [/TO@saTa?[\uFFFD]?lsa/gi, 'टेक्सटाइल्स'],
+  [/faa?[\uFFFD]?naOnsa/gi, 'फाइनेंस'],
+  [/Aao?Taomaao?baa?[\uFFFD]?lsa/gi, 'ऑटोमोबाइल'],
+  [/maaobaa?[\uFFFD]?la/gi, 'मोबाइल'],
+  [/saa?[\uFFFD]?ikla/gi, 'साइकिल'],
+  [/hlavaa?[\uFFFD]?/gi, 'हलवाई'],
+  [/maunnaaBaa?[\uFFFD]?/gi, 'मुन्नाभाई'],
+  [/Baa[\uFFFD]/g, 'भाई'],
+  [/[\uFFFD]NDsT[`,\/]+Isa?/gi, 'इंडस्ट्रीज'],
+  [/\[NDsT[`,\/]+Isa?/gi, 'इंडस्ट्रीज'],
+  [/[\uFFFD]Svar/g, 'ईश्वर'],
+  [/[\uFFFD]laOi@T.*?k/gi, 'इलेक्ट्रिक'],
+  [/[\uFFFD]laOkiT`k/gi, 'इलेक्ट्रिक'],
+  [/\[laOi@Tk/gi, 'इलेक्ट्रिक'],
+  [/laa?[\uFFFD]?ba`orI/gi, 'लाइब्रेरी'],
+  [/laa?[\uFFFD]?nsa/gi, 'लायंस'],
+  [/laa?[\uFFFD]?T/gi, 'लाइट'],
+  [/vaa?[\uFFFD]?na/gi, 'वाइन'],
+  [/laa?[\uFFFD]?f/gi, 'लाइफ'],
+  [/jaI[\uFFFD]/gi, 'जी'],
+  [/vaIAa[\x00-\xFF\uFFFD]?pI/gi, 'वीआईपी'],
   [/vaIAapI/gi, 'वीआईपी'],
   [/ha\]sa/gi, 'हाउस'],
   [/Aga`vaala/g, 'अग्रवाल'],
@@ -527,10 +549,16 @@ const SUSHA_PATTERNS: [RegExp, string][] = [
   [/EaI/g, 'श्री'],
   [/ko\s+pasa/g, 'के पास'],
   [/baIAaobaI/g, 'बीओबी'],
+  [/Aaresa[\uFFFD]?baI/gi, 'आरएसईबी'],
+  [/esabaIAa?[\uFFFD]?/gi, 'एसबीआई'],
+  [/Aa?[\uFFFD]?AaosaI/gi, 'आईओसी'],
   [/ef(\d+)?/gi, 'एफ$1'],
   [/DI(\d+)?/g, 'डी$1'],
   [/saI(\d+)?/g, 'सी$1'],
   [/baI(\d+)?/g, 'बी$1'],
+  [/[\uFFFD](\d+)/g, 'ई$1'],
+  [/[\uFFFD]\s*(\d+)/g, 'ई $1'],
+  [/[\uFFFD]/g, 'ई'],
   [/ema\s+ko/g, 'एम के'],
   [/esa\s+ko/g, 'एस के'],
   [/ko\s+ko/g, 'के के'],
@@ -572,17 +600,17 @@ const SUSHA_CHARS: [string, string][] = [
  */
 export function sushaToUnicode(text: string): string {
   if (!text) return '';
-  if (/[\u0900-\u097F]/.test(text)) return text;
+  if (/[\u0900-\u097F]/.test(text) && !/[a-zA-Z]/.test(text)) return text;
 
-  let s = text.replace(/[\x00-\x1f\x7f-\xff\uFFFD]/g, '');
+  let s = text.replace(/[\x00-\x1f\x7f-\xff]/g, '');
   for (const [pattern, rep] of SUSHA_PATTERNS) {
     s = s.replace(pattern, rep);
   }
 
   const words = s.split(' ');
   const outWords = words.map(w => {
-    if (!w || /[\u0900-\u097F]/.test(w)) return w;
-    let cw = w.replace(/i([kKgGcCjJTzZDZNtqdnpPmbBmyrlvwsSYh@%]+)/g, '$1ि');
+    if (!w) return w;
+    let cw = w.replace(/i([kKgGcCjJTzZDZNtqdnpPmbBmyrlvwsSYhf@%]+)/g, (_, c) => c + '\u093F');
     let res = '';
     let i = 0;
     while (i < cw.length) {
@@ -825,7 +853,7 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
 
     // Decode legacy Susha 05 font ASCII string directly from database
     const sushaDecoded = sushaToUnicode(rawHindiTrimmed);
-    if (sushaDecoded && /[\u0900-\u097F]/.test(sushaDecoded)) {
+    if (sushaDecoded && /[\u0900-\u097F]/.test(sushaDecoded) && !/[a-zA-Z]/.test(sushaDecoded)) {
       return sushaDecoded;
     }
   }
