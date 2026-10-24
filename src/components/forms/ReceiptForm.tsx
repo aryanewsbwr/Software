@@ -255,20 +255,33 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
         if (data) setAllRegions(data);
       });
 
-    // Load All Customers Master via secured API
-    fetch('/api/customers?limit=30000')
+    // Load All Customers Master (24,000+ records) with instant autocomplete cache fallback
+    fetch('/data/customers_autocomplete.json')
       .then(res => res.json())
       .then(data => {
-        if (data?.customers) setAllCustomers(data.customers);
+        if (Array.isArray(data) && data.length > 0) {
+          setAllCustomers(data);
+        } else {
+          return fetch('/api/customers?limit=30000').then(r => r.json()).then(d => {
+            if (d?.customers) setAllCustomers(d.customers);
+          });
+        }
       })
       .catch(() => {
-        supabase
-          .from('customer')
-          .select('*')
-          .order('priority', { ascending: true })
-          .limit(5000)
-          .then(({ data }) => {
-            if (data) setAllCustomers(data);
+        fetch('/api/customers?limit=30000')
+          .then(res => res.json())
+          .then(data => {
+            if (data?.customers) setAllCustomers(data.customers);
+          })
+          .catch(() => {
+            supabase
+              .from('customer')
+              .select('*')
+              .order('priority', { ascending: true })
+              .limit(5000)
+              .then(({ data }) => {
+                if (data) setAllCustomers(data);
+              });
           });
       });
 
@@ -357,7 +370,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   }, []);
 
   // 2. Customer Typeahead Filter
-  const handleCustomerSearchChange = (query: string) => {
+  const handleCustomerSearchChange = async (query: string) => {
     setCustomerSearchQuery(query);
     if (!query.trim()) {
       setFilteredCustomerSuggestions([]);
@@ -366,7 +379,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     }
 
     const q = query.toLowerCase().trim();
-    const matches = allCustomers.filter(c => 
+    let matches = allCustomers.filter(c => 
       String(c.name_eng || '').toLowerCase().includes(q) ||
       String(c.name_hindi || '').toLowerCase().includes(q) ||
       String(c.add1 || '').toLowerCase().includes(q) ||
@@ -375,6 +388,21 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
       String(c.customer_id || '').includes(q) ||
       String(c.priority || '').includes(q)
     ).slice(0, 30);
+
+    // If local in-memory array doesn't have matches (e.g. before initial load completes), query backend API directly
+    if (matches.length === 0) {
+      try {
+        const res = await fetch(`/api/customers?search=${encodeURIComponent(q)}&limit=30`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.customers && data.customers.length > 0) {
+            matches = data.customers;
+          }
+        }
+      } catch (err) {
+        console.warn('Backend search error:', err);
+      }
+    }
 
     setFilteredCustomerSuggestions(matches);
     setHighlightedCustomerIndex(0);
