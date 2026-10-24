@@ -559,7 +559,7 @@ const SUSHA_CHARS: [string, string][] = [
   ['c', 'च'], ['C', 'छ'], ['j', 'ज'], ['J', 'झ'],
   ['T', 'ट'], ['z', 'ठ'], ['D', 'ड'], ['Z', 'ढ'], ['N', 'ण'],
   ['t', 'त'], ['q', 'थ'], ['d', 'द'], ['Q', 'ध'], ['n', 'न'],
-  ['p', 'प'], ['P', 'फ'], ['b', 'ब'], ['B', 'भ'], ['m', 'म'],
+  ['p', 'प'], ['P', 'फ'], ['f', 'फ'], ['b', 'ब'], ['B', 'भ'], ['m', 'म'],
   ['y', 'य'], ['r', 'र'], ['l', 'ल'], ['v', 'व'], ['w', 'व'],
   ['S', 'श'], ['Y', 'ष'], ['s', 'स'], ['h', 'ह'],
   ['~', 'त्र'], ['&', 'ज्ञ'], ['@', 'क्'], ['%', 'त्'],
@@ -811,7 +811,26 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
   const engNoTrailingNum = engLower.replace(/\s+\d+$/, '').trim();
   const rawHindiTrimmed = rawHindiStr.trim();
 
-  // 1. Check exact known phrases
+  // 1. If rawHindi is available in database, decode and prioritize it:
+  if (rawHindiTrimmed && rawHindiTrimmed.length > 0) {
+    // If rawHindi is already genuine Unicode Hindi without replacement characters, preserve it directly!
+    if (/[\u0900-\u097F]/.test(rawHindiTrimmed) && !rawHindiTrimmed.includes('\ufffd') && !/[a-zA-Z]/.test(rawHindiTrimmed)) {
+      return rawHindiTrimmed;
+    }
+
+    // Check Kruti Dev map
+    if (KRUTI_DEV_MAP[rawHindiTrimmed]) {
+      return KRUTI_DEV_MAP[rawHindiTrimmed];
+    }
+
+    // Decode legacy Susha 05 font ASCII string directly from database
+    const sushaDecoded = sushaToUnicode(rawHindiTrimmed);
+    if (sushaDecoded && /[\u0900-\u097F]/.test(sushaDecoded)) {
+      return sushaDecoded;
+    }
+  }
+
+  // 2. Check exact known phrases
   if (KNOWN_PHRASES_MAP[engLower]) {
     return KNOWN_PHRASES_MAP[engLower];
   }
@@ -819,7 +838,7 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
     return KNOWN_PHRASES_MAP[engNoTrailingNum];
   }
 
-  // 2. Check known publications
+  // 3. Check known publications
   if (KNOWN_PUBLICATIONS_HINDI[engLower]) {
     return KNOWN_PUBLICATIONS_HINDI[engLower];
   }
@@ -827,28 +846,7 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
     return KNOWN_PUBLICATIONS_HINDI[engNoTrailingNum];
   }
 
-  // 3. If rawHindi is already genuine Unicode Hindi without replacement characters, preserve it!
-  if (rawHindiTrimmed && /[\u0900-\u097F]/.test(rawHindiTrimmed) && !rawHindiTrimmed.includes('\ufffd')) {
-    // If it has only Hindi or Hindi + numbers, return directly
-    if (!/[a-zA-Z]/.test(rawHindiTrimmed)) {
-      return rawHindiTrimmed;
-    }
-  }
-
-  // 4. Check Kruti Dev map
-  if (rawHindiTrimmed && KRUTI_DEV_MAP[rawHindiTrimmed]) {
-    return KRUTI_DEV_MAP[rawHindiTrimmed];
-  }
-
-  // 5. Check Susha font decoding if rawHindi has legacy Susha ASCII characters
-  if (rawHindiTrimmed && rawHindiTrimmed.length > 0 && !rawHindiTrimmed.includes('\ufffd')) {
-    const decoded = sushaToUnicode(rawHindiTrimmed);
-    if (decoded && /[\u0900-\u097F]/.test(decoded) && !/[a-zA-Z]/.test(decoded)) {
-      return decoded;
-    }
-  }
-
-  // 6. Check English phonetic transliteration
+  // 4. For new entries without raw database Hindi, transliterate phonetically from English
   if (engTrimmed.length > 0) {
     return englishToHindiPhonetic(engTrimmed);
   }
