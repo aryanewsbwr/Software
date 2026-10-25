@@ -4,7 +4,7 @@ import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from '@/lib/bill4in1Export';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { roundToFoxProRule } from '@/lib/billingEngine';
 import { generateDynamicUpiQrSvg } from '@/lib/upiQrHelper';
-import { printBillsThermal58mm } from '@/lib/billThermalExport';
+import { printBillsThermal58mm, getThermalPublicationDisplayName } from '@/lib/billThermalExport';
 
 interface BillThermalPreviewProps {
   bills: BillRecord[];
@@ -102,8 +102,8 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
       const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
 
       items.forEach((it, pIdx) => {
-        const pubHindiOrClean = cleanOrTransliterateHindi('', it.pub_name) || it.pub_name.trim();
-        const pubKey = pubHindiOrClean.toLowerCase();
+        const pubDisplayName = getThermalPublicationDisplayName(it.pub_name);
+        const pubKey = pubDisplayName.toLowerCase();
         const qty = Number(it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1));
         
         let itemDelivery = 0;
@@ -120,7 +120,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           existing.totalAmount = roundToFoxProRule(existing.totalAmount + itemAmt);
         } else {
           pubConsolidatedMap.set(pubKey, {
-            pub_name: pubHindiOrClean,
+            pub_name: pubDisplayName,
             totalQty: qty,
             totalAmount: itemAmt
           });
@@ -149,10 +149,10 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
       itemsElements = items.length > 0 ? (
         items.map((it, pIdx) => {
           const qtyOrDays = it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1);
-          const pubHindiOrClean = cleanOrTransliterateHindi('', it.pub_name) || it.pub_name;
+          const pubDisplayName = getThermalPublicationDisplayName(it.pub_name);
           return (
             <div key={pIdx} className="flex justify-between items-center text-[12px] font-semibold text-black">
-              <span className="flex-[2] text-left">{pubHindiOrClean}</span>
+              <span className="flex-[2] text-left">{pubDisplayName}</span>
               <span className="flex-1 text-center font-bold">{qtyOrDays}</span>
               <span className="flex-1 text-right font-bold">{formatMoney(roundToFoxProRule(it.amount))}</span>
             </div>
@@ -204,17 +204,17 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         </div>
 
         {/* Solid Top Rule */}
-        <div className="w-full h-[1.8px] bg-black my-2.5"></div>
+        <div className="w-full h-[1.8px] bg-black my-1.5"></div>
 
         {/* Pill Badge */}
-        <div className="flex justify-center mb-2.5">
-          <div className="px-3.5 py-1 border-[1.2px] border-black rounded-full font-bold text-[11px] text-black bg-white">
+        <div className="flex justify-center mb-1">
+          <div className="px-3 py-0.5 border-[1.2px] border-black rounded-full font-bold text-[10.5px] text-black bg-white">
             MONTHLY BILL / मासिक बिल
           </div>
         </div>
 
         {/* Meta Info Grid */}
-        <div className="flex flex-col gap-1 text-[11.5px] mb-2.5">
+        <div className="flex flex-col gap-0.5 text-[11px] mb-1.5">
           <div className="flex justify-between items-center">
             <div className="text-left"><span className="text-slate-700">Bill No:</span> <span className="font-extrabold text-black">{b.bill_no || b.customer_id}</span></div>
             <div className="text-right"><span className="text-slate-700">Month:</span> <span className="font-extrabold text-black">{monthYearDisplay}</span></div>
@@ -225,10 +225,10 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         </div>
 
         {/* Dashed Divider */}
-        <div className="w-full border-t border-dashed border-zinc-500 my-2.5"></div>
+        <div className="w-full border-t border-dashed border-zinc-500 my-1.5"></div>
 
         {/* Customer Section */}
-        <div className="text-left mb-2.5">
+        <div className="text-left mb-1.5">
           <div className="font-black text-[13.5px] uppercase tracking-tight text-black">
             {cleanEngName}
           </div>
@@ -237,14 +237,14 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
               {displayHindi}
             </div>
           )}
-          <div className="flex justify-between items-center text-[10.5px] font-semibold text-slate-700 mt-1">
-            <span>Region: {b.region_name || b.region_id}{b.priority ? ` | Pr: ${b.priority}` : ''}</span>
+          <div className="flex justify-between items-center text-[10.5px] font-semibold text-slate-700 mt-1 whitespace-nowrap">
+            <span>Region: {b.region_name || b.region_id}</span>
             {formattedPhone && <span>Mob: {formattedPhone}</span>}
           </div>
         </div>
 
         {/* Dashed Divider */}
-        <div className="w-full border-t border-dashed border-zinc-500 my-2.5"></div>
+        <div className="w-full border-t border-dashed border-zinc-500 my-1.5"></div>
 
         {/* Items Header */}
         <div className="flex justify-between items-center text-[11.5px] font-extrabold text-black">
@@ -253,7 +253,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           <span className="flex-1 text-right">Amount ₹</span>
         </div>
 
-        <div className="w-full border-t border-dashed border-zinc-400 my-2"></div>
+        <div className="w-full border-t border-dashed border-zinc-400 my-1.5"></div>
 
         {/* Line Items */}
         <div className="flex flex-col gap-1.5 my-1">
@@ -261,30 +261,30 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         </div>
 
         {/* Dashed Divider */}
-        <div className="w-full border-t border-dashed border-zinc-500 my-2.5"></div>
+        <div className="w-full border-t border-dashed border-zinc-500 my-1.5"></div>
 
         {/* Summary Breakdown */}
-        <div className="flex flex-col gap-1 text-[11.5px] mb-3">
-          <div className="flex justify-between items-center font-semibold text-zinc-900">
-            <span>Current Month / इस माह</span>
-            <span className="font-bold">₹ {formatMoney(monthBillAmount)}</span>
+        <div className="flex flex-col gap-1 text-[11px] mb-2">
+          <div className="flex justify-between items-center font-semibold text-zinc-900 whitespace-nowrap">
+            <span className="whitespace-nowrap">Current Month / इस माह</span>
+            <span className="font-bold whitespace-nowrap">₹ {formatMoney(monthBillAmount)}</span>
           </div>
-          <div className="flex justify-between items-center font-semibold text-zinc-900">
-            <span>Previous Due / पिछला बकाया</span>
-            <span className="font-bold">₹ {formatMoney(previousDue)}</span>
+          <div className="flex justify-between items-center font-semibold text-zinc-900 whitespace-nowrap">
+            <span className="whitespace-nowrap">Previous Due / पिछला बकाया</span>
+            <span className="font-bold whitespace-nowrap">₹ {formatMoney(previousDue)}</span>
           </div>
         </div>
 
         {/* Total Banner Box */}
-        <div className="border-[1.4px] border-black rounded-md px-3 py-1.5 flex justify-between items-center mb-3 bg-white">
-          <span className="font-black text-[13px] text-black">TOTAL / कुल देय</span>
-          <span className="font-black text-[15.5px] text-black">₹ {formatMoney(netPayable)}</span>
+        <div className="border-[1.4px] border-black rounded-md px-2.5 py-1.5 flex justify-between items-center mb-2.5 bg-white whitespace-nowrap">
+          <span className="font-black text-[12.5px] text-black whitespace-nowrap">TOTAL / कुल देय</span>
+          <span className="font-black text-[14.5px] text-black whitespace-nowrap">₹ {formatMoney(netPayable)}</span>
         </div>
 
         {/* QR Payment Section */}
-        <div className="flex flex-col items-center justify-center mb-2.5">
+        <div className="flex flex-col items-center justify-center mb-2">
           <div 
-            className="w-28 h-28 flex items-center justify-center bg-white p-1 mb-1.5"
+            className="w-28 h-28 flex items-center justify-center bg-white p-1 mb-1"
             dangerouslySetInnerHTML={{
               __html: generateDynamicUpiQrSvg(
                 netPayable,
@@ -304,13 +304,14 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         </div>
 
         {/* Dashed Divider */}
-        <div className="w-full border-t border-dashed border-zinc-500 my-2.5"></div>
+        <div className="w-full border-t border-dashed border-zinc-500 my-1.5"></div>
 
         {/* Footer Policy Notice */}
-        <div className="flex flex-col items-center gap-0.5 text-[10px] text-slate-700 leading-normal">
-          <div className="font-medium">कृपया बिल की राशि 5 तारीख तक जमा करें।</div>
+        <div className="flex flex-col items-center gap-0.5 text-[9.5px] text-slate-700 leading-normal">
+          <div className="font-bold text-black">कृपया बिल की राशि 5 तारीख तक जमा करें।</div>
+          <div className="font-semibold text-black text-[9px]">भुगतान के बाद स्क्रीनशॉट व्हाट्सएप पर भेजें।</div>
           <div className="font-medium text-slate-800">Queries: WhatsApp 9462558949</div>
-          <div className="font-black text-[11px] text-black mt-1">धन्यवाद!</div>
+          <div className="font-black text-[11px] text-black mt-0.5">धन्यवाद!</div>
         </div>
       </div>
     );

@@ -2,6 +2,35 @@ import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from './bill4in1Export';
 import { cleanOrTransliterateHindi } from './transliteration';
 import { roundToFoxProRule } from './billingEngine';
 import { generateDynamicUpiQrSvg } from './upiQrHelper';
+import hindiPubDisplayMapJson from '@/data/hindiPubDisplayMap.json';
+import englishPubSetJson from '@/data/englishPubSet.json';
+
+const HINDI_PUB_DISPLAY_MAP: Record<string, string> = hindiPubDisplayMapJson;
+const ENGLISH_PUB_SET: Set<string> = new Set(englishPubSetJson);
+
+export function getThermalPublicationDisplayName(rawName: string | undefined | null): string {
+  if (!rawName) return '';
+  const trimmed = rawName.trim();
+  const lower = trimmed.toLowerCase();
+
+  // 1. If it's a known English publication, keep it in English!
+  if (ENGLISH_PUB_SET.has(lower)) {
+    return trimmed;
+  }
+
+  // 2. If it's in our Hindi publication display map, return the authentic Hindi name
+  if (HINDI_PUB_DISPLAY_MAP[lower]) {
+    return HINDI_PUB_DISPLAY_MAP[lower];
+  }
+
+  // 3. If it already contains Devanagari Hindi characters, keep it as is
+  if (/[\u0900-\u097F]/.test(trimmed)) {
+    return trimmed;
+  }
+
+  // 4. Default: keep English name intact so English papers don't get wrongly transliterated
+  return trimmed;
+}
 
 function formatMoney(n: number | undefined | null): string {
   if (n === undefined || n === null || isNaN(n)) return '0.00';
@@ -69,8 +98,8 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
     const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
 
     items.forEach((it, idx) => {
-      const pubHindiOrClean = cleanOrTransliterateHindi('', it.pub_name) || it.pub_name.trim();
-      const pubKey = pubHindiOrClean.toLowerCase();
+      const pubDisplayName = getThermalPublicationDisplayName(it.pub_name);
+      const pubKey = pubDisplayName.toLowerCase();
       const qty = Number(it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1));
       
       let itemDelivery = 0;
@@ -87,7 +116,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
         existing.totalAmount = roundToFoxProRule(existing.totalAmount + itemAmt);
       } else {
         pubConsolidatedMap.set(pubKey, {
-          pub_name: pubHindiOrClean,
+          pub_name: pubDisplayName,
           totalQty: qty,
           totalAmount: itemAmt
         });
@@ -116,10 +145,10 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
     itemsRowsHtml = items.length > 0
       ? items.map(it => {
           const qtyOrDays = it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1);
-          const pubHindiOrClean = cleanOrTransliterateHindi('', it.pub_name) || it.pub_name;
+          const pubDisplayName = getThermalPublicationDisplayName(it.pub_name);
           return `
             <div class="line-item-row">
-              <span class="col-part">${pubHindiOrClean}</span>
+              <span class="col-part">${pubDisplayName}</span>
               <span class="col-days">${qtyOrDays}</span>
               <span class="col-amt">${formatMoney(roundToFoxProRule(it.amount))}</span>
             </div>
@@ -184,7 +213,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
         <div class="customer-name-en">${cleanEngName}</div>
         ${displayHindi && displayHindi !== cleanEngName ? `<div class="customer-name-hi">${displayHindi}</div>` : ''}
         <div class="customer-sub-row">
-          <span>Region: ${b.region_name || b.region_id}${b.priority ? ` &nbsp;|&nbsp; Pr: ${b.priority}` : ''}</span>
+          <span>Region: ${b.region_name || b.region_id}</span>
           ${formattedPhone ? `<span>Mob: ${formattedPhone}</span>` : ''}
         </div>
       </div>
@@ -243,6 +272,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
       <!-- Footer Policy & Thank You Notice -->
       <div class="footer-notice">
         <div class="footer-due-line">कृपया बिल की राशि 5 तारीख तक जमा करें।</div>
+        <div class="footer-ss-line">भुगतान के बाद स्क्रीनशॉट व्हाट्सएप पर भेजें।</div>
         <div class="footer-query-line">Queries: WhatsApp 9462558949</div>
         <div class="footer-thanks-line">धन्यवाद!</div>
       </div>
@@ -409,19 +439,19 @@ export function generateThermal58mmFullHtml(
       width: 100%;
       height: 1.8px;
       background: #000000;
-      margin: 10px 0 12px 0;
+      margin: 6px 0 6px 0;
     }
 
     /* Pill Badge */
     .pill-badge-container {
       display: flex;
       justify-content: center;
-      margin-bottom: 10px;
+      margin-bottom: 4px;
     }
 
     .pill-badge {
       display: inline-block;
-      padding: 3.5px 14px;
+      padding: 2.5px 12px;
       border: 1.2px solid #000000;
       border-radius: 9999px;
       font-size: 10.5px;
@@ -435,8 +465,8 @@ export function generateThermal58mmFullHtml(
     .meta-grid {
       display: flex;
       flex-direction: column;
-      gap: 3.5px;
-      margin-bottom: 10px;
+      gap: 2.5px;
+      margin-bottom: 6px;
       font-size: 11px;
     }
 
@@ -550,9 +580,9 @@ export function generateThermal58mmFullHtml(
     .summary-section {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3.5px;
       font-size: 11px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     .summary-row {
@@ -561,41 +591,47 @@ export function generateThermal58mmFullHtml(
       align-items: center;
       font-weight: 600;
       color: #222;
+      white-space: nowrap;
     }
 
     .summary-label {
       text-align: left;
+      white-space: nowrap;
     }
 
     .summary-value {
       text-align: right;
       font-weight: 700;
       color: #000;
+      white-space: nowrap;
     }
 
     /* Total Banner Box */
     .total-banner-box {
       border: 1.4px solid #000000;
       border-radius: 6px;
-      padding: 6.5px 12px;
+      padding: 5px 8px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
       background: #ffffff;
+      white-space: nowrap;
     }
 
     .total-label-left {
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 900;
       color: #000;
       letter-spacing: 0.3px;
+      white-space: nowrap;
     }
 
     .total-amount-right {
-      font-size: 14.5px;
+      font-size: 14px;
       font-weight: 900;
       color: #000;
+      white-space: nowrap;
     }
 
     /* QR Payment Section */
@@ -650,6 +686,12 @@ export function generateThermal58mmFullHtml(
     .footer-due-line {
       font-weight: 800;
       color: #000;
+    }
+
+    .footer-ss-line {
+      font-weight: 700;
+      color: #000;
+      font-size: 9px;
     }
 
     .footer-query-line {
