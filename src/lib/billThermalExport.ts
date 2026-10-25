@@ -336,18 +336,19 @@ export function generateThermal58mmFullHtml(
       gap: 24px;
     }
 
-    /* Main Bill Card: Optimized for standard 58mm & 80mm thermal printers with high contrast & crisp alignment */
+    /* Main Bill Card: strictly sized for 58mm POS thermal printers (printable printable width 48mm, total roll 58mm) */
     .bill-card {
-      width: 80mm;
-      max-width: 80mm;
+      width: 48mm;
+      max-width: 48mm;
       background: #ffffff;
-      padding: 4mm 3mm;
+      padding: 2mm 1mm;
       box-shadow: 0 4px 20px rgba(0,0,0,0.12);
       border: 1px solid #e2e8f0;
       box-sizing: border-box;
       page-break-inside: avoid;
       color: #000000;
       text-align: center;
+      margin: 0 auto;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -364,47 +365,44 @@ export function generateThermal58mmFullHtml(
     }
 
     .agency-name-en {
-      font-size: 15px;
+      font-size: 13.5px;
       font-weight: 900;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
       color: #000;
-      line-height: 1.2;
+      line-height: 1.15;
       white-space: nowrap;
     }
 
     .agency-name-hi {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
+      color: #000;
+      margin-top: 1px;
+      line-height: 1.15;
+    }
+
+    .agency-address {
+      font-size: 8.5px;
+      font-weight: 700;
+      color: #000;
+      margin-top: 2px;
+      line-height: 1.2;
+    }
+
+    .agency-contact {
+      font-size: 8.5px;
+      font-weight: 700;
       color: #000;
       margin-top: 1px;
       line-height: 1.2;
     }
 
-    .agency-address {
-      font-size: 9.5px;
-      font-weight: 700;
-      color: #000;
-      margin-top: 2px;
-      line-height: 1.25;
-    }
-
-    .agency-contact {
-      font-size: 9.5px;
-      font-weight: 700;
-      color: #000;
-      margin-top: 1px;
-      line-height: 1.25;
-    }
-
     .agency-web {
-      font-size: 9.5px;
+      font-size: 8.5px;
       font-weight: 700;
       color: #000;
       margin-top: 1px;
-      line-height: 1.25;
-    }
-      margin-top: 1px;
-      line-height: 1.25;
+      line-height: 1.2;
     }
 
     .solid-rule-thick {
@@ -672,6 +670,7 @@ export function generateThermal58mmFullHtml(
         background: transparent !important;
         padding: 0 !important;
         margin: 0 !important;
+        width: 100% !important;
         display: block !important;
       }
 
@@ -690,10 +689,10 @@ export function generateThermal58mmFullHtml(
       .bill-card {
         box-shadow: none !important;
         border: none !important;
-        padding: 2mm 1.5mm !important;
-        margin: 0 auto !important;
-        width: 100% !important;
-        max-width: 72mm !important;
+        padding: 1mm 0.5mm !important;
+        margin: 0 !important;
+        width: 48mm !important;
+        max-width: 48mm !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
         page-break-after: always;
@@ -709,7 +708,7 @@ export function generateThermal58mmFullHtml(
       }
 
       @page {
-        size: auto;
+        size: 58mm auto;
         margin: 0mm;
       }
     }
