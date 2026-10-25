@@ -248,7 +248,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
 
       <!-- Footer Policy & Thank You Notice -->
       <div class="footer-notice">
-        <div class="footer-due-line">कृपया बिल की राशि 10 तारीख तक जमा करें।</div>
+        <div class="footer-due-line">कृपया बिल की राशि 5 तारीख तक जमा करें।</div>
         <div class="footer-query-line">Queries: reply on WhatsApp 94625 58949</div>
         <div class="footer-thanks-line">धन्यवाद!</div>
       </div>
@@ -342,12 +342,12 @@ export function generateThermal58mmFullHtml(
       gap: 24px;
     }
 
-    /* Main Bill Card: Matches Exact Proportions from user uploaded reference */
+    /* Main Bill Card: Optimized for standard 58mm & 80mm thermal printers with high contrast & crisp alignment */
     .bill-card {
-      width: 96mm;
-      max-width: 96mm;
+      width: 80mm;
+      max-width: 80mm;
       background: #ffffff;
-      padding: 8mm 6.5mm;
+      padding: 4mm 3mm;
       box-shadow: 0 4px 20px rgba(0,0,0,0.12);
       border: 1px solid #e2e8f0;
       box-sizing: border-box;
@@ -364,14 +364,14 @@ export function generateThermal58mmFullHtml(
       flex-direction: row;
       align-items: center;
       justify-content: flex-start;
-      gap: 12px;
-      margin-bottom: 12px;
+      gap: 8px;
+      margin-bottom: 8px;
       text-align: left;
     }
 
     .agency-logo-wrap {
-      width: 70px;
-      height: 76px;
+      width: 58px;
+      height: 64px;
       flex-shrink: 0;
       display: flex;
       align-items: center;
@@ -393,40 +393,43 @@ export function generateThermal58mmFullHtml(
     }
 
     .agency-name-en {
-      font-size: 15px;
+      font-size: 14.5px;
       font-weight: 900;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
       color: #000;
-      line-height: 1.2;
+      line-height: 1.15;
     }
 
     .agency-name-hi {
-      font-size: 13px;
-      font-weight: 700;
-      color: #111;
-      margin-top: 1.5px;
-      line-height: 1.2;
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #000;
+      margin-top: 1px;
+      line-height: 1.15;
     }
 
     .agency-address {
-      font-size: 9.5px;
-      color: #333;
-      margin-top: 3px;
-      line-height: 1.3;
+      font-size: 9px;
+      font-weight: 700;
+      color: #000;
+      margin-top: 2px;
+      line-height: 1.25;
     }
 
     .agency-contact {
-      font-size: 9.5px;
-      color: #333;
-      margin-top: 1.5px;
-      line-height: 1.3;
+      font-size: 9px;
+      font-weight: 700;
+      color: #000;
+      margin-top: 1px;
+      line-height: 1.25;
     }
 
     .agency-web {
-      font-size: 9.5px;
-      color: #333;
-      margin-top: 1.5px;
-      line-height: 1.3;
+      font-size: 9px;
+      font-weight: 700;
+      color: #000;
+      margin-top: 1px;
+      line-height: 1.25;
     }
 
     .solid-rule-thick {
@@ -480,30 +483,30 @@ export function generateThermal58mmFullHtml(
     }
 
     .meta-label {
-      font-weight: 500;
-      color: #333;
+      font-weight: 700;
+      color: #000;
     }
 
     .meta-val {
-      font-weight: 800;
+      font-weight: 900;
       color: #000;
     }
 
     /* Dashed Divider */
     .dashed-divider {
       width: 100%;
-      border-top: 1.1px dashed #71717a;
-      margin: 10px 0;
+      border-top: 1.2px dashed #000000;
+      margin: 8px 0;
     }
 
     /* Customer Section */
     .customer-section {
       text-align: left;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .customer-name-en {
-      font-size: 12.5px;
+      font-size: 13px;
       font-weight: 900;
       letter-spacing: 0.3px;
       color: #000;
@@ -512,9 +515,9 @@ export function generateThermal58mmFullHtml(
     }
 
     .customer-name-hi {
-      font-size: 12px;
-      font-weight: 700;
-      color: #111;
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #000;
       margin-top: 2px;
       line-height: 1.2;
     }
@@ -524,9 +527,9 @@ export function generateThermal58mmFullHtml(
       justify-content: space-between;
       align-items: center;
       font-size: 10px;
-      font-weight: 600;
-      color: #333;
-      margin-top: 4px;
+      font-weight: 700;
+      color: #000;
+      margin-top: 3px;
     }
 
     /* Items Table */
@@ -667,22 +670,23 @@ export function generateThermal58mmFullHtml(
       align-items: center;
       gap: 2.5px;
       font-size: 9.5px;
-      color: #333;
+      color: #000;
       line-height: 1.4;
     }
 
     .footer-due-line {
-      font-weight: 600;
+      font-weight: 800;
+      color: #000;
     }
 
     .footer-query-line {
-      font-weight: 500;
-      color: #444;
+      font-weight: 700;
+      color: #000;
     }
 
     .footer-thanks-line {
-      font-weight: 800;
-      font-size: 10.5px;
+      font-weight: 900;
+      font-size: 11px;
       color: #000;
       margin-top: 2px;
     }
@@ -693,6 +697,7 @@ export function generateThermal58mmFullHtml(
         background: transparent !important;
         padding: 0 !important;
         margin: 0 !important;
+        display: block !important;
       }
 
       .no-print, .print-toolbar {
@@ -703,14 +708,17 @@ export function generateThermal58mmFullHtml(
         gap: 0 !important;
         margin: 0 !important;
         padding: 0 !important;
+        display: block !important;
+        width: 100% !important;
       }
 
       .bill-card {
         box-shadow: none !important;
         border: none !important;
-        padding: 6mm 5mm !important;
+        padding: 2mm 1.5mm !important;
+        margin: 0 auto !important;
         width: 100% !important;
-        max-width: 100% !important;
+        max-width: 72mm !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
         page-break-after: always;
@@ -727,7 +735,7 @@ export function generateThermal58mmFullHtml(
 
       @page {
         size: auto;
-        margin: 4mm;
+        margin: 0mm;
       }
     }
   </style>
