@@ -32,14 +32,13 @@ function computeNextMonthBillDate(m: string | undefined, y: string | number | un
   return `01-10-${baseYear}`;
 }
 
-function maskPhone(p: string | undefined | null): string {
+function cleanPhone(p: string | undefined | null): string {
   if (!p || p === '---') return '';
   const digits = String(p).replace(/\D/g, '');
   if (digits.length >= 10) {
-    const last10 = digits.slice(-10);
-    return `${last10.slice(0, 2)}XXXXXX${last10.slice(-2)}`;
+    return digits.slice(-10);
   }
-  return String(p);
+  return String(p).trim();
 }
 
 /**
@@ -70,8 +69,8 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
     const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
 
     items.forEach((it, idx) => {
-      const cleanPub = it.pub_name.trim();
-      const pubKey = cleanPub.toLowerCase();
+      const pubHindiOrClean = cleanOrTransliterateHindi('', it.pub_name) || it.pub_name.trim();
+      const pubKey = pubHindiOrClean.toLowerCase();
       const qty = Number(it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1));
       
       let itemDelivery = 0;
@@ -88,7 +87,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
         existing.totalAmount = roundToFoxProRule(existing.totalAmount + itemAmt);
       } else {
         pubConsolidatedMap.set(pubKey, {
-          pub_name: cleanPub,
+          pub_name: pubHindiOrClean,
           totalQty: qty,
           totalAmount: itemAmt
         });
@@ -117,9 +116,10 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
     itemsRowsHtml = items.length > 0
       ? items.map(it => {
           const qtyOrDays = it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1);
+          const pubHindiOrClean = cleanOrTransliterateHindi('', it.pub_name) || it.pub_name;
           return `
             <div class="line-item-row">
-              <span class="col-part">${it.pub_name}</span>
+              <span class="col-part">${pubHindiOrClean}</span>
               <span class="col-days">${qtyOrDays}</span>
               <span class="col-amt">${formatMoney(roundToFoxProRule(it.amount))}</span>
             </div>
@@ -141,10 +141,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
   const netPayable = roundToFoxProRule(b.net_payable || (monthBillAmount + previousDue));
 
   const monthYearDisplay = formatShortMonthYear(b.month, b.year);
-  const billDateDisplay = b.bill_date && b.bill_date.includes('-') 
-    ? b.bill_date 
-    : computeNextMonthBillDate(b.month, b.year);
-  const maskedMob = maskPhone(b.phone);
+  const formattedPhone = cleanPhone(b.phone);
 
   const rawQrSvg = generateDynamicUpiQrSvg(netPayable, b.bill_no || b.customer_id, `${b.month || ''} ${b.year || ''}`.trim(), 180, 0);
 
@@ -156,12 +153,14 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
         <div class="agency-logo-wrap">
           <img src="${BOY_LOGO_B64}" alt="Aryan News Agency" class="agency-logo-img" />
         </div>
-        <div class="agency-name-en">ARYAN NEWS AGENCY</div>
-        <div class="agency-name-hi">आर्यन न्यूज़ एजेंसी</div>
-        <div class="agency-address">5(1), Old Bus Stand, Beawar (Raj.) 305901</div>
-        <div class="agency-contact">WhatsApp: 9462558949</div>
-        <div class="agency-contact">Ph: 9829058949</div>
-        <div class="agency-web">www.aryannewsagency.com</div>
+        <div class="agency-details">
+          <div class="agency-name-en">ARYAN NEWS AGENCY</div>
+          <div class="agency-name-hi">आर्यन न्यूज़ एजेंसी</div>
+          <div class="agency-address">5(1), Old Bus Stand, Beawar (Raj.) 305901</div>
+          <div class="agency-contact">WhatsApp: 9462558949</div>
+          <div class="agency-contact">Ph: 9829058949</div>
+          <div class="agency-web">www.aryannewsagency.com</div>
+        </div>
       </div>
 
       <!-- Solid Top Rule -->
@@ -172,7 +171,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
         <div class="pill-badge">MONTHLY BILL / मासिक बिल</div>
       </div>
 
-      <!-- Meta Info Grid (Bill No, Month, A/c No, Date) -->
+      <!-- Meta Info Grid (Bill No, Month, A/c No) -->
       <div class="meta-grid">
         <div class="meta-row">
           <div class="meta-cell"><span class="meta-label">Bill No:</span> <span class="meta-val">${b.bill_no || b.customer_id}</span></div>
@@ -180,7 +179,6 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
         </div>
         <div class="meta-row">
           <div class="meta-cell"><span class="meta-label">A/c No:</span> <span class="meta-val">${b.customer_id}</span></div>
-          <div class="meta-cell text-right"><span class="meta-label">Date:</span> <span class="meta-val">${billDateDisplay}</span></div>
         </div>
       </div>
 
@@ -193,7 +191,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
         ${displayHindi && displayHindi !== cleanEngName ? `<div class="customer-name-hi">${displayHindi}</div>` : ''}
         <div class="customer-sub-row">
           <span>Region: ${b.region_name || b.region_id}${b.priority ? ` &nbsp;|&nbsp; Pr: ${b.priority}` : ''}</span>
-          ${maskedMob ? `<span>Mob: ${maskedMob}</span>` : ''}
+          ${formattedPhone ? `<span>Mob: ${formattedPhone}</span>` : ''}
         </div>
       </div>
 
@@ -363,18 +361,28 @@ export function generateThermal58mmFullHtml(
     /* Header Section */
     .agency-header {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
+      justify-content: flex-start;
+      gap: 12px;
       margin-bottom: 12px;
+      text-align: left;
     }
 
     .agency-logo-wrap {
-      width: 68px;
-      height: 72px;
+      width: 70px;
+      height: 76px;
+      flex-shrink: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 6px;
+    }
+
+    .agency-details {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
 
     .agency-logo-img {
@@ -385,39 +393,39 @@ export function generateThermal58mmFullHtml(
     }
 
     .agency-name-en {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 900;
-      letter-spacing: 0.8px;
+      letter-spacing: 0.5px;
       color: #000;
       line-height: 1.2;
     }
 
     .agency-name-hi {
-      font-size: 13.5px;
+      font-size: 13px;
       font-weight: 700;
       color: #111;
-      margin-top: 2px;
+      margin-top: 1.5px;
       line-height: 1.2;
     }
 
     .agency-address {
-      font-size: 10px;
+      font-size: 9.5px;
       color: #333;
-      margin-top: 4px;
+      margin-top: 3px;
       line-height: 1.3;
     }
 
     .agency-contact {
-      font-size: 10px;
+      font-size: 9.5px;
       color: #333;
       margin-top: 1.5px;
       line-height: 1.3;
     }
 
     .agency-web {
-      font-size: 10px;
+      font-size: 9.5px;
       color: #333;
-      margin-top: 2px;
+      margin-top: 1.5px;
       line-height: 1.3;
     }
 

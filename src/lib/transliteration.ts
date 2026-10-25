@@ -434,6 +434,9 @@ const ENGLISH_INITIALS: Record<string, string> = {
 
 // 5. Authentic Susha 05 Decoding Dictionary & Regex Replacements
 const SUSHA_PATTERNS: [RegExp, string][] = [
+  [/vyaaTsePp/gi, 'व्हाट्सएप'],
+  [/vyaaT\s*sePp/gi, 'व्हाट्सएप'],
+  [/saOmpla/gi, 'सैम्पल'],
   [/e[nN]Trp`*a?[\uFFFD]?jaosa/gi, 'एंटरप्राइजेज'],
   [/enaTrp`*a?[\uFFFD]?jaosa/gi, 'एंटरप्राइजेज'],
   [/TO@saTa?[\uFFFD]?lsa/gi, 'टेक्सटाइल्स'],
@@ -858,7 +861,13 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
     }
   }
 
-  // 2. Check exact known phrases
+  // 2. Check exact known phrases (and known publications) before phonetic fallback
+  if (KNOWN_PUBLICATIONS_HINDI[engLower]) {
+    return KNOWN_PUBLICATIONS_HINDI[engLower];
+  }
+  if (KNOWN_PUBLICATIONS_HINDI[engNoTrailingNum]) {
+    return KNOWN_PUBLICATIONS_HINDI[engNoTrailingNum];
+  }
   if (KNOWN_PHRASES_MAP[engLower]) {
     return KNOWN_PHRASES_MAP[engLower];
   }
@@ -866,12 +875,12 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
     return KNOWN_PHRASES_MAP[engNoTrailingNum];
   }
 
-  // 3. Check known publications
-  if (KNOWN_PUBLICATIONS_HINDI[engLower]) {
-    return KNOWN_PUBLICATIONS_HINDI[engLower];
-  }
-  if (KNOWN_PUBLICATIONS_HINDI[engNoTrailingNum]) {
-    return KNOWN_PUBLICATIONS_HINDI[engNoTrailingNum];
+  // 3. If rawHindi is present but contained leftover characters or failed strict validation, try sushaToUnicode again
+  if (rawHindiTrimmed && rawHindiTrimmed.length > 0) {
+    const sushaAttempt = sushaToUnicode(rawHindiTrimmed);
+    if (sushaAttempt && /[\u0900-\u097F]/.test(sushaAttempt)) {
+      return sushaAttempt.replace(/[a-zA-Z]/g, '').trim();
+    }
   }
 
   // 4. For new entries without raw database Hindi, transliterate phonetically from English

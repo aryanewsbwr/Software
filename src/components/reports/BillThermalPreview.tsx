@@ -42,14 +42,13 @@ function computeNextMonthBillDate(m: string | undefined, y: string | number | un
   return `01-10-${baseYear}`;
 }
 
-function maskPhone(p: string | undefined | null): string {
+function cleanPhone(p: string | undefined | null): string {
   if (!p || p === '---') return '';
   const digits = String(p).replace(/\D/g, '');
   if (digits.length >= 10) {
-    const last10 = digits.slice(-10);
-    return `${last10.slice(0, 2)}XXXXXX${last10.slice(-2)}`;
+    return digits.slice(-10);
   }
-  return String(p);
+  return String(p).trim();
 }
 
 export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
@@ -103,8 +102,8 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
       const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
 
       items.forEach((it, pIdx) => {
-        const cleanPub = it.pub_name.trim();
-        const pubKey = cleanPub.toLowerCase();
+        const pubHindiOrClean = cleanOrTransliterateHindi('', it.pub_name) || it.pub_name.trim();
+        const pubKey = pubHindiOrClean.toLowerCase();
         const qty = Number(it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1));
         
         let itemDelivery = 0;
@@ -121,7 +120,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           existing.totalAmount = roundToFoxProRule(existing.totalAmount + itemAmt);
         } else {
           pubConsolidatedMap.set(pubKey, {
-            pub_name: cleanPub,
+            pub_name: pubHindiOrClean,
             totalQty: qty,
             totalAmount: itemAmt
           });
@@ -150,9 +149,10 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
       itemsElements = items.length > 0 ? (
         items.map((it, pIdx) => {
           const qtyOrDays = it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1);
+          const pubHindiOrClean = cleanOrTransliterateHindi('', it.pub_name) || it.pub_name;
           return (
             <div key={pIdx} className="flex justify-between items-center text-[12px] font-semibold text-black">
-              <span className="flex-[2] text-left">{it.pub_name}</span>
+              <span className="flex-[2] text-left">{pubHindiOrClean}</span>
               <span className="flex-1 text-center font-bold">{qtyOrDays}</span>
               <span className="flex-1 text-right font-bold">{formatMoney(roundToFoxProRule(it.amount))}</span>
             </div>
@@ -174,10 +174,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
     const netPayable = roundToFoxProRule(b.net_payable || (monthBillAmount + previousDue));
 
     const monthYearDisplay = formatShortMonthYear(b.month, b.year);
-    const billDateDisplay = b.bill_date && b.bill_date.includes('-') 
-      ? b.bill_date 
-      : computeNextMonthBillDate(b.month, b.year);
-    const maskedMob = maskPhone(b.phone);
+    const formattedPhone = cleanPhone(b.phone);
 
     return (
       <div 
@@ -187,28 +184,30 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
         }}
       >
-        {/* Agency Header */}
-        <div className="flex flex-col items-center mb-3">
-          <div className="w-16 h-18 flex items-center justify-center mb-1.5">
+        {/* Agency Header (Logo on Left, Agency info on Right) */}
+        <div className="flex flex-row items-center justify-start gap-3 mb-3 text-left">
+          <div className="w-16 h-18 flex-shrink-0 flex items-center justify-center">
             <img src={BOY_LOGO_B64} alt="Aryan News Agency" className="max-h-full max-w-full object-contain block" />
           </div>
-          <div className="font-black text-[17px] tracking-wider text-black uppercase leading-tight">
-            ARYAN NEWS AGENCY
-          </div>
-          <div className="font-bold text-[14px] text-slate-900 mt-0.5 leading-tight">
-            आर्यन न्यूज़ एजेंसी
-          </div>
-          <div className="text-[10.5px] text-slate-700 mt-1 leading-snug">
-            5(1), Old Bus Stand, Beawar (Raj.) 305901
-          </div>
-          <div className="text-[10.5px] text-slate-700 leading-snug">
-            WhatsApp: 9462558949
-          </div>
-          <div className="text-[10.5px] text-slate-700 leading-snug">
-            Ph: 9829058949
-          </div>
-          <div className="text-[10.5px] text-slate-700 leading-snug">
-            www.aryannewsagency.com
+          <div className="flex-1 flex flex-col justify-center">
+            <div className="font-black text-[15px] tracking-tight text-black uppercase leading-tight">
+              ARYAN NEWS AGENCY
+            </div>
+            <div className="font-bold text-[13px] text-slate-900 mt-0.5 leading-tight">
+              आर्यन न्यूज़ एजेंसी
+            </div>
+            <div className="text-[10px] text-slate-700 mt-1 leading-snug">
+              5(1), Old Bus Stand, Beawar (Raj.) 305901
+            </div>
+            <div className="text-[10px] text-slate-700 leading-snug">
+              WhatsApp: 9462558949
+            </div>
+            <div className="text-[10px] text-slate-700 leading-snug">
+              Ph: 9829058949
+            </div>
+            <div className="text-[10px] text-slate-700 leading-snug">
+              www.aryannewsagency.com
+            </div>
           </div>
         </div>
 
@@ -230,7 +229,6 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           </div>
           <div className="flex justify-between items-center">
             <div className="text-left"><span className="text-slate-700">A/c No:</span> <span className="font-extrabold text-black">{b.customer_id}</span></div>
-            <div className="text-right"><span className="text-slate-700">Date:</span> <span className="font-extrabold text-black">{billDateDisplay}</span></div>
           </div>
         </div>
 
@@ -249,7 +247,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           )}
           <div className="flex justify-between items-center text-[10.5px] font-semibold text-slate-700 mt-1">
             <span>Region: {b.region_name || b.region_id}{b.priority ? ` | Pr: ${b.priority}` : ''}</span>
-            {maskedMob && <span>Mob: {maskedMob}</span>}
+            {formattedPhone && <span>Mob: {formattedPhone}</span>}
           </div>
         </div>
 
