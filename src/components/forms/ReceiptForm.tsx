@@ -763,7 +763,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
     setTotalPayableAmt(netPayable);
 
     setManualRcpAmt(netPayable > 0 ? netPayable : amt);
-    setRevAmt(netPayable > 0 ? netPayable : amt);
+    setRevAmt(0);
     if (manualRcpAmtRef.current) manualRcpAmtRef.current.focus();
   };
 
@@ -771,14 +771,12 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
   const handleManualRcpAmtChange = (valStr: string) => {
     if (valStr === '') {
       setManualRcpAmt('');
-      setRevAmt('');
       setBalAmt('');
       setTotalPayableAmt(0);
       return;
     }
     const val = parseFloat(valStr) || 0;
     setManualRcpAmt(val);
-    setRevAmt(val); // Display in Rev.Amt box as informative entry
     setTotalPayableAmt(val);
 
     const bAmt = Number(billAmt) || (totalCustomerDue > 0 ? totalCustomerDue : 0);
@@ -850,7 +848,7 @@ export default function ReceiptForm({ onClose }: ReceiptFormProps) {
 
   // Balance Calculations: Effective received amount is taken from manual receipt amount
   const numManualRcpAmt = Number(manualRcpAmt) || 0;
-  const numRevAmt = Number(revAmt) || numManualRcpAmt;
+  const numRevAmt = Number(revAmt) || 0;
   const numLessAmt = Number(lessAmt) || 0;
   const numBillAmt = Number(billAmt) || 0;
   const effectiveReceivedForDue = numManualRcpAmt > 0 ? numManualRcpAmt : numRevAmt;
