@@ -309,7 +309,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         {/* Footer Policy Notice */}
         <div className="flex flex-col items-center gap-0.5 text-[10px] text-slate-700 leading-normal">
           <div className="font-medium">कृपया बिल की राशि 5 तारीख तक जमा करें।</div>
-          <div className="font-medium text-slate-800">Queries: reply on WhatsApp 94625 58949</div>
+          <div className="font-medium text-slate-800">Queries: WhatsApp 9462558949</div>
           <div className="font-black text-[11px] text-black mt-1">धन्यवाद!</div>
         </div>
       </div>

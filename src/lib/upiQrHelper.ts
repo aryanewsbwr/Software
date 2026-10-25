@@ -4,15 +4,15 @@ export const UPI_VPA = '9462558949m@pnb';
 export const UPI_PAYEE_NAME = 'ARYAN NEWS AGENCY';
 
 /**
- * Builds the standard dynamic UPI payment URL
- * Format: upi://pay?pa=<VPA>&pn=<PAYEE>&am=<AMOUNT>&cu=INR&tn=<NOTE>
+ * Builds the standard UPI payment URL
+ * If amount is provided (> 0), it sets 'am' as suggestion, but leaves it editable,
+ * or allows customer to enter amount freely (some apps lock amount if 'am' is present).
+ * If omitAmount is true or amount <= 0, no 'am' param is included so user enters any amount.
  */
-export function buildUpiPaymentUri(amount: number, billNoOrCustId?: string | number, month?: string): string {
-  const cleanAmt = Math.max(0, Number(amount || 0)).toFixed(2);
+export function buildUpiPaymentUri(amount?: number | null, billNoOrCustId?: string | number, month?: string): string {
   const pn = encodeURIComponent(UPI_PAYEE_NAME);
-
-  // Pure dynamic payment: Payee + VPA + Amount only (no note / remark)
-  return `upi://pay?pa=${UPI_VPA}&pn=${pn}&am=${cleanAmt}&cu=INR`;
+  // Omit am parameter so customer/app can freely type/edit any amount (including discounted/partial amounts)
+  return `upi://pay?pa=${UPI_VPA}&pn=${pn}&cu=INR`;
 }
 
 /**

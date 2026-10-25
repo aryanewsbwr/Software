@@ -243,7 +243,7 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
       <!-- Footer Policy & Thank You Notice -->
       <div class="footer-notice">
         <div class="footer-due-line">कृपया बिल की राशि 5 तारीख तक जमा करें।</div>
-        <div class="footer-query-line">Queries: reply on WhatsApp 94625 58949</div>
+        <div class="footer-query-line">Queries: WhatsApp 9462558949</div>
         <div class="footer-thanks-line">धन्यवाद!</div>
       </div>
 
