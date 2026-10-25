@@ -840,22 +840,26 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
   const engTrimmed = engStr.trim();
   const engLower = engTrimmed.toLowerCase();
   const engNoTrailingNum = engLower.replace(/\s+\d+$/, '').trim();
-  const rawHindiTrimmed = rawHindiStr.trim();
+  let rawHindiCleaned = rawHindiStr.trim()
+    .replace(/[\ufffd\x00-\x1f\x7f-\xff]/g, '') // remove corrupted bytes
+    .replace(/\s*[0-9]{5,}\s*/g, ' ') // remove stray telephone/UDISE/school code numbers (5+ digits)
+    .replace(/\\',.*$/, '') // remove SQL dump artifacts
+    .trim();
 
   // 1. If rawHindi is available in database, decode and prioritize it:
-  if (rawHindiTrimmed && rawHindiTrimmed.length > 0) {
+  if (rawHindiCleaned && rawHindiCleaned.length > 0) {
     // If rawHindi is already genuine Unicode Hindi without replacement characters, preserve it directly!
-    if (/[\u0900-\u097F]/.test(rawHindiTrimmed) && !rawHindiTrimmed.includes('\ufffd') && !/[a-zA-Z]/.test(rawHindiTrimmed)) {
-      return rawHindiTrimmed;
+    if (/[\u0900-\u097F]/.test(rawHindiCleaned) && !/[a-zA-Z]/.test(rawHindiCleaned)) {
+      return rawHindiCleaned;
     }
 
     // Check Kruti Dev map
-    if (KRUTI_DEV_MAP[rawHindiTrimmed]) {
-      return KRUTI_DEV_MAP[rawHindiTrimmed];
+    if (KRUTI_DEV_MAP[rawHindiCleaned]) {
+      return KRUTI_DEV_MAP[rawHindiCleaned];
     }
 
     // Decode legacy Susha 05 font ASCII string directly from database
-    const sushaDecoded = sushaToUnicode(rawHindiTrimmed);
+    const sushaDecoded = sushaToUnicode(rawHindiCleaned);
     if (sushaDecoded && /[\u0900-\u097F]/.test(sushaDecoded) && !/[a-zA-Z]/.test(sushaDecoded)) {
       return sushaDecoded;
     }
@@ -876,10 +880,10 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
   }
 
   // 3. If rawHindi is present but contained leftover characters or failed strict validation, try sushaToUnicode again
-  if (rawHindiTrimmed && rawHindiTrimmed.length > 0) {
-    const sushaAttempt = sushaToUnicode(rawHindiTrimmed);
+  if (rawHindiCleaned && rawHindiCleaned.length > 0) {
+    const sushaAttempt = sushaToUnicode(rawHindiCleaned);
     if (sushaAttempt && /[\u0900-\u097F]/.test(sushaAttempt)) {
-      return sushaAttempt.replace(/[a-zA-Z]/g, '').trim();
+      return sushaAttempt.replace(/[a-zA-Z]/g, '').replace(/\s*[0-9]{5,}\s*/g, ' ').trim();
     }
   }
 
@@ -888,7 +892,7 @@ export function cleanOrTransliterateHindi(rawHindi: any, englishName: any): stri
     return englishToHindiPhonetic(engTrimmed);
   }
 
-  return rawHindiTrimmed || '';
+  return rawHindiCleaned || '';
 }
 
 /**

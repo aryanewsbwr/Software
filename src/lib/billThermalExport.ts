@@ -143,24 +143,18 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
   const monthYearDisplay = formatShortMonthYear(b.month, b.year);
   const formattedPhone = cleanPhone(b.phone);
 
-  const rawQrSvg = generateDynamicUpiQrSvg(netPayable, b.bill_no || b.customer_id, `${b.month || ''} ${b.year || ''}`.trim(), 180, 0);
+  const rawQrSvg = generateDynamicUpiQrSvg(netPayable, b.bill_no || b.customer_id, `${b.month || ''} ${b.year || ''}`.trim(), 120, 0);
 
   return `
     <div class="bill-card">
       
       <!-- Agency Header -->
       <div class="agency-header">
-        <div class="agency-logo-wrap">
-          <img src="${BOY_LOGO_B64}" alt="Aryan News Agency" class="agency-logo-img" />
-        </div>
-        <div class="agency-details">
-          <div class="agency-name-en">ARYAN NEWS AGENCY</div>
-          <div class="agency-name-hi">आर्यन न्यूज़ एजेंसी</div>
-          <div class="agency-address">5(1), Old Bus Stand, Beawar (Raj.) 305901</div>
-          <div class="agency-contact">WhatsApp: 9462558949</div>
-          <div class="agency-contact">Ph: 9829058949</div>
-          <div class="agency-web">www.aryannewsagency.com</div>
-        </div>
+        <div class="agency-name-en">ARYAN NEWS AGENCY</div>
+        <div class="agency-name-hi">आर्यन न्यूज़ एजेंसी</div>
+        <div class="agency-address">5(1), Old Bus Stand, Beawar (Raj.) 305901</div>
+        <div class="agency-contact">WhatsApp: 9462558949 | Ph: 9829058949</div>
+        <div class="agency-web">www.aryannewsagency.com</div>
       </div>
 
       <!-- Solid Top Rule -->
@@ -361,55 +355,33 @@ export function generateThermal58mmFullHtml(
     /* Header Section */
     .agency-header {
       display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 8px;
-      margin-bottom: 8px;
-      text-align: left;
-    }
-
-    .agency-logo-wrap {
-      width: 58px;
-      height: 64px;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .agency-details {
-      flex: 1;
-      display: flex;
       flex-direction: column;
+      align-items: center;
       justify-content: center;
-    }
-
-    .agency-logo-img {
-      max-height: 100%;
-      max-width: 100%;
-      object-fit: contain;
-      display: block;
+      margin-bottom: 8px;
+      text-align: center;
+      width: 100%;
     }
 
     .agency-name-en {
-      font-size: 14.5px;
+      font-size: 15px;
       font-weight: 900;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.5px;
       color: #000;
-      line-height: 1.15;
+      line-height: 1.2;
+      white-space: nowrap;
     }
 
     .agency-name-hi {
-      font-size: 12.5px;
+      font-size: 13px;
       font-weight: 800;
       color: #000;
       margin-top: 1px;
-      line-height: 1.15;
+      line-height: 1.2;
     }
 
     .agency-address {
-      font-size: 9px;
+      font-size: 9.5px;
       font-weight: 700;
       color: #000;
       margin-top: 2px;
@@ -417,7 +389,7 @@ export function generateThermal58mmFullHtml(
     }
 
     .agency-contact {
-      font-size: 9px;
+      font-size: 9.5px;
       font-weight: 700;
       color: #000;
       margin-top: 1px;
@@ -425,9 +397,12 @@ export function generateThermal58mmFullHtml(
     }
 
     .agency-web {
-      font-size: 9px;
+      font-size: 9.5px;
       font-weight: 700;
       color: #000;
+      margin-top: 1px;
+      line-height: 1.25;
+    }
       margin-top: 1px;
       line-height: 1.25;
     }
@@ -634,12 +609,12 @@ export function generateThermal58mmFullHtml(
     }
 
     .qr-code-wrapper {
-      width: 145px;
-      height: 145px;
+      width: 105px;
+      height: 105px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .qr-code-wrapper svg {

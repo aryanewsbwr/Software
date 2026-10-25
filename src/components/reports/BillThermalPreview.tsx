@@ -184,30 +184,22 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
         }}
       >
-        {/* Agency Header (Logo on Left, Agency info on Right) */}
-        <div className="flex flex-row items-center justify-start gap-3 mb-3 text-left">
-          <div className="w-16 h-18 flex-shrink-0 flex items-center justify-center">
-            <img src={BOY_LOGO_B64} alt="Aryan News Agency" className="max-h-full max-w-full object-contain block" />
+        {/* Agency Header (Centered without logo) */}
+        <div className="flex flex-col items-center justify-center mb-2.5 text-center">
+          <div className="font-black text-[15px] tracking-tight text-black uppercase leading-tight whitespace-nowrap">
+            ARYAN NEWS AGENCY
           </div>
-          <div className="flex-1 flex flex-col justify-center">
-            <div className="font-black text-[15px] tracking-tight text-black uppercase leading-tight">
-              ARYAN NEWS AGENCY
-            </div>
-            <div className="font-bold text-[13px] text-slate-900 mt-0.5 leading-tight">
-              आर्यन न्यूज़ एजेंसी
-            </div>
-            <div className="text-[10px] text-slate-700 mt-1 leading-snug">
-              5(1), Old Bus Stand, Beawar (Raj.) 305901
-            </div>
-            <div className="text-[10px] text-slate-700 leading-snug">
-              WhatsApp: 9462558949
-            </div>
-            <div className="text-[10px] text-slate-700 leading-snug">
-              Ph: 9829058949
-            </div>
-            <div className="text-[10px] text-slate-700 leading-snug">
-              www.aryannewsagency.com
-            </div>
+          <div className="font-bold text-[13px] text-slate-900 mt-0.5 leading-tight">
+            आर्यन न्यूज़ एजेंसी
+          </div>
+          <div className="text-[9.5px] text-slate-800 mt-1 leading-snug">
+            5(1), Old Bus Stand, Beawar (Raj.) 305901
+          </div>
+          <div className="text-[9.5px] text-slate-800 leading-snug">
+            WhatsApp: 9462558949 | Ph: 9829058949
+          </div>
+          <div className="text-[9.5px] text-slate-800 leading-snug">
+            www.aryannewsagency.com
           </div>
         </div>
 
@@ -290,23 +282,23 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         </div>
 
         {/* QR Payment Section */}
-        <div className="flex flex-col items-center justify-center mb-3">
+        <div className="flex flex-col items-center justify-center mb-2.5">
           <div 
-            className="w-36 h-36 flex items-center justify-center bg-white p-1 mb-2"
+            className="w-28 h-28 flex items-center justify-center bg-white p-1 mb-1.5"
             dangerouslySetInnerHTML={{
               __html: generateDynamicUpiQrSvg(
                 netPayable,
                 b.bill_no || b.customer_id,
                 `${b.month || ''} ${b.year || ''}`.trim(),
-                144,
+                110,
                 0
               )
             }}
           />
-          <div className="font-extrabold text-[11.5px] text-black">
+          <div className="font-extrabold text-[11px] text-black">
             Scan &amp; Pay ₹{Math.round(netPayable)} via any UPI app
           </div>
-          <div className="font-medium text-[10.5px] text-slate-800 mt-0.5">
+          <div className="font-medium text-[10px] text-slate-800 mt-0.5">
             किसी भी UPI ऐप से स्कैन कर भुगतान करें
           </div>
         </div>
