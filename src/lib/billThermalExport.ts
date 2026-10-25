@@ -189,11 +189,6 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
       <!-- Solid Top Rule -->
       <div class="solid-rule-thick"></div>
 
-      <!-- Pill Badge: MONTHLY BILL / मासिक बिल -->
-      <div class="pill-badge-container">
-        <div class="pill-badge">MONTHLY BILL / मासिक बिल</div>
-      </div>
-
       <!-- Meta Info Grid (Bill No, Month, A/c No) -->
       <div class="meta-grid">
         <div class="meta-row">
@@ -242,11 +237,11 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
       <!-- Summary Breakdown (Current Month / Previous Due) -->
       <div class="summary-section">
         <div class="summary-row">
-          <span class="summary-label">Current Month / इस माह</span>
+          <span class="summary-label">Current / इस माह</span>
           <span class="summary-value">₹ ${formatMoney(monthBillAmount)}</span>
         </div>
         <div class="summary-row">
-          <span class="summary-label">Previous Due / पिछला बकाया</span>
+          <span class="summary-label">Prev. Due / बकाया</span>
           <span class="summary-value">₹ ${formatMoney(previousDue)}</span>
         </div>
       </div>
@@ -465,24 +460,27 @@ export function generateThermal58mmFullHtml(
     .meta-grid {
       display: flex;
       flex-direction: column;
-      gap: 2.5px;
+      gap: 2px;
+      margin-top: 4px;
       margin-bottom: 6px;
-      font-size: 11px;
+      font-size: 10.5px;
     }
 
     .meta-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      width: 100%;
     }
 
     .meta-cell {
-      flex: 1;
       text-align: left;
+      white-space: nowrap;
     }
 
     .text-right {
       text-align: right;
+      white-space: nowrap;
     }
 
     .meta-label {
@@ -580,9 +578,9 @@ export function generateThermal58mmFullHtml(
     .summary-section {
       display: flex;
       flex-direction: column;
-      gap: 3.5px;
-      font-size: 11px;
-      margin-bottom: 10px;
+      gap: 3px;
+      font-size: 10px;
+      margin-bottom: 8px;
     }
 
     .summary-row {
@@ -591,19 +589,22 @@ export function generateThermal58mmFullHtml(
       align-items: center;
       font-weight: 600;
       color: #222;
-      white-space: nowrap;
+      width: 100%;
     }
 
     .summary-label {
       text-align: left;
-      white-space: nowrap;
+      font-size: 10px;
+      line-height: 1.2;
     }
 
     .summary-value {
       text-align: right;
-      font-weight: 700;
+      font-weight: 800;
       color: #000;
       white-space: nowrap;
+      font-size: 10.5px;
+      margin-left: 4px;
     }
 
     /* Total Banner Box */

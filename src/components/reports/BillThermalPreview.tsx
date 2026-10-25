@@ -206,18 +206,11 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         {/* Solid Top Rule */}
         <div className="w-full h-[1.8px] bg-black my-1.5"></div>
 
-        {/* Pill Badge */}
-        <div className="flex justify-center mb-1">
-          <div className="px-3 py-0.5 border-[1.2px] border-black rounded-full font-bold text-[10.5px] text-black bg-white">
-            MONTHLY BILL / मासिक बिल
-          </div>
-        </div>
-
         {/* Meta Info Grid */}
         <div className="flex flex-col gap-0.5 text-[11px] mb-1.5">
           <div className="flex justify-between items-center">
             <div className="text-left"><span className="text-slate-700">Bill No:</span> <span className="font-extrabold text-black">{b.bill_no || b.customer_id}</span></div>
-            <div className="text-right"><span className="text-slate-700">Month:</span> <span className="font-extrabold text-black">{monthYearDisplay}</span></div>
+            <div className="text-right whitespace-nowrap"><span className="text-slate-700">Month:</span> <span className="font-extrabold text-black">{monthYearDisplay}</span></div>
           </div>
           <div className="flex justify-between items-center">
             <div className="text-left"><span className="text-slate-700">A/c No:</span> <span className="font-extrabold text-black">{b.customer_id}</span></div>
@@ -264,14 +257,14 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         <div className="w-full border-t border-dashed border-zinc-500 my-1.5"></div>
 
         {/* Summary Breakdown */}
-        <div className="flex flex-col gap-1 text-[11px] mb-2">
-          <div className="flex justify-between items-center font-semibold text-zinc-900 whitespace-nowrap">
-            <span className="whitespace-nowrap">Current Month / इस माह</span>
-            <span className="font-bold whitespace-nowrap">₹ {formatMoney(monthBillAmount)}</span>
+        <div className="flex flex-col gap-1 text-[10.5px] mb-2">
+          <div className="flex justify-between items-center font-semibold text-zinc-900">
+            <span className="text-left">Current / इस माह</span>
+            <span className="font-bold whitespace-nowrap ml-1">₹ {formatMoney(monthBillAmount)}</span>
           </div>
-          <div className="flex justify-between items-center font-semibold text-zinc-900 whitespace-nowrap">
-            <span className="whitespace-nowrap">Previous Due / पिछला बकाया</span>
-            <span className="font-bold whitespace-nowrap">₹ {formatMoney(previousDue)}</span>
+          <div className="flex justify-between items-center font-semibold text-zinc-900">
+            <span className="text-left">Prev. Due / बकाया</span>
+            <span className="font-bold whitespace-nowrap ml-1">₹ {formatMoney(previousDue)}</span>
           </div>
         </div>
 
