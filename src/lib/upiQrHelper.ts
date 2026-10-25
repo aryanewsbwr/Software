@@ -10,9 +10,10 @@ export const UPI_PAYEE_NAME = 'ARYAN NEWS AGENCY';
  * If omitAmount is true or amount <= 0, no 'am' param is included so user enters any amount.
  */
 export function buildUpiPaymentUri(amount?: number | null, billNoOrCustId?: string | number, month?: string): string {
+  const cleanAmt = Math.max(0, Number(amount || 0)).toFixed(2);
   const pn = encodeURIComponent(UPI_PAYEE_NAME);
-  // Omit am parameter so customer/app can freely type/edit any amount (including discounted/partial amounts)
-  return `upi://pay?pa=${UPI_VPA}&pn=${pn}&cu=INR`;
+
+  return `upi://pay?pa=${UPI_VPA}&pn=${pn}&am=${cleanAmt}&cu=INR`;
 }
 
 /**
