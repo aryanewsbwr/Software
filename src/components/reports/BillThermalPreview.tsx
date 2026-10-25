@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Printer, ChevronLeft, ChevronRight, Download, FileText, Check } from 'lucide-react';
+import { Printer, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from '@/lib/bill4in1Export';
-import { printBillsThermal58mm } from '@/lib/billThermalExport';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { roundToFoxProRule } from '@/lib/billingEngine';
-import { generateDynamicUpiQrSvg, UPI_VPA } from '@/lib/upiQrHelper';
+import { generateDynamicUpiQrSvg } from '@/lib/upiQrHelper';
+import { printBillsThermal58mm } from '@/lib/billThermalExport';
 
 interface BillThermalPreviewProps {
   bills: BillRecord[];
@@ -18,27 +18,61 @@ function formatMoney(n: number | undefined | null): string {
   return Number(n).toFixed(2);
 }
 
+function formatShortMonthYear(m: string | undefined, y: string | number | undefined): string {
+  const shortMap: Record<string, string> = {
+    'january': 'Jan', 'february': 'Feb', 'march': 'Mar', 'april': 'Apr',
+    'may': 'May', 'june': 'Jun', 'july': 'Jul', 'august': 'Aug',
+    'september': 'Sep', 'sept': 'Sep', 'october': 'Oct', 'november': 'Nov', 'december': 'Dec'
+  };
+  const cleanM = (m || '').trim().toLowerCase();
+  const sM = shortMap[cleanM] || (m ? m.slice(0, 3) : '');
+  return `${sM} ${y || ''}`.trim();
+}
+
+function computeNextMonthBillDate(m: string | undefined, y: string | number | undefined): string {
+  const mLow = (m || '').toLowerCase().slice(0, 3);
+  const mList = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  const mIdx = mList.indexOf(mLow);
+  const baseYear = Number(y) || 2026;
+  if (mIdx >= 0) {
+    const nextM = (mIdx + 1) % 12;
+    const nextYr = nextM === 0 ? baseYear + 1 : baseYear;
+    return `01-${String(nextM + 1).padStart(2, '0')}-${nextYr}`;
+  }
+  return `01-10-${baseYear}`;
+}
+
+function maskPhone(p: string | undefined | null): string {
+  if (!p || p === '---') return '';
+  const digits = String(p).replace(/\D/g, '');
+  if (digits.length >= 10) {
+    const last10 = digits.slice(-10);
+    return `${last10.slice(0, 2)}XXXXXX${last10.slice(-2)}`;
+  }
+  return String(p);
+}
+
 export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
-  bills,
-  title = 'Region Wise Bill Printing (58mm Thermal)',
+  bills = [],
+  title = 'Aryan News Agency - Monthly Bills',
   zoomLevel = 100,
-  initialPrintMode = 'simple',
+  initialPrintMode = 'simple'
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
   const [printMode, setPrintMode] = useState<BillPrintMode>(initialPrintMode);
+  const [scale, setScale] = useState(1);
 
   if (!bills || bills.length === 0) {
     return (
-      <div className="p-8 text-center text-slate-500 font-sans">
-        No bills found for the selected region.
+      <div className="p-12 text-center text-slate-500 font-mono text-xs">
+        No bills available to display in Preview.
       </div>
     );
   }
 
   const currentBill = bills[currentIndex] || bills[0];
 
-  const handlePrint = () => {
+  const handlePrintAll = () => {
     printBillsThermal58mm(bills, title, printMode);
   };
 
@@ -46,15 +80,20 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
     printBillsThermal58mm([currentBill], `Bill_${currentBill.customer_id}`, printMode);
   };
 
-  const renderReceiptCard = (b: BillRecord, idx: number) => {
-    const displayHindi = cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name);
+  const renderBill = (b: BillRecord, idx: number) => {
+    let displayHindi = cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name);
+    const cleanEngName = (b.customer_name || '').replace(/\s+crd\b/i, '').trim();
+
+    if (displayHindi) {
+      displayHindi = displayHindi.replace(/\s+सीआरडी\b/i, '').replace(/\s+CRD\b/i, '').trim();
+    }
+
     const items = b.items || [];
     const totalDelivery = b.delivery_charge || 0;
 
     let itemsElements: React.ReactNode = null;
 
     if (printMode === 'simple') {
-      // Consolidate publication items for simple display
       const pubConsolidatedMap = new Map<string, {
         pub_name: string;
         totalQty: number;
@@ -63,7 +102,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 
       const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
 
-      items.forEach((it, itemIdx) => {
+      items.forEach((it, pIdx) => {
         const cleanPub = it.pub_name.trim();
         const pubKey = cleanPub.toLowerCase();
         const qty = Number(it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1));
@@ -71,7 +110,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         let itemDelivery = 0;
         if (hasItemDelivery) {
           itemDelivery = it.delivery_amount || 0;
-        } else if (totalDelivery > 0 && itemIdx === 0) {
+        } else if (totalDelivery > 0 && pIdx === 0) {
           itemDelivery = totalDelivery;
         }
         const itemAmt = roundToFoxProRule(it.amount + itemDelivery);
@@ -90,47 +129,40 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
       });
 
       const displayItems = Array.from(pubConsolidatedMap.values());
+      const monthBillAmount = roundToFoxProRule((b.paper_amount || 0) + (b.delivery_charge || 0));
 
       itemsElements = displayItems.length > 0 ? (
         displayItems.map((it, pIdx) => (
-          <div key={pIdx} className="flex justify-between items-baseline text-[10.5px]">
-            <span className="max-w-[70%] break-words">
-              {it.pub_name} ({it.totalQty}d)
-            </span>
-            <span className="font-bold">
-              {formatMoney(it.totalAmount)}
-            </span>
+          <div key={pIdx} className="flex justify-between items-center text-[12px] font-semibold text-black">
+            <span className="flex-[2] text-left">{it.pub_name}</span>
+            <span className="flex-1 text-center font-bold">{it.totalQty}</span>
+            <span className="flex-1 text-right font-bold">{formatMoney(it.totalAmount)}</span>
           </div>
         ))
       ) : (
-        <div className="flex justify-between items-baseline text-[10.5px]">
-          <span>Newspaper / Monthly</span>
-          <span className="font-bold">{formatMoney(roundToFoxProRule((b.paper_amount || 0) + (b.delivery_charge || 0)))}</span>
+        <div className="flex justify-between items-center text-[12px] font-semibold text-black">
+          <span className="flex-[2] text-left">समाचार पत्र / मासिक</span>
+          <span className="flex-1 text-center font-bold">30</span>
+          <span className="flex-1 text-right font-bold">{formatMoney(monthBillAmount)}</span>
         </div>
       );
     } else {
-      // Detail Mode: Each item with days, rate, pure paper amount
       itemsElements = items.length > 0 ? (
         items.map((it, pIdx) => {
           const qtyOrDays = it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1);
-          const rateStr = it.rate !== null && it.rate !== undefined && Number(it.rate) > 0
-            ? `@${Number(it.rate).toFixed(2)}`
-            : '';
           return (
-            <div key={pIdx} className="flex justify-between items-baseline text-[10.5px]">
-              <span className="max-w-[70%] break-words">
-                {it.pub_name} ({qtyOrDays}d {rateStr})
-              </span>
-              <span className="font-bold">
-                {formatMoney(roundToFoxProRule(it.amount))}
-              </span>
+            <div key={pIdx} className="flex justify-between items-center text-[12px] font-semibold text-black">
+              <span className="flex-[2] text-left">{it.pub_name}</span>
+              <span className="flex-1 text-center font-bold">{qtyOrDays}</span>
+              <span className="flex-1 text-right font-bold">{formatMoney(roundToFoxProRule(it.amount))}</span>
             </div>
           );
         })
       ) : (
-        <div className="flex justify-between items-baseline text-[10.5px]">
-          <span>Newspaper / Monthly</span>
-          <span className="font-bold">{formatMoney(roundToFoxProRule(b.paper_amount || 0))}</span>
+        <div className="flex justify-between items-center text-[12px] font-semibold text-black">
+          <span className="flex-[2] text-left">समाचार पत्र / मासिक</span>
+          <span className="flex-1 text-center font-bold">30</span>
+          <span className="flex-1 text-right font-bold">{formatMoney(roundToFoxProRule(b.paper_amount || 0))}</span>
         </div>
       );
     }
@@ -141,153 +173,154 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
     const previousDue = roundToFoxProRule(b.previous_due || 0);
     const netPayable = roundToFoxProRule(b.net_payable || (monthBillAmount + previousDue));
 
+    const monthYearDisplay = formatShortMonthYear(b.month, b.year);
+    const billDateDisplay = b.bill_date && b.bill_date.includes('-') 
+      ? b.bill_date 
+      : computeNextMonthBillDate(b.month, b.year);
+    const maskedMob = maskPhone(b.phone);
+
     return (
       <div 
         key={`${b.customer_id}-${idx}`}
-        className="w-[260px] bg-white border border-slate-400 shadow-xl p-3 font-mono text-[11px] leading-tight select-text text-black mb-6"
+        className="w-[360px] max-w-[360px] bg-white border border-slate-300 shadow-2xl p-6 font-sans text-[12px] leading-tight select-text text-black mb-8 rounded-sm text-center"
         style={{
-          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
         }}
       >
-        {/* Receipt Header */}
-        <div className="flex items-center justify-start gap-2 mb-1">
-          <div className="w-8 shrink-0 flex items-center justify-center">
-            <img src={BOY_LOGO_B64} alt="logo" className="h-14 w-auto object-contain block" style={{ imageRendering: 'crisp-edges' }} />
+        {/* Agency Header */}
+        <div className="flex flex-col items-center mb-3">
+          <div className="w-16 h-18 flex items-center justify-center mb-1.5">
+            <img src={BOY_LOGO_B64} alt="Aryan News Agency" className="max-h-full max-w-full object-contain block" />
           </div>
-          <div className="flex-1 text-center space-y-0.5">
-            <div className="font-black text-sm tracking-tight text-slate-950 uppercase">
-              ARYAN NEWS AGENCY
-            </div>
-            <div className="text-[9.5px] text-slate-800">
-              5 Old Bus stand Beawar
-            </div>
-            <div className="text-[9.5px] text-slate-800">
-              Ph: 9462558949, 9829058949
-            </div>
+          <div className="font-black text-[17px] tracking-wider text-black uppercase leading-tight">
+            ARYAN NEWS AGENCY
+          </div>
+          <div className="font-bold text-[14px] text-slate-900 mt-0.5 leading-tight">
+            आर्यन न्यूज़ एजेंसी
+          </div>
+          <div className="text-[10.5px] text-slate-700 mt-1 leading-snug">
+            5(1), Old Bus Stand, Beawar (Raj.) 305901
+          </div>
+          <div className="text-[10.5px] text-slate-700 leading-snug">
+            WhatsApp: 9462558949
+          </div>
+          <div className="text-[10.5px] text-slate-700 leading-snug">
+            Ph: 9829058949
+          </div>
+          <div className="text-[10.5px] text-slate-700 leading-snug">
+            www.aryannewsagency.com
           </div>
         </div>
 
-        <div className="text-center font-bold tracking-tighter text-[10px] my-1 text-slate-700">
-          ================================
-        </div>
+        {/* Solid Top Rule */}
+        <div className="w-full h-[1.8px] bg-black my-2.5"></div>
 
-        {/* Bill Metadata: Bill No of each bill, Month instead of Period */}
-        <div className="flex justify-between items-baseline text-[10px]">
-          <span>Bill No: <b className="font-bold">{b.bill_no || b.customer_id}</b></span>
-          <span>Month: <b className="font-bold">{b.month} {b.year}</b></span>
-        </div>
-
-        {/* Customer Account Number / ID */}
-        <div className="text-[10px] mt-0.5">
-          <span>Ac.no.: <b className="font-bold">{b.customer_id}</b></span>
-        </div>
-
-        <div className="text-center text-[10px] my-1 text-slate-600">
-          --------------------------------
-        </div>
-
-        {/* Customer Info (Customer Address removed as requested) */}
-        <div className="space-y-0.5">
-          <div className="font-black text-[12px] uppercase text-blue-950">
-            {b.customer_name}
+        {/* Pill Badge */}
+        <div className="flex justify-center mb-2.5">
+          <div className="px-3.5 py-1 border-[1.2px] border-black rounded-full font-bold text-[11px] text-black bg-white">
+            MONTHLY BILL / मासिक बिल
           </div>
-          {displayHindi && displayHindi !== b.customer_name && (
-            <div className="font-bold text-[11px] text-slate-900">
+        </div>
+
+        {/* Meta Info Grid */}
+        <div className="flex flex-col gap-1 text-[11.5px] mb-2.5">
+          <div className="flex justify-between items-center">
+            <div className="text-left"><span className="text-slate-700">Bill No:</span> <span className="font-extrabold text-black">{b.bill_no || b.customer_id}</span></div>
+            <div className="text-right"><span className="text-slate-700">Month:</span> <span className="font-extrabold text-black">{monthYearDisplay}</span></div>
+          </div>
+          <div className="flex justify-between items-center">
+            <div className="text-left"><span className="text-slate-700">A/c No:</span> <span className="font-extrabold text-black">{b.customer_id}</span></div>
+            <div className="text-right"><span className="text-slate-700">Date:</span> <span className="font-extrabold text-black">{billDateDisplay}</span></div>
+          </div>
+        </div>
+
+        {/* Dashed Divider */}
+        <div className="w-full border-t border-dashed border-zinc-500 my-2.5"></div>
+
+        {/* Customer Section */}
+        <div className="text-left mb-2.5">
+          <div className="font-black text-[13.5px] uppercase tracking-tight text-black">
+            {cleanEngName}
+          </div>
+          {displayHindi && displayHindi !== cleanEngName && (
+            <div className="font-bold text-[12.5px] text-slate-900 mt-0.5">
               {displayHindi}
             </div>
           )}
-          <div className="text-[9.5px] text-slate-700">
-            Region: {b.region_name || b.region_id} {b.priority ? `| Pr: ${b.priority}` : ''}
+          <div className="flex justify-between items-center text-[10.5px] font-semibold text-slate-700 mt-1">
+            <span>Region: {b.region_name || b.region_id}{b.priority ? ` | Pr: ${b.priority}` : ''}</span>
+            {maskedMob && <span>Mob: {maskedMob}</span>}
           </div>
-          {b.phone && (
-            <div className="text-[9.5px] text-slate-700">
-              Mob: {b.phone}
-            </div>
-          )}
         </div>
 
-        <div className="text-center text-[10px] my-1 text-slate-600">
-          --------------------------------
+        {/* Dashed Divider */}
+        <div className="w-full border-t border-dashed border-zinc-500 my-2.5"></div>
+
+        {/* Items Header */}
+        <div className="flex justify-between items-center text-[11.5px] font-extrabold text-black">
+          <span className="flex-[2] text-left">विवरण / Particular</span>
+          <span className="flex-1 text-center">Days</span>
+          <span className="flex-1 text-right">Amount ₹</span>
         </div>
 
-        {/* Table Header */}
-        <div className="flex justify-between text-[10px] font-bold text-slate-900 pb-0.5">
-          <span>PARTICULAR</span>
-          <span>AMOUNT (₹)</span>
-        </div>
-        <div className="text-center text-[9px] text-slate-500 mb-1">
-          - - - - - - - - - - - - - - - -
-        </div>
+        <div className="w-full border-t border-dashed border-zinc-400 my-2"></div>
 
-        {/* Publications List */}
-        <div className="space-y-1 mb-1">
+        {/* Line Items */}
+        <div className="flex flex-col gap-1.5 my-1">
           {itemsElements}
         </div>
 
-        <div className="text-center text-[10px] my-1 text-slate-600">
-          --------------------------------
-        </div>
+        {/* Dashed Divider */}
+        <div className="w-full border-t border-dashed border-zinc-500 my-2.5"></div>
 
-        {/* Calculation summary */}
-        <div className="space-y-0.5 text-[10.5px]">
-          {printMode === 'detail' && deliveryCharge > 0 && (
-            <>
-              <div className="flex justify-between text-slate-800">
-                <span>Paper Total:</span>
-                <span>₹ {formatMoney(paperAmount)}</span>
-              </div>
-              <div className="flex justify-between text-slate-800">
-                <span>Delivery Charge:</span>
-                <span>₹ {formatMoney(deliveryCharge)}</span>
-              </div>
-            </>
-          )}
-
-          <div className="flex justify-between font-bold">
-            <span>Current Month Amt:</span>
-            <span>₹ {formatMoney(monthBillAmount)}</span>
+        {/* Summary Breakdown */}
+        <div className="flex flex-col gap-1 text-[11.5px] mb-3">
+          <div className="flex justify-between items-center font-semibold text-zinc-900">
+            <span>Current Month / इस माह</span>
+            <span className="font-bold">₹ {formatMoney(monthBillAmount)}</span>
           </div>
-
-          {previousDue > 0 && (
-            <div className="flex justify-between text-slate-800">
-              <span>Previous Balance/Due:</span>
-              <span>₹ {formatMoney(previousDue)}</span>
-            </div>
-          )}
-
-          {(b.advance || 0) > 0 && (
-            <div className="flex justify-between text-emerald-700">
-              <span>Advance Paid:</span>
-              <span>- ₹ {formatMoney(b.advance)}</span>
-            </div>
-          )}
+          <div className="flex justify-between items-center font-semibold text-zinc-900">
+            <span>Previous Due / पिछला बकाया</span>
+            <span className="font-bold">₹ {formatMoney(previousDue)}</span>
+          </div>
         </div>
 
-        <div className="text-center font-bold tracking-tighter text-[10px] my-1 text-slate-700">
-          ================================
+        {/* Total Banner Box */}
+        <div className="border-[1.4px] border-black rounded-md px-3 py-1.5 flex justify-between items-center mb-3 bg-white">
+          <span className="font-black text-[13px] text-black">TOTAL / कुल देय</span>
+          <span className="font-black text-[15.5px] text-black">₹ {formatMoney(netPayable)}</span>
         </div>
 
-        {/* Net Payable */}
-        <div className="flex justify-between items-baseline py-0.5 font-black text-xs text-slate-950">
-          <span>TOTAL PAYABLE:</span>
-          <span className="text-sm font-black text-blue-950">
-            ₹ {formatMoney(netPayable)}
-          </span>
-        </div>
-
-        {/* Footer Note with Dynamic UPI QR Code */}
-        <div className="flex flex-col items-center justify-center pt-2 pb-1">
+        {/* QR Payment Section */}
+        <div className="flex flex-col items-center justify-center mb-3">
           <div 
-            className="w-28 h-28 flex items-center justify-center bg-white p-1 rounded-xs border border-slate-200 shadow-xs"
+            className="w-36 h-36 flex items-center justify-center bg-white p-1 mb-2"
             dangerouslySetInnerHTML={{
               __html: generateDynamicUpiQrSvg(
                 netPayable,
                 b.bill_no || b.customer_id,
                 `${b.month || ''} ${b.year || ''}`.trim(),
-                110
+                144,
+                0
               )
             }}
           />
+          <div className="font-extrabold text-[11.5px] text-black">
+            Scan &amp; Pay ₹{Math.round(netPayable)} via any UPI app
+          </div>
+          <div className="font-medium text-[10.5px] text-slate-800 mt-0.5">
+            किसी भी UPI ऐप से स्कैन कर भुगतान करें
+          </div>
+        </div>
+
+        {/* Dashed Divider */}
+        <div className="w-full border-t border-dashed border-zinc-500 my-2.5"></div>
+
+        {/* Footer Policy Notice */}
+        <div className="flex flex-col items-center gap-0.5 text-[10px] text-slate-700 leading-normal">
+          <div className="font-medium">कृपया बिल की राशि 10 तारीख तक जमा करें।</div>
+          <div className="font-medium text-slate-800">Queries: reply on WhatsApp 94625 58949</div>
+          <div className="font-black text-[11px] text-black mt-1">धन्यवाद!</div>
         </div>
       </div>
     );
@@ -295,110 +328,78 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 
   return (
     <div className="flex flex-col items-center w-full">
-      {/* 58MM TOOLBAR */}
+      {/* 58MM / SLIP TOOLBAR */}
       <div className="w-full max-w-2xl bg-slate-800 text-white px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs mb-3 rounded-t-sm shadow-md print:hidden">
         <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-emerald-400" />
-          <span className="font-bold text-amber-300">58mm Thermal (203 DPI):</span>
-          <span className="text-slate-300">
-            {bills.length} Bills in Selected Region
-          </span>
+          <span className="font-bold text-slate-300">Bill {currentIndex + 1} of {bills.length}</span>
+          <button 
+            disabled={currentIndex <= 0}
+            onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
+            className="p-1 bg-slate-700 hover:bg-slate-600 rounded disabled:opacity-30 cursor-pointer"
+            title="Previous Bill"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button 
+            disabled={currentIndex >= bills.length - 1}
+            onClick={() => setCurrentIndex(prev => Math.min(bills.length - 1, prev + 1))}
+            className="p-1 bg-slate-700 hover:bg-slate-600 rounded disabled:opacity-30 cursor-pointer"
+            title="Next Bill"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Navigation & View Controls */}
+        {/* Format Selector: Simple vs Detail */}
         <div className="flex items-center gap-2">
-          {/* Format Toggle: Simple vs Detail */}
-          <div className="flex items-center bg-slate-900 p-0.5 border border-slate-700 rounded text-[11px]">
+          <div className="flex items-center bg-slate-900 px-1 py-0.5 rounded border border-slate-700">
             <button
-              type="button"
               onClick={() => setPrintMode('simple')}
-              className={`px-2 py-0.5 font-bold cursor-pointer rounded transition-colors ${
-                printMode === 'simple'
-                  ? 'bg-emerald-600 text-white'
-                  : 'text-slate-400 hover:text-white'
+              className={`px-2 py-0.5 text-[11px] font-bold rounded cursor-pointer ${
+                printMode === 'simple' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
-              title="Simple: Delivery charge is merged into publication prices"
             >
               Simple
             </button>
             <button
-              type="button"
               onClick={() => setPrintMode('detail')}
-              className={`px-2 py-0.5 font-bold cursor-pointer rounded transition-colors ${
-                printMode === 'detail'
-                  ? 'bg-emerald-600 text-white'
-                  : 'text-slate-400 hover:text-white'
+              className={`px-2 py-0.5 text-[11px] font-bold rounded cursor-pointer ${
+                printMode === 'detail' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
               }`}
-              title="Detail: Separate rate per line & separate delivery charge row"
             >
               Detail
             </button>
           </div>
 
           <button
-            onClick={() => setViewMode(v => v === 'single' ? 'all' : 'single')}
-            className="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-[11px] font-medium border border-slate-600 cursor-pointer"
-          >
-            {viewMode === 'single' ? 'View All Continuous' : 'View Single Receipt'}
-          </button>
-
-          {viewMode === 'single' && (
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
-                disabled={currentIndex === 0}
-                className="p-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 rounded cursor-pointer"
-                title="Previous Bill"
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-              </button>
-              <span className="font-mono text-xs px-1">
-                {currentIndex + 1} / {bills.length}
-              </span>
-              <button
-                onClick={() => setCurrentIndex(i => Math.min(bills.length - 1, i + 1))}
-                disabled={currentIndex >= bills.length - 1}
-                className="p-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 rounded cursor-pointer"
-                title="Next Bill"
-              >
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-
-          {/* Print Buttons */}
-          {viewMode === 'single' && (
-            <button
-              onClick={handlePrintCurrent}
-              className="flex items-center gap-1 px-2.5 py-1 bg-slate-600 hover:bg-slate-500 rounded text-[11px] font-bold cursor-pointer"
-              title="Print Only This Customer Receipt"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print This</span>
-            </button>
-          )}
-
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold cursor-pointer shadow-sm"
-            title="Print All 58mm Thermal Bills / Save as 58mm PDF"
+            onClick={handlePrintCurrent}
+            className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded flex items-center gap-1 cursor-pointer"
+            title="Print Current Bill Only"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Print All (58mm)</span>
+            <span>Print Current</span>
+          </button>
+
+          <button
+            onClick={handlePrintAll}
+            className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded flex items-center gap-1 cursor-pointer"
+            title="Print / Save All Bills"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>Print All ({bills.length})</span>
           </button>
         </div>
       </div>
 
-      {/* RENDER RECEIPTS */}
+      {/* Interactive Bill Preview Frame */}
       <div 
-        className="flex flex-col items-center p-4 bg-slate-300 rounded shadow-inner min-h-[500px] w-full max-w-2xl overflow-y-auto"
-        style={{ zoom: `${zoomLevel}%` }}
+        className="w-full flex justify-center py-4 bg-slate-100 overflow-x-auto rounded-b-sm border border-slate-300"
+        style={{
+          transform: `scale(${zoomLevel / 100})`,
+          transformOrigin: 'top center'
+        }}
       >
-        {viewMode === 'single' ? (
-          renderReceiptCard(currentBill, currentIndex)
-        ) : (
-          bills.map((b, idx) => renderReceiptCard(b, idx))
-        )}
+        {renderBill(currentBill, currentIndex)}
       </div>
     </div>
   );

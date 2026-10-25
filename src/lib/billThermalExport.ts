@@ -1,28 +1,66 @@
 import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from './bill4in1Export';
 import { cleanOrTransliterateHindi } from './transliteration';
 import { roundToFoxProRule } from './billingEngine';
-import { generateDynamicUpiQrSvg, UPI_VPA } from './upiQrHelper';
+import { generateDynamicUpiQrSvg } from './upiQrHelper';
 
 function formatMoney(n: number | undefined | null): string {
   if (n === undefined || n === null || isNaN(n)) return '0.00';
   return Number(n).toFixed(2);
 }
 
+function formatShortMonthYear(m: string | undefined, y: string | number | undefined): string {
+  const shortMap: Record<string, string> = {
+    'january': 'Jan', 'february': 'Feb', 'march': 'Mar', 'april': 'Apr',
+    'may': 'May', 'june': 'Jun', 'july': 'Jul', 'august': 'Aug',
+    'september': 'Sep', 'sept': 'Sep', 'october': 'Oct', 'november': 'Nov', 'december': 'Dec'
+  };
+  const cleanM = (m || '').trim().toLowerCase();
+  const sM = shortMap[cleanM] || (m ? m.slice(0, 3) : '');
+  return `${sM} ${y || ''}`.trim();
+}
+
+function computeNextMonthBillDate(m: string | undefined, y: string | number | undefined): string {
+  const mLow = (m || '').toLowerCase().slice(0, 3);
+  const mList = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+  const mIdx = mList.indexOf(mLow);
+  const baseYear = Number(y) || 2026;
+  if (mIdx >= 0) {
+    const nextM = (mIdx + 1) % 12;
+    const nextYr = nextM === 0 ? baseYear + 1 : baseYear;
+    return `01-${String(nextM + 1).padStart(2, '0')}-${nextYr}`;
+  }
+  return `01-10-${baseYear}`;
+}
+
+function maskPhone(p: string | undefined | null): string {
+  if (!p || p === '---') return '';
+  const digits = String(p).replace(/\D/g, '');
+  if (digits.length >= 10) {
+    const last10 = digits.slice(-10);
+    return `${last10.slice(0, 2)}XXXXXX${last10.slice(-2)}`;
+  }
+  return String(p);
+}
+
 /**
- * Renders HTML for a single 58mm (203 dpi) thermal bill receipt.
- * 58mm paper width has ~48mm printable area (approx. 384px at 203dpi or 32-35 characters across in monospace).
- * In Simple mode: Delivery charge is merged into the publication line item / monthly bill amount.
- * In Detail mode: Shows exact lines with days, rates, pure paper amounts, and explicit Delivery Charge row.
+ * Renders HTML for a single modern professional Thermal Bill receipt
+ * Exactly matching the layout, typography, borders, and QR payment card shown in the reference bill.
  */
 export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintMode = 'simple'): string {
-  const displayHindi = cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name);
+  let displayHindi = cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name);
+  const cleanEngName = (b.customer_name || '').replace(/\s+crd\b/i, '').trim();
+
+  // If Hindi contains "CRD" or suffix, clean it up cleanly
+  if (displayHindi) {
+    displayHindi = displayHindi.replace(/\s+सीआरडी\b/i, '').replace(/\s+CRD\b/i, '').trim();
+  }
+
   const items = b.items || [];
   const totalDelivery = b.delivery_charge || 0;
 
   let itemsRowsHtml = '';
 
   if (printMode === 'simple') {
-    // Consolidate publication items and merge delivery into publication amount (Simple Bill requirement)
     const pubConsolidatedMap = new Map<string, {
       pub_name: string;
       totalQty: number;
@@ -62,36 +100,36 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
 
     itemsRowsHtml = displayItems.length > 0
       ? displayItems.map(it => `
-          <div class="receipt-row">
-            <span class="col-item">${it.pub_name} (${it.totalQty}d)</span>
-            <span class="col-val">${formatMoney(it.totalAmount)}</span>
+          <div class="line-item-row">
+            <span class="col-part">${it.pub_name}</span>
+            <span class="col-days">${it.totalQty}</span>
+            <span class="col-amt">${formatMoney(it.totalAmount)}</span>
           </div>
         `).join('')
       : `
-          <div class="receipt-row">
-            <span class="col-item">Newspaper / Monthly</span>
-            <span class="col-val">${formatMoney(monthBillAmount)}</span>
+          <div class="line-item-row">
+            <span class="col-part">समाचार पत्र / मासिक</span>
+            <span class="col-days">30</span>
+            <span class="col-amt">${formatMoney(monthBillAmount)}</span>
           </div>
         `;
   } else {
-    // Detail Mode: Each item shown separately with days, rate, and pure paper amount
     itemsRowsHtml = items.length > 0
       ? items.map(it => {
           const qtyOrDays = it.days !== undefined && it.days > 0 ? it.days : (it.qty || 1);
-          const rateStr = it.rate !== null && it.rate !== undefined && Number(it.rate) > 0
-            ? `@${Number(it.rate).toFixed(2)}`
-            : '';
           return `
-            <div class="receipt-row">
-              <span class="col-item">${it.pub_name} (${qtyOrDays}d ${rateStr})</span>
-              <span class="col-val">${formatMoney(roundToFoxProRule(it.amount))}</span>
+            <div class="line-item-row">
+              <span class="col-part">${it.pub_name}</span>
+              <span class="col-days">${qtyOrDays}</span>
+              <span class="col-amt">${formatMoney(roundToFoxProRule(it.amount))}</span>
             </div>
           `;
         }).join('')
       : `
-          <div class="receipt-row">
-            <span class="col-item">Newspaper / Monthly</span>
-            <span class="col-val">${formatMoney(roundToFoxProRule(b.paper_amount || 0))}</span>
+          <div class="line-item-row">
+            <span class="col-part">समाचार पत्र / मासिक</span>
+            <span class="col-days">30</span>
+            <span class="col-amt">${formatMoney(roundToFoxProRule(b.paper_amount || 0))}</span>
           </div>
         `;
   }
@@ -102,107 +140,131 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
   const previousDue = roundToFoxProRule(b.previous_due || 0);
   const netPayable = roundToFoxProRule(b.net_payable || (monthBillAmount + previousDue));
 
+  const monthYearDisplay = formatShortMonthYear(b.month, b.year);
+  const billDateDisplay = b.bill_date && b.bill_date.includes('-') 
+    ? b.bill_date 
+    : computeNextMonthBillDate(b.month, b.year);
+  const maskedMob = maskPhone(b.phone);
+
+  const rawQrSvg = generateDynamicUpiQrSvg(netPayable, b.bill_no || b.customer_id, `${b.month || ''} ${b.year || ''}`.trim(), 180, 0);
+
   return `
-    <div class="thermal-receipt">
-      <div class="thermal-header" style="display: flex; align-items: center; justify-content: flex-start; gap: 8px; margin-bottom: 2px;">
-        <div class="thermal-logo-box" style="width: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
-          <img src="${BOY_LOGO_B64}" alt="logo" style="height: 54px; width: auto; object-fit: contain; display: block; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges;" />
+    <div class="bill-card">
+      
+      <!-- Agency Header -->
+      <div class="agency-header">
+        <div class="agency-logo-wrap">
+          <img src="${BOY_LOGO_B64}" alt="Aryan News Agency" class="agency-logo-img" />
         </div>
-        <div style="flex: 1; text-align: center;">
-          <div class="agency-title">ARYAN NEWS AGENCY</div>
-          <div class="agency-sub">5 Old Bus stand Beawar</div>
-          <div class="agency-sub">Ph: 9462558949, 9829058949</div>
+        <div class="agency-name-en">ARYAN NEWS AGENCY</div>
+        <div class="agency-name-hi">आर्यन न्यूज़ एजेंसी</div>
+        <div class="agency-address">5(1), Old Bus Stand, Beawar (Raj.) 305901</div>
+        <div class="agency-contact">WhatsApp: 9462558949</div>
+        <div class="agency-contact">Ph: 9829058949</div>
+        <div class="agency-web">www.aryannewsagency.com</div>
+      </div>
+
+      <!-- Solid Top Rule -->
+      <div class="solid-rule-thick"></div>
+
+      <!-- Pill Badge: MONTHLY BILL / मासिक बिल -->
+      <div class="pill-badge-container">
+        <div class="pill-badge">MONTHLY BILL / मासिक बिल</div>
+      </div>
+
+      <!-- Meta Info Grid (Bill No, Month, A/c No, Date) -->
+      <div class="meta-grid">
+        <div class="meta-row">
+          <div class="meta-cell"><span class="meta-label">Bill No:</span> <span class="meta-val">${b.bill_no || b.customer_id}</span></div>
+          <div class="meta-cell text-right"><span class="meta-label">Month:</span> <span class="meta-val">${monthYearDisplay}</span></div>
+        </div>
+        <div class="meta-row">
+          <div class="meta-cell"><span class="meta-label">A/c No:</span> <span class="meta-val">${b.customer_id}</span></div>
+          <div class="meta-cell text-right"><span class="meta-label">Date:</span> <span class="meta-val">${billDateDisplay}</span></div>
         </div>
       </div>
 
-      <div class="divider">================================</div>
+      <!-- Dashed Divider -->
+      <div class="dashed-divider"></div>
 
-      <div class="receipt-row">
-        <span>Bill No: <b>${b.bill_no || b.customer_id}</b></span>
-        <span>Month: <b>${b.month} ${b.year}</b></span>
+      <!-- Customer Details Section -->
+      <div class="customer-section">
+        <div class="customer-name-en">${cleanEngName}</div>
+        ${displayHindi && displayHindi !== cleanEngName ? `<div class="customer-name-hi">${displayHindi}</div>` : ''}
+        <div class="customer-sub-row">
+          <span>Region: ${b.region_name || b.region_id}${b.priority ? ` &nbsp;|&nbsp; Pr: ${b.priority}` : ''}</span>
+          ${maskedMob ? `<span>Mob: ${maskedMob}</span>` : ''}
+        </div>
       </div>
 
-      <div class="receipt-row" style="margin-top: 2px;">
-        <span>Ac.no.: <b>${b.customer_id}</b></span>
+      <!-- Dashed Divider -->
+      <div class="dashed-divider"></div>
+
+      <!-- Particulars Table Header -->
+      <div class="items-header-row">
+        <span class="col-part">विवरण / Particular</span>
+        <span class="col-days">Days</span>
+        <span class="col-amt">Amount ₹</span>
       </div>
 
-      <div class="divider">--------------------------------</div>
+      <!-- Dashed Divider -->
+      <div class="dashed-divider" style="margin-top: 3px; margin-bottom: 5px;"></div>
 
-      <div class="cust-info">
-        <div class="cust-name">${b.customer_name}</div>
-        ${displayHindi && displayHindi !== b.customer_name ? `<div class="cust-hindi">${displayHindi}</div>` : ''}
-        <div class="cust-detail">Region: ${b.region_name || b.region_id} ${b.priority ? `| Pr: ${b.priority}` : ''}</div>
-        ${b.phone ? `<div class="cust-detail">Mob: ${b.phone}</div>` : ''}
-      </div>
-
-      <div class="divider">--------------------------------</div>
-
-      <div class="receipt-table-header">
-        <span>PARTICULAR</span>
-        <span>AMOUNT (₹)</span>
-      </div>
-      <div class="divider-dotted">- - - - - - - - - - - - - - - - </div>
-
-      <div class="receipt-items">
+      <!-- Publication Line Items -->
+      <div class="items-container">
         ${itemsRowsHtml}
       </div>
 
-      <div class="divider">--------------------------------</div>
+      <!-- Dashed Divider -->
+      <div class="dashed-divider"></div>
 
-      ${printMode === 'detail' && deliveryCharge > 0 ? `
-        <div class="receipt-row">
-          <span>Paper Total:</span>
-          <span>₹ ${formatMoney(paperAmount)}</span>
+      <!-- Summary Breakdown (Current Month / Previous Due) -->
+      <div class="summary-section">
+        <div class="summary-row">
+          <span class="summary-label">Current Month / इस माह</span>
+          <span class="summary-value">₹ ${formatMoney(monthBillAmount)}</span>
         </div>
-        <div class="receipt-row">
-          <span>Delivery Charge:</span>
-          <span>₹ ${formatMoney(deliveryCharge)}</span>
-        </div>
-      ` : ''}
-
-      <div class="receipt-row font-bold">
-        <span>Current Month Amt:</span>
-        <span>₹ ${formatMoney(monthBillAmount)}</span>
-      </div>
-
-      ${previousDue > 0 ? `
-        <div class="receipt-row">
-          <span>Previous Balance/Due:</span>
-          <span>₹ ${formatMoney(previousDue)}</span>
-        </div>
-      ` : ''}
-
-      ${(b.advance || 0) > 0 ? `
-        <div class="receipt-row">
-          <span>Advance Paid:</span>
-          <span>- ₹ ${formatMoney(b.advance)}</span>
-        </div>
-      ` : ''}
-
-      <div class="divider">================================</div>
-
-      <div class="receipt-row total-row">
-        <span>TOTAL PAYABLE:</span>
-        <span class="total-amount">₹ ${formatMoney(netPayable)}</span>
-      </div>
-
-      <div class="thermal-footer">
-        <div style="display: flex; justify-content: center; align-items: center; padding: 4px 0 0 0;">
-          <div style="width: 110px; height: 110px; display: flex; align-items: center; justify-content: center;">
-            ${generateDynamicUpiQrSvg(netPayable, b.bill_no || b.customer_id, `${b.month || ''} ${b.year || ''}`.trim(), 110)}
-          </div>
+        <div class="summary-row">
+          <span class="summary-label">Previous Due / पिछला बकाया</span>
+          <span class="summary-value">₹ ${formatMoney(previousDue)}</span>
         </div>
       </div>
+
+      <!-- Boxed TOTAL / कुल देय Banner -->
+      <div class="total-banner-box">
+        <div class="total-label-left">TOTAL / कुल देय</div>
+        <div class="total-amount-right">₹ ${formatMoney(netPayable)}</div>
+      </div>
+
+      <!-- Dynamic UPI QR Payment Section -->
+      <div class="qr-payment-section">
+        <div class="qr-code-wrapper">
+          ${rawQrSvg}
+        </div>
+        <div class="qr-title-en">Scan &amp; Pay ₹${Math.round(netPayable)} via any UPI app</div>
+        <div class="qr-subtitle-hi">किसी भी UPI ऐप से स्कैन कर भुगतान करें</div>
+      </div>
+
+      <!-- Dashed Divider -->
+      <div class="dashed-divider"></div>
+
+      <!-- Footer Policy & Thank You Notice -->
+      <div class="footer-notice">
+        <div class="footer-due-line">कृपया बिल की राशि 10 तारीख तक जमा करें।</div>
+        <div class="footer-query-line">Queries: reply on WhatsApp 94625 58949</div>
+        <div class="footer-thanks-line">धन्यवाद!</div>
+      </div>
+
     </div>
   `;
 }
 
 /**
- * Full HTML page for printing 58mm continuous roll or PDF export
+ * Full HTML page for printing continuous roll or exporting PDF
  */
 export function generateThermal58mmFullHtml(
   bills: BillRecord[],
-  title: string = '58mm Thermal Bill Print',
+  title: string = 'Aryan News Agency - Monthly Bills',
   printMode: BillPrintMode = 'simple'
 ): string {
   const receiptsHtml = bills.map((b) => renderSingleThermalBillHtml(b, printMode)).join('\n<div class="page-break"></div>\n');
@@ -211,7 +273,7 @@ export function generateThermal58mmFullHtml(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>${title} (58mm Thermal)</title>
+  <title>${title}</title>
   <style>
     @charset "utf-8";
 
@@ -219,18 +281,18 @@ export function generateThermal58mmFullHtml(
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
     body {
       background-color: #f1f5f9;
-      font-family: "Courier New", Courier, monospace, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans Devanagari", sans-serif;
       color: #000;
-      font-size: 11px;
-      line-height: 1.25;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 20px 0;
+      padding: 24px 0;
     }
 
     /* Print toolbar */
@@ -239,13 +301,13 @@ export function generateThermal58mmFullHtml(
       top: 0;
       z-index: 1000;
       width: 100%;
-      max-width: 580px;
-      background: #1e293b;
+      max-width: 440px;
+      background: #0f172a;
       color: #ffffff;
       padding: 10px 16px;
-      margin-bottom: 16px;
-      border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      margin-bottom: 18px;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -254,11 +316,12 @@ export function generateThermal58mmFullHtml(
     .btn-action {
       font-family: inherit;
       font-size: 11px;
-      font-weight: bold;
+      font-weight: 700;
       padding: 6px 14px;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
       border: none;
+      transition: background-color 0.15s ease;
     }
 
     .btn-print {
@@ -274,210 +337,372 @@ export function generateThermal58mmFullHtml(
     }
     .btn-close:hover { background: #334155; }
 
-    /* Thermal receipt container for 58mm (48mm printable area max, 44-46mm safe zone) */
     .receipts-container {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 16px;
+      gap: 24px;
     }
 
-    .thermal-receipt {
-      width: 48mm;
-      max-width: 48mm;
-      min-width: 48mm;
-      background: #fff;
-      padding: 2mm 1.5mm;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      border: 1px dashed #cbd5e1;
+    /* Main Bill Card: Matches Exact Proportions from user uploaded reference */
+    .bill-card {
+      width: 96mm;
+      max-width: 96mm;
+      background: #ffffff;
+      padding: 8mm 6.5mm;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+      border: 1px solid #e2e8f0;
       box-sizing: border-box;
       page-break-inside: avoid;
-      font-weight: 700;
       color: #000000;
+      text-align: center;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
 
-    .thermal-header {
-      text-align: center;
-      margin-bottom: 3px;
-    }
-
-    .agency-title {
-      font-size: 12.5px;
-      font-weight: 900;
-      letter-spacing: -0.2px;
-      color: #000;
-    }
-
-    .agency-sub {
-      font-size: 8.5px;
-      font-weight: 700;
-      color: #000;
-    }
-
-    .receipt-title {
-      font-size: 9.5px;
-      font-weight: 900;
-      margin-top: 2px;
-      letter-spacing: 0.5px;
-    }
-
-    .divider {
-      text-align: center;
-      font-weight: 900;
-      font-size: 8.5px;
-      letter-spacing: -0.5px;
-      margin: 1.5px 0;
-      overflow: hidden;
-      white-space: nowrap;
-      color: #000;
-    }
-
-    .divider-dotted {
-      text-align: center;
-      font-size: 8.5px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      margin: 1px 0;
-      overflow: hidden;
-      white-space: nowrap;
-      color: #000;
-    }
-
-    .receipt-row {
+    /* Header Section */
+    .agency-header {
       display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      font-size: 9.5px;
-      margin: 1px 0;
-      font-weight: 700;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 12px;
     }
 
-    .cust-info {
-      margin: 2px 0;
-    }
-
-    .cust-name {
-      font-size: 10.5px;
-      font-weight: 900;
-      text-transform: uppercase;
-      color: #000;
-    }
-
-    .cust-hindi {
-      font-size: 10.5px;
-      font-weight: 900;
-      color: #000;
-    }
-
-    .cust-detail {
-      font-size: 9px;
-      font-weight: 700;
-      color: #000;
-      word-break: break-word;
-    }
-
-    .receipt-table-header {
+    .agency-logo-wrap {
+      width: 68px;
+      height: 72px;
       display: flex;
-      justify-content: space-between;
-      font-size: 9px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 6px;
+    }
+
+    .agency-logo-img {
+      max-height: 100%;
+      max-width: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .agency-name-en {
+      font-size: 16px;
       font-weight: 900;
+      letter-spacing: 0.8px;
+      color: #000;
+      line-height: 1.2;
+    }
+
+    .agency-name-hi {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #111;
       margin-top: 2px;
-      color: #000;
+      line-height: 1.2;
     }
 
-    .receipt-items {
-      margin: 1.5px 0;
-    }
-
-    .col-item {
-      font-size: 9px;
-      font-weight: 700;
-      max-width: 65%;
-      word-break: break-word;
-      color: #000;
-    }
-
-    .col-val {
-      font-size: 9px;
-      font-weight: 900;
-      text-align: right;
-      color: #000;
-      white-space: nowrap;
-    }
-
-    .font-bold {
-      font-weight: 900;
-    }
-
-    .total-row {
-      font-size: 11px;
-      font-weight: 900;
-      margin: 2.5px 0;
-      color: #000;
-    }
-
-    .total-amount {
-      font-size: 12px;
-      font-weight: 900;
-      color: #000;
-      white-space: nowrap;
-    }
-
-    .thermal-footer {
-      text-align: center;
-      font-size: 8.5px;
-      font-weight: 700;
+    .agency-address {
+      font-size: 10px;
+      color: #333;
       margin-top: 4px;
       line-height: 1.3;
+    }
+
+    .agency-contact {
+      font-size: 10px;
+      color: #333;
+      margin-top: 1.5px;
+      line-height: 1.3;
+    }
+
+    .agency-web {
+      font-size: 10px;
+      color: #333;
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+
+    .solid-rule-thick {
+      width: 100%;
+      height: 1.8px;
+      background: #000000;
+      margin: 10px 0 12px 0;
+    }
+
+    /* Pill Badge */
+    .pill-badge-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+
+    .pill-badge {
+      display: inline-block;
+      padding: 3.5px 14px;
+      border: 1.2px solid #000000;
+      border-radius: 9999px;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      color: #000;
+      background: #ffffff;
+    }
+
+    /* Meta Grid */
+    .meta-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 3.5px;
+      margin-bottom: 10px;
+      font-size: 11px;
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .meta-cell {
+      flex: 1;
+      text-align: left;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    .meta-label {
+      font-weight: 500;
+      color: #333;
+    }
+
+    .meta-val {
+      font-weight: 800;
       color: #000;
     }
 
-    .cut-line {
-      font-size: 7.5px;
+    /* Dashed Divider */
+    .dashed-divider {
+      width: 100%;
+      border-top: 1.1px dashed #71717a;
+      margin: 10px 0;
+    }
+
+    /* Customer Section */
+    .customer-section {
+      text-align: left;
+      margin-bottom: 10px;
+    }
+
+    .customer-name-en {
+      font-size: 12.5px;
+      font-weight: 900;
+      letter-spacing: 0.3px;
       color: #000;
+      text-transform: uppercase;
+      line-height: 1.2;
+    }
+
+    .customer-name-hi {
+      font-size: 12px;
+      font-weight: 700;
+      color: #111;
+      margin-top: 2px;
+      line-height: 1.2;
+    }
+
+    .customer-sub-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: #333;
       margin-top: 4px;
     }
 
-    /* Print Specific Media Query */
+    /* Items Table */
+    .items-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: #000;
+    }
+
+    .items-container {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .line-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #000;
+    }
+
+    .col-part {
+      flex: 2;
+      text-align: left;
+    }
+
+    .col-days {
+      flex: 1;
+      text-align: center;
+    }
+
+    .col-amt {
+      flex: 1;
+      text-align: right;
+      font-weight: 700;
+    }
+
+    /* Summary Section */
+    .summary-section {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 11px;
+      margin-bottom: 12px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      color: #222;
+    }
+
+    .summary-label {
+      text-align: left;
+    }
+
+    .summary-value {
+      text-align: right;
+      font-weight: 700;
+      color: #000;
+    }
+
+    /* Total Banner Box */
+    .total-banner-box {
+      border: 1.4px solid #000000;
+      border-radius: 6px;
+      padding: 6.5px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      background: #ffffff;
+    }
+
+    .total-label-left {
+      font-size: 12.5px;
+      font-weight: 900;
+      color: #000;
+      letter-spacing: 0.3px;
+    }
+
+    .total-amount-right {
+      font-size: 14.5px;
+      font-weight: 900;
+      color: #000;
+    }
+
+    /* QR Payment Section */
+    .qr-payment-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .qr-code-wrapper {
+      width: 145px;
+      height: 145px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .qr-code-wrapper svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .qr-title-en {
+      font-size: 11px;
+      font-weight: 800;
+      color: #000;
+      line-height: 1.3;
+    }
+
+    .qr-subtitle-hi {
+      font-size: 10px;
+      font-weight: 600;
+      color: #333;
+      margin-top: 1.5px;
+      line-height: 1.3;
+    }
+
+    /* Footer Notice */
+    .footer-notice {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2.5px;
+      font-size: 9.5px;
+      color: #333;
+      line-height: 1.4;
+    }
+
+    .footer-due-line {
+      font-weight: 600;
+    }
+
+    .footer-query-line {
+      font-weight: 500;
+      color: #444;
+    }
+
+    .footer-thanks-line {
+      font-weight: 800;
+      font-size: 10.5px;
+      color: #000;
+      margin-top: 2px;
+    }
+
+    /* Print Rules */
     @media print {
       body {
         background: transparent !important;
         padding: 0 !important;
         margin: 0 !important;
-        width: 48mm !important;
-        max-width: 48mm !important;
       }
 
       .no-print, .print-toolbar {
         display: none !important;
       }
 
-      html, body {
-        height: auto !important;
-        min-height: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-
       .receipts-container {
         gap: 0 !important;
         margin: 0 !important;
         padding: 0 !important;
-        width: 48mm !important;
       }
 
-      .thermal-receipt {
+      .bill-card {
         box-shadow: none !important;
         border: none !important;
-        padding: 1mm 1mm !important;
-        width: 48mm !important;
-        max-width: 48mm !important;
-        min-width: 48mm !important;
-        box-sizing: border-box !important;
-        min-height: 0 !important;
-        height: auto !important;
+        padding: 6mm 5mm !important;
+        width: 100% !important;
+        max-width: 100% !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
         page-break-after: always;
@@ -493,19 +718,19 @@ export function generateThermal58mmFullHtml(
       }
 
       @page {
-        size: 58mm auto;
-        margin: 0mm;
+        size: auto;
+        margin: 4mm;
       }
     }
   </style>
 </head>
 <body>
 
-  <!-- Non-printable top action toolbar -->
+  <!-- Top Action Toolbar -->
   <div class="print-toolbar no-print">
     <div>
-      <div style="font-weight: bold; font-size: 13px;">🧾 58mm Thermal Bill Print (203 DPI)</div>
-      <div style="font-size: 11px; opacity: 0.8;">${printMode === 'detail' ? 'Detail Bill Format' : 'Simple Bill Format'} • Total ${bills.length} Bill${bills.length > 1 ? 's' : ''}</div>
+      <div style="font-weight: bold; font-size: 13px;">🧾 Aryan News Agency - Bill Print</div>
+      <div style="font-size: 11px; opacity: 0.85;">Total ${bills.length} Bill${bills.length > 1 ? 's' : ''}</div>
     </div>
     <div>
       <button class="btn-action btn-print" onclick="window.print()">Print / Save PDF</button>
@@ -513,7 +738,6 @@ export function generateThermal58mmFullHtml(
     </div>
   </div>
 
-  <!-- Thermal receipts continuous roll container -->
   <div class="receipts-container">
     ${receiptsHtml}
   </div>
@@ -531,11 +755,11 @@ export function generateThermal58mmFullHtml(
 }
 
 /**
- * Triggers printing of 58mm thermal bills
+ * Triggers printing of thermal bills in new professional format
  */
 export function printBillsThermal58mm(
   bills: BillRecord[],
-  title: string = 'Aryan News Agency - 58mm Thermal Bills',
+  title: string = 'Aryan News Agency - Monthly Bills',
   printMode: BillPrintMode = 'simple'
 ): void {
   if (!bills || bills.length === 0) {
@@ -550,13 +774,12 @@ export function printBillsThermal58mm(
     printWindow.document.write(html);
     printWindow.document.close();
   } else {
-    // Popup fallback iframe
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
     iframe.style.top = '-9999px';
     iframe.style.left = '-9999px';
-    iframe.style.width = '58mm';
-    iframe.style.height = '100mm';
+    iframe.style.width = '96mm';
+    iframe.style.height = '150mm';
     document.body.appendChild(iframe);
     const doc = iframe.contentDocument || iframe.contentWindow?.document;
     if (doc) {

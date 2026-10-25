@@ -48,12 +48,13 @@ export function generateDynamicUpiQrSvg(
   amount: number,
   billNoOrCustId: string | number,
   month?: string,
-  size: number = 110
+  size: number = 110,
+  margin: number = 0
 ): string {
   const uri = buildUpiPaymentUri(amount, billNoOrCustId, month);
   let svgString = '';
   // QRCode.toString in svg mode returns SVG synchronously if callback is omitted or via sync
-  QRCode.toString(uri, { type: 'svg', width: size, margin: 1, errorCorrectionLevel: 'M' }, (err, svg) => {
+  QRCode.toString(uri, { type: 'svg', width: size, margin: margin, errorCorrectionLevel: 'M' }, (err, svg) => {
     if (!err && svg) {
       svgString = svg;
     }

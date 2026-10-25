@@ -1092,6 +1092,24 @@ export async function GET(request: NextRequest) {
         const prevDue = isGovtSupply ? 0 : roundToFoxProRule(rawPrevDue);
         const netPayable = isGovtSupply ? currentBill : roundToFoxProRule(currentBill + prevDue);
 
+        // Extract phone number from c.phone, c.hindi_add, c.add1, or c.add2 if present
+        let rawPhone = c.phone || '';
+        if (!rawPhone || rawPhone === '---') {
+          const hAdd = String(c.hindi_add || '');
+          const m1 = hAdd.match(/\b([6-9]\d{9})\b/);
+          if (m1) rawPhone = m1[1];
+          else {
+            const a1 = String(c.add1 || '');
+            const m2 = a1.match(/\b([6-9]\d{9})\b/);
+            if (m2) rawPhone = m2[1];
+            else {
+              const a2 = String(c.add2 || '');
+              const m3 = a2.match(/\b([6-9]\d{9})\b/);
+              if (m3) rawPhone = m3[1];
+            }
+          }
+        }
+
         return {
           bill_no: bid,
           bill_date: `${daysInMonth}/${standardMonth}/${year}`,
@@ -1100,7 +1118,7 @@ export async function GET(request: NextRequest) {
           customer_name: c.name_eng || `Customer #${cid}`,
           customer_hindi: cleanOrTransliterateHindi(c.name_hindi || '', c.name_eng || `Customer #${cid}`),
           address: [c.add1, c.add2].filter(Boolean).join(', ') || 'Main Market, Beawar',
-          phone: c.phone || '---',
+          phone: rawPhone || '---',
           region_id: h.region_id,
           region_name: reg?.region_name || `Region #${h.region_id}`,
           month: standardMonth,
