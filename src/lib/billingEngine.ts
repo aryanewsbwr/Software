@@ -1025,7 +1025,7 @@ export function calculateBilling({
     const rawCbal = cust.cbal !== undefined && cust.cbal !== null ? Number(cust.cbal) : null;
     const rawDue = cust.dueamount !== undefined && cust.dueamount !== null ? Number(cust.dueamount) : (cust.due_amount !== undefined ? Number(cust.due_amount) : null);
     
-    // Check if customer has receipts posted for this current target month (e.g. October payment receipt)
+    // Check if customer has receipts posted for this current target month or whole FY receipts
     const currentMonthReceipts = receipts.filter(r => {
       const rCid = Number(r.customer_id || r.Customer_id);
       const rMonth = (r.month || r.Month || '').toLowerCase().trim();
@@ -1035,9 +1035,18 @@ export function calculateBilling({
 
     const hasTargetMonthReceipt = currentMonthReceipts.length > 0;
 
-    if (hasTargetMonthReceipt && rawCbal !== null) {
-      // Balance is already reconciled in customer master table
-      customerPreviousBalance = rawCbal > 0 ? rawCbal : (rawDue && rawDue > 0 ? rawDue : -rawCbal);
+    // Current month charges
+    const currentMonthCharges = roundToFoxProRule(customerPaperTotal + customerDeliveryTotal + customerRetailTotal + customerSupplementTotal - customerDiscountTotal);
+
+    if (hasTargetMonthReceipt) {
+      // The customer entered payment receipt(s) specifically against this target month or with net balance
+      // If customer has exact dueamount in master (e.g. ₹100), net total payable MUST be that exact amount!
+      const targetPayable = (rawDue !== undefined && rawDue !== null && rawDue >= 0)
+        ? rawDue
+        : (rawCbal !== null && rawCbal > 0 ? rawCbal : 0);
+
+      // Total payable = openingBalanceThisBill + currentMonthCharges = targetPayable
+      customerPreviousBalance = targetPayable - currentMonthCharges;
     } else {
       const latePaid = lateReceiptsByCust.get(custId) || 0;
 
@@ -1102,11 +1111,34 @@ export function calculateBilling({
           priorReceiptsTotal += (recpAmt + lessAmt);
         }
 
-        // Previous Due before October is: All Prior Bills (Dues + Apr..Sep = ₹5,980) - All Prior Receipts (₹100 Apr + ₹6,971 Sep)
-        // If the customer cleared the previous dues and paid up, previous due is the remaining balance to date.
-        // If customer has an exact active floor dueamount recorded in master (like ₹100), sync with that.
-        const netDuesToDate = (rawDue !== undefined && rawDue !== null && rawDue > 0) ? rawDue : (priorBillsTotal - priorReceiptsTotal);
-        customerPreviousBalance = netDuesToDate > 0 ? netDuesToDate : (priorBillsTotal - priorReceiptsTotal);
+        // Compute net dues across all bills up to and including target month minus all receipts
+        // In Payment Receipt:
+        // Total Bills (including target month) = ₹7,271
+        // Total Receipts (all received) = ₹7,071
+        // Total Due = ₹100
+        const allCustBillsTotal = priorBillsTotal + customerPaperTotal + customerDeliveryTotal - customerDiscountTotal;
+
+        const allReceiptsTotal = receipts.reduce((sum, r) => {
+          const rCid = Number(r.customer_id || r.Customer_id);
+          if (rCid !== Number(custId)) return sum;
+          const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
+          const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
+          return sum + recpAmt + lessAmt;
+        }, 0);
+
+        // If total receipts cover all prior bills and partially/fully pay the current month bill,
+        // then the remaining net payable right now is (allCustBillsTotal - allReceiptsTotal).
+        const netTotalDue = allCustBillsTotal - allReceiptsTotal;
+
+        if (allReceiptsTotal > priorBillsTotal) {
+          // Customer already made a payment that includes current month bill (e.g. ₹6,971 was paid towards Oct bill leaving net ₹100 due)
+          // Total Payable must be netTotalDue (₹100)
+          // Therefore: previousDue = netTotalDue - currentMonthCharges
+          customerPreviousBalance = netTotalDue - (customerPaperTotal + customerDeliveryTotal - customerDiscountTotal);
+        } else {
+          // Standard case: customer has unpaid prior balance
+          customerPreviousBalance = priorBillsTotal - priorReceiptsTotal;
+        }
       } else if (existingHeader && existingHeader.balance !== null && existingHeader.balance !== undefined) {
         const recordedBalanceDue = -Number(existingHeader.balance);
         customerPreviousBalance = recordedBalanceDue - latePaid;
@@ -1121,7 +1153,6 @@ export function calculateBilling({
 
     const openingBalanceThisBill = previousDue;
     const roundedPaperTotal = roundToFoxProRule(customerPaperTotal + customerRetailTotal + customerSupplementTotal);
-    const currentMonthCharges = roundToFoxProRule(customerPaperTotal + customerDeliveryTotal + customerRetailTotal + customerSupplementTotal - customerDiscountTotal);
     const totalPayable = roundToFoxProRule(openingBalanceThisBill + currentMonthCharges);
 
     // In FoxPro monthly delivery billing, bills are ONLY generated for customers with active paper/magazine deliveries or retail sales in this month.
