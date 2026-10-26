@@ -57,7 +57,8 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
     <!-- Customer Details -->
     <text x="16" y="206" font-size="15" class="t-bold" fill="#000000">${engName.toUpperCase()}</text>
     <text x="16" y="228" font-size="14" class="t-mid" fill="#111111">${custName}</text>
-    <text x="16" y="248" font-size="12" class="t-reg" fill="#000000">Region: ${region} &nbsp;&nbsp;&nbsp;&nbsp; Mob: ${phone}</text>
+    <text x="16" y="248" font-size="12" class="t-reg" fill="#000000">Region: ${region}</text>
+    <text x="384" y="248" font-size="12" class="t-reg" fill="#000000" text-anchor="end">Mob: ${phone}</text>
     
     <!-- Dashed Divider -->
     <line x1="16" y1="260" x2="384" y2="260" stroke="#000000" stroke-width="1.2" stroke-dasharray="5,3"/>
