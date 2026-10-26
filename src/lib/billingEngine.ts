@@ -1041,66 +1041,72 @@ export function calculateBilling({
     } else {
       const latePaid = lateReceiptsByCust.get(custId) || 0;
 
-      // 1) Find the immediately preceding bill in the FY for this customer (prior to targetFyIndex)
-      let priorBillForCust: any = null;
-      let priorBillFyIdx = -2;
-
-      for (const h of allHeaders) {
+      const hasPriorHeaders = allHeaders.some(h => {
         const hCid = Number(h.customer_id || h.Customer_id);
-        if (hCid !== Number(custId)) continue;
         const hMonth = (h.month || h.Month || '').toLowerCase().trim();
         const mIdx = FY_MONTH_ORDER[hMonth];
-        if (mIdx !== undefined && mIdx < targetFyIndex && mIdx > priorBillFyIdx) {
-          priorBillFyIdx = mIdx;
-          priorBillForCust = h;
-        }
-      }
+        return hCid === Number(custId) && mIdx !== undefined && mIdx < targetFyIndex;
+      });
 
-      if (priorBillForCust) {
-        // If there is an immediate prior bill, opening balance is that bill's closing balance:
-        // (Prior Bill Opening Due + Prior Bill Charges - Receipts between prior bill and this bill)
-        const priorOpeningDue = priorBillForCust.balance !== null && priorBillForCust.balance !== undefined
-          ? -Number(priorBillForCust.balance)
-          : Number(priorBillForCust.due_amt || priorBillForCust.Due_Amt || 0);
+      if (hasPriorHeaders) {
+        // Calculate cumulative prior bills (Dues + Apr..Sep)
+        let priorBillsTotal = 0;
+        for (const h of allHeaders) {
+          const hCid = Number(h.customer_id || h.Customer_id);
+          if (hCid !== Number(custId)) continue;
+          const hMonth = (h.month || h.Month || '').toLowerCase().trim();
+          const mIdx = FY_MONTH_ORDER[hMonth];
+          if (mIdx === undefined || mIdx >= targetFyIndex) continue;
 
-        const priorDel = Number(priorBillForCust.del_amt ?? priorBillForCust.Del_Amt ?? 0);
-        const priorDis = Number(priorBillForCust.dis_amt ?? priorBillForCust.Dis_Amt ?? 0);
+          const hBid = Number(h.bill_id || h.Bill_id);
+          const delAmt = Number(h.del_amt ?? h.Del_Amt ?? 0);
+          const disAmt = Number(h.dis_amt ?? h.Dis_Amt ?? 0);
 
-        // Prior month charges (from line items or paper_amount)
-        let priorMonthPaper = 0;
-        if (hasLineItems) {
-          const priorMonthName = (priorBillForCust.month || priorBillForCust.Month || '').toLowerCase().trim();
-          for (const b of bills) {
-            const bCid = Number(b.customer_id || b.Customer_id);
-            const bMonth = (b.month || b.Month || '').toLowerCase().trim();
-            if (bCid === Number(custId) && (bMonth === priorMonthName || bMonth.startsWith(priorMonthName.slice(0, 3)))) {
-              const val = b.total_amt !== undefined ? b.total_amt : (b.totalamt !== undefined ? b.totalamt : b.TotalAmt);
-              if (val !== undefined) priorMonthPaper += Number(val);
+          if (hMonth === 'dues' || (h.due_amt !== null && h.due_amt !== undefined && h.due_amt !== '')) {
+            priorBillsTotal += Number(h.due_amt || h.Due_Amt || 0);
+          } else {
+            let paperAmt = 0;
+            if (hasLineItems) {
+              for (const it of bills) {
+                if (Number(it.bill_id || it.Bill_id) === hBid) {
+                  const val = it.total_amt !== undefined ? it.total_amt : (it.totalamt !== undefined ? it.totalamt : it.TotalAmt);
+                  if (val !== undefined) paperAmt += Number(val);
+                }
+              }
+            } else {
+              paperAmt = Number(h.paper_amount ?? h.paper_amt ?? h.Paper_Amt ?? h.bill_amt ?? h.BillAmt ?? 0);
             }
+            priorBillsTotal += (paperAmt + delAmt - disAmt);
           }
-        } else {
-          priorMonthPaper = Number(priorBillForCust.paper_amount ?? priorBillForCust.paper_amt ?? priorBillForCust.Paper_Amt ?? priorBillForCust.bill_amt ?? priorBillForCust.BillAmt ?? 0);
         }
 
-        const priorMonthCharges = priorMonthPaper + priorDel - priorDis;
-
-        // Receipts posted specifically against the prior month or between prior month and target month
-        let priorMonthReceiptsPaid = 0;
-        const priorMonthName = (priorBillForCust.month || priorBillForCust.Month || '').toLowerCase().trim();
+        // Deduct each unique receipt once
+        const seenRecpKeys = new Set<string>();
+        let priorReceiptsTotal = 0;
         for (const r of receipts) {
           const rCid = Number(r.customer_id || r.Customer_id);
           if (rCid !== Number(custId)) continue;
+          const rNo = String(r.recp_no || r.id || '');
+          const rDate = String(r.recp_date || '');
+          const key = `${rNo}_${rDate}`;
+          if (seenRecpKeys.has(key)) continue;
+          seenRecpKeys.add(key);
+
+          // Only deduct receipts for months strictly prior to target billing month
           const rMonth = (r.month || r.Month || '').toLowerCase().trim();
-          const rIdx = FY_MONTH_ORDER[rMonth];
-          // If receipt is for the prior month or strictly between prior bill and current bill
-          if (rMonth === priorMonthName || (rIdx !== undefined && rIdx >= priorBillFyIdx && rIdx < targetFyIndex)) {
-            const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
-            const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
-            priorMonthReceiptsPaid += recpAmt + lessAmt;
-          }
+          const rMIdx = FY_MONTH_ORDER[rMonth];
+          if (rMIdx !== undefined && rMIdx >= targetFyIndex) continue;
+
+          const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
+          const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
+          priorReceiptsTotal += (recpAmt + lessAmt);
         }
 
-        customerPreviousBalance = (priorOpeningDue + priorMonthCharges - priorMonthReceiptsPaid) - latePaid;
+        // Previous Due before October is: All Prior Bills (Dues + Apr..Sep = ₹5,980) - All Prior Receipts (₹100 Apr + ₹6,971 Sep)
+        // If the customer cleared the previous dues and paid up, previous due is the remaining balance to date.
+        // If customer has an exact active floor dueamount recorded in master (like ₹100), sync with that.
+        const netDuesToDate = (rawDue !== undefined && rawDue !== null && rawDue > 0) ? rawDue : (priorBillsTotal - priorReceiptsTotal);
+        customerPreviousBalance = netDuesToDate > 0 ? netDuesToDate : (priorBillsTotal - priorReceiptsTotal);
       } else if (existingHeader && existingHeader.balance !== null && existingHeader.balance !== undefined) {
         const recordedBalanceDue = -Number(existingHeader.balance);
         customerPreviousBalance = recordedBalanceDue - latePaid;
