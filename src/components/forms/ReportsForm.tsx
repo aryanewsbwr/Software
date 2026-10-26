@@ -26,6 +26,7 @@ interface ReportsFormProps {
 const REPORT_INFO: Record<string, { title: string; category: string; hasRegion?: boolean; hasHawker?: boolean; hasPub?: boolean; hasPeriod?: boolean; hasCustId?: boolean }> = {
   bill_print_region: { title: 'Region Wise Bill Printing', category: 'Bill Printing', hasRegion: true, hasPeriod: true },
   bill_print_single: { title: 'Single Bill Printing', category: 'Bill Printing', hasCustId: true, hasPeriod: true },
+  bill_paid_report: { title: 'Bill Paid Report', category: 'Bill Printing', hasRegion: true, hasPeriod: true },
   hawker_daily_qty: { title: 'Daily Quantity of Newspaper', category: 'Hawker Wise Report', hasHawker: true, hasRegion: true, hasPeriod: true },
   hawker_magazine_qty: { title: 'Quantity of Magazine', category: 'Hawker Wise Report', hasHawker: true, hasPeriod: true },
   dues_ledger: { title: 'Customer Outstanding Dues Ledger', category: 'Outstanding Report', hasRegion: true },
@@ -233,7 +234,7 @@ export default function ReportsForm({
   };
 
   const handlePrint = () => {
-    if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single') {
+    if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single' || activeReport === 'bill_paid_report') {
       if (billPrinterType === 'thermal_58mm') {
         printBillsThermal58mm(reportData?.rows || [], currentMeta.title, billPrintMode);
       } else {
@@ -566,7 +567,7 @@ export default function ReportsForm({
               onClick={() => {
                 setViewMode('preview');
                 setTimeout(() => {
-                  if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single') {
+                  if (activeReport === 'bill_print_region' || activeReport === 'bill_print_single' || activeReport === 'bill_paid_report') {
                     if (billPrinterType === 'thermal_58mm') {
                       printBillsThermal58mm(reportData?.rows || [], currentMeta.title, billPrintMode);
                     } else {
@@ -686,9 +687,10 @@ export default function ReportsForm({
               <option value="region_pub_daily">Region Wise Publication Report</option>
               <option value="region_start_end">Region-Wise Start End Report</option>
             </optgroup>
-            <optgroup label="11. Bill Printing">
+            <optgroup label="11. Bill Printing & Payment Status">
               <option value="bill_print_region">Region Wise Bill Printing</option>
               <option value="bill_print_single">Single Bill Printing</option>
+              <option value="bill_paid_report">Bill Paid Report (सशुल्क / Paid Bills)</option>
             </optgroup>
             <optgroup label="12-16. Operational Reports">
               <option value="hawker_cust_priority">Hawker&apos;s Customer Priority</option>
@@ -958,7 +960,7 @@ export default function ReportsForm({
               {/* ========================================================================= */}
               {/* REPORT 1: BILL PRINTING (4-IN-1 A4 or 58mm THERMAL 203 DPI) */}
               {/* ========================================================================= */}
-              {(activeReport === 'bill_print_region' || activeReport === 'bill_print_single') && (
+              {(activeReport === 'bill_print_region' || activeReport === 'bill_print_single' || activeReport === 'bill_paid_report') && (
                 billPrinterType === 'thermal_58mm' ? (
                   <BillThermalPreview 
                     bills={reportData.rows || []} 

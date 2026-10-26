@@ -877,10 +877,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 15. Bill Printing: Region Wise & Single Bill Printing
+    // 15. Bill Printing: Region Wise, Single Bill Printing & Bill Paid Report
     // ARCHITECTURE: Bills must be generated first via Process -> Bill Generation.
     // Bill Printing in Reports only reads committed bills from database for high speed, and returns an error if not generated yet.
-    if (reportType === 'bill_print_region' || reportType === 'bill_print_single') {
+    if (reportType === 'bill_print_region' || reportType === 'bill_print_single' || reportType === 'bill_paid_report') {
       let fySuffix = '20252026';
       const yStr = String(year);
       if (yStr.length === 8) {
@@ -1147,6 +1147,41 @@ export async function GET(request: NextRequest) {
       const regTitle = regionId && regionId !== 'all'
         ? regMap.get(parseInt(regionId, 10))?.region_name || `Region #${regionId}`
         : 'ALL REGIONS';
+
+      // If Bill Paid Report: Fetch receipts for this month or receipts paid towards bills
+      if (reportType === 'bill_paid_report') {
+        const rcptTable = `receipt${fySuffix}`;
+        let rcptQuery = supabase.from(rcptTable).select('*');
+        rcptQuery = rcptQuery.or(`month.ilike.${standardMonth},month.ilike.${monthPrefix}%`);
+        const { data: monthRcpts } = await rcptQuery;
+        
+        const paidCustIds = new Set<number>();
+        (monthRcpts || []).forEach(r => {
+          const cid = Number(r.customer_id || r.Customer_id);
+          const amt = Number(r.mal_recp_amt || r.r_amt || 0) + Number(r.less_amt || 0);
+          if (amt > 0) paidCustIds.add(cid);
+        });
+
+        // Also customers where cbal >= 0 or paid === 'P'
+        const paidBills = bills.filter(b => {
+          const isPaidInReceipts = paidCustIds.has(b.customer_id);
+          const isZeroNetDue = b.net_payable <= 0;
+          const cust = custMap.get(b.customer_id);
+          const isMarkedPaid = cust?.paid === 'P' || cust?.paid === 'p';
+          return isPaidInReceipts || isZeroNetDue || isMarkedPaid;
+        });
+
+        paidBills.sort((a, b) => a.customer_id - b.customer_id);
+        const finalRows = paidBills.slice((page - 1) * limit, page * limit);
+
+        return NextResponse.json({
+          report_title: `BILL PAID REPORT: ${regTitle} (${standardMonth.toUpperCase()} ${year})`,
+          rows: finalRows,
+          total_rows: paidBills.length,
+          page,
+          total_pages: Math.ceil(paidBills.length / limit) || 1
+        });
+      }
 
       const finalRows = printableBills.slice((page - 1) * limit, page * limit);
 

@@ -596,6 +596,7 @@ export default function VB6DesktopLayout({ user, onLogout, onSwitchToMobile }: V
                 <div className="hidden group-hover/sub:flex absolute left-full top-0 min-w-[240px] bg-[#ECE9D8] vb-box-outset shadow-2xl py-1 flex-col text-black text-xs z-50">
                   <button onClick={() => { setSelectedReportType('bill_print_region'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Region Wise Bill Printing</button>
                   <button onClick={() => { setSelectedReportType('bill_print_single'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer">Single Bill Printing</button>
+                  <button onClick={() => { setSelectedReportType('bill_paid_report'); setActiveWindow('reports'); setActiveMenu(null); }} className="px-3 py-1 hover:bg-[#0A246A] hover:text-white text-left whitespace-nowrap cursor-pointer font-bold text-emerald-800">Bill Paid Report (सशुल्क / Paid Bills)</button>
                 </div>
               </div>
 
