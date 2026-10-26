@@ -960,7 +960,7 @@ export default function ReportsForm({
               {/* ========================================================================= */}
               {/* REPORT 1: BILL PRINTING (4-IN-1 A4 or 58mm THERMAL 203 DPI) */}
               {/* ========================================================================= */}
-              {(activeReport === 'bill_print_region' || activeReport === 'bill_print_single' || activeReport === 'bill_paid_report') && (
+              {(activeReport === 'bill_print_region' || activeReport === 'bill_print_single') && (
                 billPrinterType === 'thermal_58mm' ? (
                   <BillThermalPreview 
                     bills={reportData.rows || []} 
@@ -976,6 +976,74 @@ export default function ReportsForm({
                     initialPrintMode={billPrintMode}
                   />
                 )
+              )}
+
+              {/* ========================================================================= */}
+              {/* REPORT 1B: BILL PAID REPORT (UPI / ONLINE CONFIRMATION TABLE) */}
+              {/* ========================================================================= */}
+              {activeReport === 'bill_paid_report' && (
+                <div className="space-y-3">
+                  <div className="bg-emerald-50 border border-emerald-300 p-2 text-xs font-bold text-emerald-900 flex justify-between items-center rounded-xs">
+                    <span>✓ Bill Payments Verified & Received</span>
+                    <span>Total Received: <span className="font-mono text-sm font-black">₹{Number(reportData.total_received || 0).toFixed(2)}</span> ({reportData.total_rows || 0} payments)</span>
+                  </div>
+                  <table className="w-full text-xs border-collapse border border-black bg-white">
+                    <thead>
+                      <tr className="border-b-2 border-t border-black bg-slate-100 font-bold text-[11px]">
+                        <th className="p-1.5 text-center border-r border-black w-14">Ac.No</th>
+                        <th className="p-1.5 text-left border-r border-black">Customer Name</th>
+                        <th className="p-1.5 text-center border-r border-black w-24">Phone</th>
+                        <th className="p-1.5 text-center border-r border-black w-20">Bill No</th>
+                        <th className="p-1.5 text-center border-r border-black w-28">Payment Date</th>
+                        <th className="p-1.5 text-center border-r border-black w-24">Time</th>
+                        <th className="p-1.5 text-center border-r border-black w-24">Mode</th>
+                        <th className="p-1.5 text-right border-r border-black w-24 font-black">Paid (₹)</th>
+                        <th className="p-1.5 text-right border-r border-black w-24">Remaining Due</th>
+                        <th className="p-1.5 text-center w-20">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reportData.rows.map((r: any, idx: number) => (
+                        <tr key={idx} className="border-b border-slate-300 text-[11px] hover:bg-yellow-50">
+                          <td className="p-1.5 text-center border-r border-slate-300 font-mono font-bold text-blue-900">#{r.customer_id}</td>
+                          <td className="p-1.5 border-r border-slate-300 font-bold text-blue-950">
+                            <div>{r.customer_name}</div>
+                            {r.customer_hindi && <div className="text-[10px] text-slate-500 font-normal">{r.customer_hindi}</div>}
+                          </td>
+                          <td className="p-1.5 text-center border-r border-slate-300 font-mono">{r.phone || '---'}</td>
+                          <td className="p-1.5 text-center border-r border-slate-300 font-mono font-bold text-purple-900">#{r.bill_no}</td>
+                          <td className="p-1.5 text-center border-r border-slate-300 font-mono font-bold">{r.payment_date}</td>
+                          <td className="p-1.5 text-center border-r border-slate-300 font-mono text-slate-700">{r.payment_time}</td>
+                          <td className="p-1.5 text-center border-r border-slate-300 font-bold text-slate-800">
+                            <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-xs text-[10px] uppercase">
+                              {r.payment_mode}
+                            </span>
+                          </td>
+                          <td className="p-1.5 border-r border-slate-300 text-right font-mono font-bold text-emerald-800">
+                            ₹{Number(r.paid_amount || 0).toFixed(2)}
+                          </td>
+                          <td className="p-1.5 border-r border-slate-300 text-right font-mono font-bold text-slate-700">
+                            ₹{Number(r.net_balance || 0).toFixed(2)}
+                          </td>
+                          <td className="p-1.5 text-center font-bold">
+                            <span className="px-1.5 py-0.5 bg-emerald-600 text-white rounded-xs text-[10px] shadow-xs">
+                              PAID ✓
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      <tr className="border-t-2 border-b-2 border-black font-black text-xs bg-slate-100">
+                        <td colSpan={7} className="p-2 text-left uppercase border-r border-black font-black">
+                          Total Payments Received:
+                        </td>
+                        <td className="p-2 text-right font-mono text-sm text-emerald-900 border-r border-black font-black">
+                          ₹{Number(reportData.total_received || 0).toFixed(2)}
+                        </td>
+                        <td colSpan={2}></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               )}
 
               {/* ========================================================================= */}

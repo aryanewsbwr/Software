@@ -1164,32 +1164,86 @@ export async function GET(request: NextRequest) {
           if (rChunk) allCustReceipts.push(...rChunk);
         }
 
-        // Sum receipts per customer
-        const receiptsByCust = new Map<number, number>();
+        // Map receipts for each customer
+        const receiptsListByCust = new Map<number, any[]>();
         allCustReceipts.forEach(r => {
           const cid = Number(r.customer_id || r.Customer_id);
-          const amt = Number(r.mal_recp_amt || r.r_amt || 0) + Number(r.less_amt || 0);
-          receiptsByCust.set(cid, (receiptsByCust.get(cid) || 0) + amt);
+          if (!receiptsListByCust.has(cid)) receiptsListByCust.set(cid, []);
+          receiptsListByCust.get(cid)!.push(r);
         });
 
-        // A bill is Paid if customer has paid receipts towards their account, or net_payable <= 0, or customer.paid === 'P'
-        const paidBills = bills.filter(b => {
-          const totalPaid = receiptsByCust.get(b.customer_id) || 0;
-          const isZeroNetDue = b.net_payable <= 0;
-          const cust = custMap.get(b.customer_id);
-          const isMarkedPaid = cust?.paid === 'P' || cust?.paid === 'p';
-          return totalPaid > 0 || isZeroNetDue || isMarkedPaid;
+        // Filter and construct rows showing customer name, bill no, payment amount, date/time, and mode
+        const paidRows: any[] = [];
+        bills.forEach(b => {
+          const custRcpts = receiptsListByCust.get(b.customer_id) || [];
+          if (custRcpts.length > 0) {
+            custRcpts.forEach(r => {
+              const rAmt = Number(r.mal_recp_amt || r.r_amt || 0);
+              const lessAmt = Number(r.less_amt || 0);
+              const totalR = rAmt + lessAmt;
+              if (totalR > 0) {
+                let parsedRemarks: any = null;
+                if (r.remarks && typeof r.remarks === 'string' && r.remarks.trim().startsWith('{')) {
+                  try { parsedRemarks = JSON.parse(r.remarks); } catch (_) {}
+                }
+                const payMode = r.cash_chq || parsedRemarks?.cash_chq || (parsedRemarks?.narr?.includes('UPI') ? 'UPI' : 'UPI / Online');
+                const recpDate = r.recp_date || parsedRemarks?.mal_recp_dt || b.bill_date;
+                const recpTime = r.created_at ? new Date(r.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : (parsedRemarks?.time || '10:30:00 AM');
+
+                paidRows.push({
+                  receipt_id: r.id || r.recp_no,
+                  receipt_no: r.recp_no || r.id,
+                  customer_id: b.customer_id,
+                  customer_name: b.customer_name,
+                  customer_hindi: b.customer_hindi,
+                  phone: b.phone,
+                  region_name: b.region_name,
+                  bill_no: b.bill_no,
+                  bill_amount: b.current_bill,
+                  paid_amount: totalR,
+                  net_balance: b.net_payable,
+                  payment_date: recpDate,
+                  payment_time: recpTime,
+                  payment_mode: payMode,
+                  month: standardMonth,
+                  year: year
+                });
+              }
+            });
+          } else if (b.net_payable <= 0) {
+            // Customer settled via account advance
+            paidRows.push({
+              receipt_id: b.bill_no,
+              receipt_no: `ADV-${b.bill_no}`,
+              customer_id: b.customer_id,
+              customer_name: b.customer_name,
+              customer_hindi: b.customer_hindi,
+              phone: b.phone,
+              region_name: b.region_name,
+              bill_no: b.bill_no,
+              bill_amount: b.current_bill,
+              paid_amount: b.current_bill,
+              net_balance: b.net_payable,
+              payment_date: b.bill_date,
+              payment_time: '12:00:00 PM',
+              payment_mode: 'Advance Adjusted',
+              month: standardMonth,
+              year: year
+            });
+          }
         });
 
-        paidBills.sort((a, b) => a.customer_id - b.customer_id);
-        const finalRows = paidBills.slice((page - 1) * limit, page * limit);
+        paidRows.sort((a, b) => a.customer_id - b.customer_id);
+        const finalRows = paidRows.slice((page - 1) * limit, page * limit);
+        const totalPaidSum = paidRows.reduce((sum, r) => sum + Number(r.paid_amount || 0), 0);
 
         return NextResponse.json({
-          report_title: `BILL PAID REPORT: ${regTitle} (${standardMonth.toUpperCase()} ${year})`,
+          report_title: `BILL PAID REPORT (UPI / ONLINE / CASH): ${regTitle} (${standardMonth.toUpperCase()} ${year})`,
           rows: finalRows,
-          total_rows: paidBills.length,
+          total_rows: paidRows.length,
+          total_received: totalPaidSum,
           page,
-          total_pages: Math.ceil(paidBills.length / limit) || 1
+          total_pages: Math.ceil(paidRows.length / limit) || 1
         });
       }
 
