@@ -1193,21 +1193,16 @@ export async function GET(request: NextRequest) {
                 const recpDate = r.recp_date || parsedRemarks?.mal_recp_dt || b.bill_date;
                 const recpTime = r.created_at ? new Date(r.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : (parsedRemarks?.time || '10:30:00 AM');
 
-                // Match payment to this billing cycle/month:
-                // Check if payment was made in this month or marked for this bill
+                // Match payment specifically to this bill:
+                // 1) Receipt explicitly mentions or targets this bill_no
                 const isForThisBill = (r.bill_no && Number(r.bill_no) === Number(b.bill_no)) ||
                                       (r.narr && r.narr.includes(String(b.bill_no))) ||
                                       (parsedRemarks?.narr && parsedRemarks.narr.includes(String(b.bill_no)));
 
-                // Also check if receipt date falls in this billing month (e.g., /10/2026 or 2026-10-)
-                const isThisMonth = recpDate && (
-                  recpDate.includes(`/${monthNum}/`) || 
-                  recpDate.includes(`-${monthNum}-`) ||
-                  (monthNum === '10' && (recpDate.includes('/10/') || recpDate.includes('-10-')))
-                );
-
-                // If receipt is from an older month and not for this bill, do not show in current month report
-                if (!isForThisBill && !isThisMonth) {
+                // 2) Or if it was paid after or at bill generation for this customer's bill
+                // Only show payments intended to pay this bill (e.g. ₹100 or when bill is settled/marked paid)
+                if (!isForThisBill && totalR > b.total_payable && b.total_payable > 0) {
+                  // This was an advance credit/adjustment applied before the ₹100 bill, not payment of the ₹100 bill itself
                   return;
                 }
 
