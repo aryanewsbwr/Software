@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Printer, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { toPng } from 'html-to-image';
 import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from '@/lib/bill4in1Export';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { roundToFoxProRule } from '@/lib/billingEngine';
@@ -62,6 +63,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
   const [scale, setScale] = useState(1);
   const [isSendingWa, setIsSendingWa] = useState(false);
   const [waStatus, setWaStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const billCardRef = useRef<HTMLDivElement>(null);
 
   if (!bills || bills.length === 0) {
     return (
@@ -93,6 +95,20 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
     setWaStatus(null);
 
     try {
+      // Capture the exact visible DOM bill card into a pixel-perfect PNG image
+      let imageBase64: string | undefined = undefined;
+      if (billCardRef.current) {
+        try {
+          imageBase64 = await toPng(billCardRef.current, {
+            quality: 0.98,
+            pixelRatio: 2,
+            backgroundColor: '#ffffff'
+          });
+        } catch (imgErr) {
+          console.warn('Could not rasterize DOM bill element:', imgErr);
+        }
+      }
+
       const res = await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -105,7 +121,8 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           customer_hindi: cleanOrTransliterateHindi(currentBill.customer_hindi || '', currentBill.customer_name),
           paper_amount: currentBill.paper_amount || 0,
           previous_due: currentBill.previous_due || 0,
-          net_payable: currentBill.net_payable || 0
+          net_payable: currentBill.net_payable || 0,
+          image_base64: imageBase64
         })
       });
 
@@ -222,6 +239,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 
     return (
       <div 
+        ref={idx === currentIndex ? billCardRef : null}
         key={`${b.customer_id}-${idx}`}
         className="w-[360px] max-w-[360px] bg-white border border-slate-300 shadow-2xl p-6 font-sans text-[12px] leading-tight select-text text-black mb-8 rounded-sm text-center"
         style={{

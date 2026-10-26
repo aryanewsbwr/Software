@@ -182,53 +182,70 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 1. Single Test Send to Custom Number (e.g. 919887500875)
-    if (test_phone) {
-      const cleanPhone = formatWhatsAppPhone(test_phone);
+    // 1. Single Direct Send (Real Bill Data)
+    if (test_phone || body.phone) {
+      const targetPhone = test_phone || body.phone;
+      const cleanPhone = formatWhatsAppPhone(targetPhone);
       if (!cleanPhone) {
         return NextResponse.json({ success: false, error: 'Invalid phone number format' }, { status: 400 });
       }
 
-      const sampleBill = {
-        bill_no: '37210',
-        customer_id: '24669',
-        customer_name: 'WHATSAPP SAMPLE',
-        customer_hindi: 'व्हाट्सएप सैम्पल',
-        month: month,
-        region_name: 'WhatsApp',
-        phone: cleanPhone,
-        paper_amount: 1272.00,
-        previous_due: 4508.00,
-        net_payable: 5780.00
-      };
+      // Check if client provided exact rendered bill PNG (base64)
+      let imageBuffer: Buffer;
+      if (body.image_base64) {
+        const cleanB64 = body.image_base64.replace(/^data:image\/\w+;base64,/, '');
+        imageBuffer = Buffer.from(cleanB64, 'base64');
+      } else {
+        const billData = {
+          bill_no: String(body.bill_id || body.bill_no || '37210'),
+          customer_id: String(body.customer_id || '24669'),
+          customer_name: body.customer_name || 'WHATSAPP SAMPLE',
+          customer_hindi: body.customer_hindi || 'व्हाट्सएप सैम्पल',
+          month: body.month || month,
+          region_name: body.region_name || 'WhatsApp',
+          phone: cleanPhone,
+          paper_amount: Number(body.paper_amount || 0),
+          previous_due: Number(body.previous_due || 0),
+          net_payable: Number(body.net_payable || 0)
+        };
+        imageBuffer = await generateBillPngBuffer(billData);
+      }
 
-      const imageBuffer = await generateBillPngBuffer(sampleBill);
+      const activeBill = {
+        bill_no: String(body.bill_id || body.bill_no || '37210'),
+        customer_id: String(body.customer_id || '24669'),
+        customer_name: body.customer_hindi || body.customer_name || 'ग्राहक',
+        month: body.month || month,
+        current_amount: Number(body.paper_amount || 0),
+        previous_due: Number(body.previous_due || 0),
+        total_payable: Number(body.net_payable || 0)
+      };
 
       const res = await sendWhatsAppBillMessage({
         toPhone: cleanPhone,
-        customerName: sampleBill.customer_hindi,
-        month: sampleBill.month,
-        billNo: sampleBill.bill_no,
-        accountNo: sampleBill.customer_id,
-        currentAmount: sampleBill.paper_amount,
-        previousDue: sampleBill.previous_due,
-        totalPayable: sampleBill.net_payable,
+        customerName: activeBill.customer_name,
+        month: activeBill.month,
+        billNo: activeBill.bill_no,
+        accountNo: activeBill.customer_id,
+        currentAmount: activeBill.current_amount,
+        previousDue: activeBill.previous_due,
+        totalPayable: activeBill.total_payable,
         billImageBuffer: imageBuffer,
-        imageFileName: `Bill_${sampleBill.bill_no}.png`
+        imageFileName: `Bill_${activeBill.bill_no}.png`
       });
 
       // Log to database
       await supabaseAdmin.from('whatsapp_messages').insert({
-        customer_id: sampleBill.customer_id,
-        bill_id: sampleBill.bill_no,
+        customer_id: activeBill.customer_id,
+        bill_id: activeBill.bill_no,
         phone: cleanPhone,
         wamid: res.wamid || null,
         status: res.success ? 'sent' : 'failed',
         error_code: res.errorCode || null,
         error_json: res.errorJson || null,
         media_id: res.mediaId || null,
-        bill_month: sampleBill.month,
-        total_amount: sampleBill.net_payable
+        bill_month: activeBill.month,
+        total_amount: activeBill.total_payable
       });
 
       return NextResponse.json(res);
