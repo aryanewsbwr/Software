@@ -1174,7 +1174,8 @@ export async function GET(request: NextRequest) {
 
         // Filter and construct rows showing customer name, bill no, payment amount, date/time, and mode
         const paidRows: any[] = [];
-        const monthNum = String(monthNames.indexOf(standardMonth) + 1).padStart(2, '0');
+        const monthNamesList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const monthNum = String(monthNamesList.indexOf(standardMonth) + 1).padStart(2, '0');
 
         bills.forEach(b => {
           const custRcpts = receiptsListByCust.get(b.customer_id) || [];
