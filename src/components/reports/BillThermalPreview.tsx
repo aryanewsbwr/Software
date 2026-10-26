@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Printer, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Printer, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, Send, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { BillRecord, BillPrintMode, BOY_LOGO_B64 } from '@/lib/bill4in1Export';
 import { cleanOrTransliterateHindi } from '@/lib/transliteration';
 import { roundToFoxProRule } from '@/lib/billingEngine';
@@ -60,6 +60,8 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [printMode, setPrintMode] = useState<BillPrintMode>(initialPrintMode);
   const [scale, setScale] = useState(1);
+  const [isSendingWa, setIsSendingWa] = useState(false);
+  const [waStatus, setWaStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   if (!bills || bills.length === 0) {
     return (
@@ -77,6 +79,48 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 
   const handlePrintCurrent = () => {
     printBillsThermal58mm([currentBill], `Bill_${currentBill.customer_id}`, printMode);
+  };
+
+  const handleSendCurrentWhatsApp = async () => {
+    const rawPhone = currentBill.phone;
+    if (!rawPhone || rawPhone.trim() === '---') {
+      setWaStatus({ type: 'error', message: 'Customer has no valid phone number saved.' });
+      setTimeout(() => setWaStatus(null), 4000);
+      return;
+    }
+
+    setIsSendingWa(true);
+    setWaStatus(null);
+
+    try {
+      const res = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          test_phone: rawPhone,
+          month: `${currentBill.month || ''} ${currentBill.year || ''}`.trim() || 'Sep 2026',
+          bill_id: currentBill.bill_no || currentBill.customer_id,
+          customer_id: currentBill.customer_id,
+          customer_name: currentBill.customer_name,
+          customer_hindi: cleanOrTransliterateHindi(currentBill.customer_hindi || '', currentBill.customer_name),
+          paper_amount: currentBill.paper_amount || 0,
+          previous_due: currentBill.previous_due || 0,
+          net_payable: currentBill.net_payable || 0
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setWaStatus({ type: 'success', message: `WhatsApp bill sent successfully to ${rawPhone}!` });
+      } else {
+        setWaStatus({ type: 'error', message: data.error || data.errorCode || 'Failed to send WhatsApp bill.' });
+      }
+    } catch (err: any) {
+      setWaStatus({ type: 'error', message: err?.message || 'Network error occurred.' });
+    } finally {
+      setIsSendingWa(false);
+      setTimeout(() => setWaStatus(null), 5000);
+    }
   };
 
   const renderBill = (b: BillRecord, idx: number) => {
@@ -361,7 +405,21 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
             title="Print Current Bill Only"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Print Current</span>
+            <span>Print</span>
+          </button>
+
+          <button
+            onClick={handleSendCurrentWhatsApp}
+            disabled={isSendingWa}
+            className="px-2.5 py-1 bg-green-600 hover:bg-green-500 disabled:bg-green-800 text-white font-bold rounded flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
+            title="Send this Bill on WhatsApp to this customer"
+          >
+            {isSendingWa ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Send className="w-3.5 h-3.5" />
+            )}
+            <span>{isSendingWa ? 'Sending...' : 'WhatsApp Bill'}</span>
           </button>
 
           <button
@@ -374,6 +432,16 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* WhatsApp Status Alert Toast */}
+      {waStatus && (
+        <div className={`w-full max-w-2xl px-3 py-2 mb-2 rounded flex items-center gap-2 text-xs font-semibold ${
+          waStatus.type === 'success' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-red-100 text-red-800 border border-red-300'
+        }`}>
+          {waStatus.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+          <span>{waStatus.message}</span>
+        </div>
+      )}
 
       {/* Interactive Bill Preview Frame */}
       <div 
