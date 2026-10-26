@@ -12,8 +12,9 @@ export const UPI_PAYEE_NAME = 'ARYAN NEWS AGENCY';
 export function buildUpiPaymentUri(amount?: number | null, billNoOrCustId?: string | number, month?: string): string {
   const cleanAmt = Math.max(0, Number(amount || 0)).toFixed(2);
   const pn = encodeURIComponent(UPI_PAYEE_NAME);
+  const billRef = billNoOrCustId ? encodeURIComponent(`Bill ${billNoOrCustId}`) : '';
 
-  return `upi://pay?pa=${UPI_VPA}&pn=${pn}&am=${cleanAmt}&cu=INR`;
+  return `upi://pay?pa=${UPI_VPA}&pn=${pn}&am=${cleanAmt}&cu=INR${billRef ? `&tn=${billRef}` : ''}`;
 }
 
 /**
