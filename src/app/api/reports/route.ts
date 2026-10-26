@@ -1174,6 +1174,8 @@ export async function GET(request: NextRequest) {
 
         // Filter and construct rows showing customer name, bill no, payment amount, date/time, and mode
         const paidRows: any[] = [];
+        const monthNum = String(monthNames.indexOf(standardMonth) + 1).padStart(2, '0');
+
         bills.forEach(b => {
           const custRcpts = receiptsListByCust.get(b.customer_id) || [];
           if (custRcpts.length > 0) {
@@ -1186,9 +1188,27 @@ export async function GET(request: NextRequest) {
                 if (r.remarks && typeof r.remarks === 'string' && r.remarks.trim().startsWith('{')) {
                   try { parsedRemarks = JSON.parse(r.remarks); } catch (_) {}
                 }
-                const payMode = r.cash_chq || parsedRemarks?.cash_chq || (parsedRemarks?.narr?.includes('UPI') ? 'UPI' : 'UPI / Online');
+                const payMode = r.cash_chq || parsedRemarks?.cash_chq || (parsedRemarks?.narr?.includes('UPI') ? 'UPI' : (r.chq_no ? 'UPI / Online' : 'Cash'));
                 const recpDate = r.recp_date || parsedRemarks?.mal_recp_dt || b.bill_date;
                 const recpTime = r.created_at ? new Date(r.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : (parsedRemarks?.time || '10:30:00 AM');
+
+                // Match payment to this billing cycle/month:
+                // Check if payment was made in this month or marked for this bill
+                const isForThisBill = (r.bill_no && Number(r.bill_no) === Number(b.bill_no)) ||
+                                      (r.narr && r.narr.includes(String(b.bill_no))) ||
+                                      (parsedRemarks?.narr && parsedRemarks.narr.includes(String(b.bill_no)));
+
+                // Also check if receipt date falls in this billing month (e.g., /10/2026 or 2026-10-)
+                const isThisMonth = recpDate && (
+                  recpDate.includes(`/${monthNum}/`) || 
+                  recpDate.includes(`-${monthNum}-`) ||
+                  (monthNum === '10' && (recpDate.includes('/10/') || recpDate.includes('-10-')))
+                );
+
+                // If receipt is from an older month and not for this bill, do not show in current month report
+                if (!isForThisBill && !isThisMonth) {
+                  return;
+                }
 
                 paidRows.push({
                   receipt_id: r.id || r.recp_no,
