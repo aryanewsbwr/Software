@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getSecureWhatsAppToken } from '@/lib/whatsappService';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -52,7 +53,7 @@ function verifySignature(rawBody: string, signatureHeader: string | null): boole
  * Sends a free-form customer service text response within the 24-hour service window.
  */
 async function sendAutoReply(toPhone: string, text: string) {
-  const token = process.env.WA_TOKEN;
+  const token = getSecureWhatsAppToken();
   const phoneId = process.env.WA_PHONE_NUMBER_ID || '867112479817671';
   const apiVersion = process.env.WA_API_VERSION || 'v25.0';
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { sendWhatsAppBillMessage, formatWhatsAppPhone } from '@/lib/whatsappService';
+import { sendWhatsAppBillMessage, formatWhatsAppPhone, getSecureWhatsAppToken } from '@/lib/whatsappService';
 import sharp from 'sharp';
 
 export const runtime = 'nodejs';
@@ -172,11 +172,12 @@ export async function POST(request: NextRequest) {
       month = 'Sep 2026' 
     } = body;
 
-    // Check token presence
-    if (!process.env.WA_TOKEN) {
+    // Check token presence securely from vault or env
+    const secureToken = getSecureWhatsAppToken();
+    if (!secureToken) {
       return NextResponse.json({ 
         success: false, 
-        error: 'WA_TOKEN is not configured in .env.local' 
+        error: 'WhatsApp API credentials could not be loaded securely' 
       }, { status: 400 });
     }
 

@@ -1,8 +1,44 @@
+import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+
 /**
  * WhatsApp Cloud API Service Helper (Server-Side Only)
  * Official Meta Graph API v25.0
  * Aryan News Agency, Beawar
  */
+
+/**
+ * Securely retrieves the Meta Token from the encrypted vault (.wa_vault.enc)
+ * or fallback env variable, so the raw token is never exposed in plain text.
+ */
+export function getSecureWhatsAppToken(): string | null {
+  try {
+    const vaultPath = path.join(process.cwd(), '.wa_vault.enc');
+    if (fs.existsSync(vaultPath)) {
+      const raw = fs.readFileSync(vaultPath, 'utf-8');
+      const payload = JSON.parse(raw);
+      const salt = Buffer.from(payload.salt, 'hex');
+      const iv = Buffer.from(payload.iv, 'hex');
+      const tag = Buffer.from(payload.tag, 'hex');
+      const secretKey = crypto.scryptSync('aryan_news_agency_vault_2026', salt, 32);
+
+      const decipher = crypto.createDecipheriv('aes-256-gcm', secretKey, iv);
+      decipher.setAuthTag(tag);
+      let decrypted = decipher.update(payload.data, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
+    }
+  } catch (err) {
+    console.error('[Security Vault] Could not decrypt token:', err);
+  }
+
+  const rawEnv = process.env.WA_TOKEN;
+  if (rawEnv && rawEnv !== 'ENCRYPTED_VAULT') {
+    return rawEnv;
+  }
+  return null;
+}
 
 export interface WhatsAppSendResult {
   success: boolean;
@@ -52,12 +88,12 @@ export async function uploadWhatsAppMedia(
   imageBuffer: Buffer,
   fileName: string = 'bill.png'
 ): Promise<{ success: boolean; mediaId?: string; error?: any }> {
-  const token = process.env.WA_TOKEN;
+  const token = getSecureWhatsAppToken();
   const phoneId = process.env.WA_PHONE_NUMBER_ID || '867112479817671';
   const apiVersion = process.env.WA_API_VERSION || 'v25.0';
 
   if (!token) {
-    return { success: false, error: 'WA_TOKEN environment variable is not configured' };
+    return { success: false, error: 'WhatsApp API credentials could not be loaded securely' };
   }
 
   try {
@@ -91,10 +127,18 @@ export async function uploadWhatsAppMedia(
  * Sends the approved 'monthly_bill_hi' template message with Image Header & 7 body parameters.
  */
 export async function sendWhatsAppBillMessage(params: WhatsAppBillTemplateParams): Promise<WhatsAppSendResult> {
-  const token = process.env.WA_TOKEN;
+  const token = getSecureWhatsAppToken();
   const phoneId = process.env.WA_PHONE_NUMBER_ID || '867112479817671';
   const apiVersion = process.env.WA_API_VERSION || 'v25.0';
   const templateName = process.env.WA_TEMPLATE_NAME || 'monthly_bill_hi';
+
+  if (!token) {
+    return {
+      success: false,
+      errorCode: 'NO_TOKEN',
+      errorJson: { message: 'WhatsApp API credentials could not be loaded securely' }
+    };
+  }
 
   const cleanPhone = formatWhatsAppPhone(params.toPhone);
   if (!cleanPhone) {
