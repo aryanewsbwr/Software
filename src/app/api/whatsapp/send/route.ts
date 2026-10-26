@@ -19,9 +19,9 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
   const region = bill.region_name || bill.region_id || 'WhatsApp';
   const phone = bill.phone || '9887500875';
   
-  const currentAmt = Number(bill.paper_amount || bill.month_amount || 1272.00).toFixed(2);
-  const prevDue = Number(bill.previous_due || 4508.00).toFixed(2);
-  const totalAmt = Number(bill.net_payable || 5780.00).toFixed(2);
+  const currentAmt = Number(bill.paper_amount !== undefined ? bill.paper_amount : (bill.month_amount || 0)).toFixed(2);
+  const prevDue = Number(bill.previous_due !== undefined ? bill.previous_due : 0).toFixed(2);
+  const totalAmt = Number(bill.net_payable !== undefined ? bill.net_payable : (Number(currentAmt) + Number(prevDue))).toFixed(2);
 
   // High-resolution thermal bill slip SVG layout
   const svg = `

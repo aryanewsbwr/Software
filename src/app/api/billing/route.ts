@@ -171,12 +171,11 @@ function getAllSubscriptions(): any[] {
   return cachedAllSubs || [];
 }
 
-function getActiveCustomerIds(month: string, year: number | string): Set<number> {
-  const allSubs = getAllSubscriptions();
-  const allRetail = loadJson('retailsale.json');
+async function getActiveCustomerIds(targetCustIds: number[], month: string, year: number | string): Promise<Set<number>> {
+  const allRetail = loadJson('retailsale.json') || [];
 
   const targetMonthIdx = MONTH_NAMES.findIndex(m => m.toLowerCase() === month.toLowerCase() || m.toLowerCase().startsWith(month.toLowerCase().slice(0, 3)));
-  const actualMonthIdx = targetMonthIdx >= 0 ? targetMonthIdx : 8; // default September
+  const actualMonthIdx = targetMonthIdx >= 0 ? targetMonthIdx : 9; // default October
   const actualMonthNum = actualMonthIdx + 1;
   const startYr = parseInt(String(year).slice(0, 4), 10) || 2026;
   const calYr = actualMonthIdx >= 3 ? startYr : startYr + 1;
@@ -185,13 +184,31 @@ function getActiveCustomerIds(month: string, year: number | string): Set<number>
   const mEndIso = `${calYr}-${String(actualMonthNum).padStart(2, '0')}-${String(daysInM).padStart(2, '0')}`;
 
   const activeCustSet = new Set<number>();
-  for (const s of allSubs) {
-    const sDateIso = parseLegacyDateToIso(s.s_date || s.S_Date) || '2000-01-01';
-    const cDateIso = parseLegacyDateToIso(s.c_date || s.C_Date);
-    if (sDateIso <= mEndIso && (!cDateIso || cDateIso >= mStartIso)) {
-      activeCustSet.add(Number(s.customer_id || s.Customer_id));
+
+  // Fetch subscriptions from Supabase customer_detail in chunks
+  const CHUNK_SIZE = 100;
+  for (let i = 0; i < targetCustIds.length; i += CHUNK_SIZE) {
+    const chunk = targetCustIds.slice(i, i + CHUNK_SIZE);
+    try {
+      const { data: cdSubs } = await supabase
+        .from('customer_detail')
+        .select('customer_id, s_date, c_date')
+        .in('customer_id', chunk);
+
+      if (cdSubs && cdSubs.length > 0) {
+        for (const s of cdSubs) {
+          const sDateIso = parseLegacyDateToIso(s.s_date) || '2000-01-01';
+          const cDateIso = parseLegacyDateToIso(s.c_date);
+          if (sDateIso <= mEndIso && (!cDateIso || cDateIso >= mStartIso)) {
+            activeCustSet.add(Number(s.customer_id));
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching customer_detail in getActiveCustomerIds:', err);
     }
   }
+
   for (const rs of allRetail) {
     activeCustSet.add(Number(rs.customer_id || rs.Customer_id));
   }
@@ -542,7 +559,8 @@ export async function GET(request: NextRequest) {
     } else {
       // In FoxPro monthly delivery billing, only active delivery customers receive bills.
       // Filter out discontinued / closed customers with 0 current deliveries.
-      const activeCustSet = getActiveCustomerIds(month, year);
+      const candidateIds = targetCusts.map(c => Number(c.customer_id || c.Customer_id));
+      const activeCustSet = await getActiveCustomerIds(candidateIds, month, year);
       targetCusts = targetCusts.filter(c => activeCustSet.has(Number(c.customer_id || c.Customer_id)));
     }
 
@@ -642,7 +660,8 @@ export async function POST(request: NextRequest) {
     }
     // In FoxPro monthly delivery billing, only active delivery customers receive bills.
     // Filter out discontinued / closed customers with 0 current deliveries.
-    const activeCustSet = getActiveCustomerIds(month, year);
+    const candidateIds = targetCusts.map(c => Number(c.customer_id || c.Customer_id));
+    const activeCustSet = await getActiveCustomerIds(candidateIds, month, year);
     targetCusts = targetCusts.filter(c => activeCustSet.has(Number(c.customer_id || c.Customer_id)));
 
     // Sort target customers strictly by customer_id ascending
