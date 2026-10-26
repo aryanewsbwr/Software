@@ -159,10 +159,42 @@ function getRegions(): any[] {
   return cachedRegions || [];
 }
 
-function getCustomers(): any[] {
+async function getCustomers(regionId?: string | number): Promise<any[]> {
+  // 1. If regionId is specified (and not 'all'), fetch directly from Supabase first
+  if (regionId && regionId !== 'all') {
+    try {
+      const rId = parseInt(String(regionId), 10);
+      const { data: supaCusts, error } = await supabase
+        .from('customer')
+        .select('*')
+        .eq('region_id', rId);
+      if (!error && supaCusts && supaCusts.length > 0) {
+        return supaCusts;
+      }
+    } catch (e) {
+      console.warn('Supabase fetch error for region customers:', e);
+    }
+  }
+
+  // 2. Check in-memory cache
   if (cachedCusts && cachedCusts.length > 0) return cachedCusts;
+
+  // 3. Check local JSON files
   cachedCusts = loadJson('all_customers.json');
-  return cachedCusts || [];
+  if (cachedCusts && cachedCusts.length > 0) return cachedCusts;
+
+  // 4. Fallback: Fetch all from Supabase
+  try {
+    const supaAll = await fetchAllFromSupabase('customer');
+    if (supaAll && supaAll.length > 0) {
+      cachedCusts = supaAll;
+      return cachedCusts;
+    }
+  } catch (err) {
+    console.error('Error fetching all customers from Supabase:', err);
+  }
+
+  return [];
 }
 
 function getAllSubscriptions(): any[] {
@@ -537,7 +569,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    let targetCusts = await getCustomers();
+    let targetCusts = await getCustomers(regionId);
 
     // Filter by region
     if (regionId && regionId !== 'all') {
@@ -643,7 +675,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { month = 'August', year = '2026', region_id = 'all', commitToDb = false } = body;
 
-    let targetCusts = await getCustomers();
+    let targetCusts = await getCustomers(region_id);
     if (region_id && region_id !== 'all') {
       const rId = parseInt(region_id, 10);
       targetCusts = targetCusts.filter(c => (c.region_id || c.Region_id) === rId);
