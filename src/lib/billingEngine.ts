@@ -1040,10 +1040,10 @@ export function calculateBilling({
 
     if (hasTargetMonthReceipt) {
       // The customer entered payment receipt(s) specifically against this target month or with net balance
-      // If customer has exact dueamount in master (e.g. ₹100), net total payable MUST be that exact amount!
+      // If customer has exact dueamount in master (e.g. ₹100), net total payable MUST be that exact positive due amount (₹100)!
       const targetPayable = (rawDue !== undefined && rawDue !== null && rawDue >= 0)
         ? rawDue
-        : (rawCbal !== null && rawCbal > 0 ? rawCbal : 0);
+        : (rawCbal !== null && rawCbal !== 0 ? Math.abs(rawCbal) : 0);
 
       // Total payable = openingBalanceThisBill + currentMonthCharges = targetPayable
       customerPreviousBalance = targetPayable - currentMonthCharges;
