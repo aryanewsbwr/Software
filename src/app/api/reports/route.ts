@@ -1199,10 +1199,14 @@ export async function GET(request: NextRequest) {
                                       (r.narr && r.narr.includes(String(b.bill_no))) ||
                                       (parsedRemarks?.narr && parsedRemarks.narr.includes(String(b.bill_no)));
 
-                // 2) Or if it was paid after or at bill generation for this customer's bill
-                // Only show payments intended to pay this bill (e.g. ₹100 or when bill is settled/marked paid)
-                if (!isForThisBill && totalR > b.total_payable && b.total_payable > 0) {
-                  // This was an advance credit/adjustment applied before the ₹100 bill, not payment of the ₹100 bill itself
+                // 2) If the bill still has a pending balance (net_payable > 0, like ₹100),
+                // prior advance receipts (like ₹6971) were already deducted to arrive at ₹100.
+                // They should NOT be shown as if the ₹100 bill is paid.
+                // A payment only counts as paying this bill if:
+                // - It explicitly matches this bill number, OR
+                // - The bill has been settled/cleared (net_payable <= 0), OR
+                // - The payment was specifically made for the bill amount (e.g. ₹100).
+                if (b.net_payable > 0 && !isForThisBill && totalR !== b.net_payable) {
                   return;
                 }
 
