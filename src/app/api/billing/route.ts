@@ -338,11 +338,10 @@ async function getMaxBillId(fySuffix: string): Promise<number> {
 async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
   if (customerIds.length === 0) return [];
 
-  const CHUNK_SIZE = 100;
+  const CHUNK_SIZE = 250;
   const result: any[] = [];
-  const foundCustIds = new Set<number>();
 
-  // 1. Query customer_detail directly from Supabase (authoritative active subscriptions)
+  // Query customer_detail directly from Supabase (authoritative active subscriptions)
   for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
     const chunk = customerIds.slice(i, i + CHUNK_SIZE);
     try {
@@ -353,25 +352,9 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
         .limit(50000);
       if (cdSubs && cdSubs.length > 0) {
         result.push(...cdSubs);
-        cdSubs.forEach(s => foundCustIds.add(s.customer_id));
       }
     } catch (err) {
       console.error('Error fetching customer_detail chunk:', err);
-    }
-  }
-
-  // 2. Fallback to all_subscriptions.json for any missing customers
-  const missingCustIds = customerIds.filter(id => !foundCustIds.has(id));
-  if (missingCustIds.length > 0) {
-    try {
-      const localSubsPath = path.join(process.cwd(), 'public', 'data', 'all_subscriptions.json');
-      if (fs.existsSync(localSubsPath)) {
-        const localSubs = JSON.parse(fs.readFileSync(localSubsPath, 'utf-8'));
-        const fallback = localSubs.filter((s: any) => missingCustIds.includes(s.customer_id));
-        result.push(...fallback);
-      }
-    } catch (err) {
-      console.error('Error reading local all_subscriptions.json fallback:', err);
     }
   }
 
@@ -380,7 +363,7 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
 
 async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
   if (customerIds.length === 0) return { bills: [], billHeaders: [], receipts: [] };
-  const CHUNK_SIZE = 50;
+  const CHUNK_SIZE = 250;
   const allBills: any[] = [];
   const allBillHeaders: any[] = [];
   const allReceipts: any[] = [];
@@ -403,9 +386,7 @@ async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
   } catch (e) {
     // fallback
   }
-  const bFiltered = (cachedBills || []).filter(b => customerIds.includes(b.customer_id || b.Customer_id));
-  const rFiltered = (cachedReceipts || []).filter(r => customerIds.includes(r.customer_id || r.Customer_id));
-  return { bills: bFiltered, billHeaders: bFiltered, receipts: rFiltered };
+  return { bills: [], billHeaders: [], receipts: [] };
 }
 
 async function fetchRetailSales(customerIds: number[], fySuffix: string): Promise<any[]> {
@@ -417,69 +398,30 @@ async function fetchRetailSales(customerIds: number[], fySuffix: string): Promis
   });
 
   const matchingDb: any[] = [];
-  const candidateTables = Array.from(new Set([
-    'retailsale',
-    `retailsale${fySuffix}`,
-    'retailsale20252026',
-    'retailsale20262027'
-  ]));
-
   try {
-    const CHUNK_SIZE = 50;
+    const CHUNK_SIZE = 250;
     for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
       const chunk = customerIds.slice(i, i + CHUNK_SIZE);
-      
-      for (const tbl of candidateTables) {
-        // Try customer_id (lowercase)
-        try {
-          const { data: tblDataLower } = await supabase
-            .from(tbl)
-            .select('*')
-            .in('customer_id', chunk)
-            .limit(50000);
-          if (tblDataLower && tblDataLower.length > 0) {
-            matchingDb.push(...tblDataLower.map((r: any) => ({
-              Retail_id: r.retail_id || r.Retail_id || r.sale_id,
-              Vr_Date: r.vr_date || r.Vr_Date || r.dated || r.Dated,
-              Customer_id: Number(r.customer_id || r.Customer_id),
-              Publica_id: Number(r.publica_id || r.Publica_id),
-              Copies: Number(r.copies || r.Copies || 1),
-              Rate: Number(r.rate !== undefined && r.rate !== null ? r.rate : (r.Rate || 0)),
-              Amt: r.amt !== undefined && r.amt !== null ? Number(r.amt) : (r.Amt !== undefined && r.Amt !== null ? Number(r.Amt) : (r.amount || 0)),
-              Narr: r.narr || r.Narr || r.narration || ''
-            })));
-          }
-        } catch {
-          // ignore table / column missing error
-        }
+      const { data: tblData } = await supabase
+        .from(`retailsale${fySuffix}`)
+        .select('*')
+        .in('customer_id', chunk)
+        .limit(50000);
 
-        // Try Customer_id (uppercase)
-        try {
-          const { data: tblDataUpper } = await supabase
-            .from(tbl)
-            .select('*')
-            .in('Customer_id', chunk)
-            .limit(50000);
-          if (tblDataUpper && tblDataUpper.length > 0) {
-            matchingDb.push(...tblDataUpper.map((r: any) => ({
-              Retail_id: r.retail_id || r.Retail_id || r.sale_id,
-              Vr_Date: r.vr_date || r.Vr_Date || r.dated || r.Dated,
-              Customer_id: Number(r.customer_id || r.Customer_id),
-              Publica_id: Number(r.publica_id || r.Publica_id),
-              Copies: Number(r.copies || r.Copies || 1),
-              Rate: Number(r.rate !== undefined && r.rate !== null ? r.rate : (r.Rate || 0)),
-              Amt: r.amt !== undefined && r.amt !== null ? Number(r.amt) : (r.Amt !== undefined && r.Amt !== null ? Number(r.Amt) : (r.amount || 0)),
-              Narr: r.narr || r.Narr || r.narration || ''
-            })));
-          }
-        } catch {
-          // ignore
-        }
+      if (tblData && tblData.length > 0) {
+        matchingDb.push(...tblData.map((r: any) => ({
+          Retail_id: r.retail_id || r.Retail_id || r.sale_id,
+          Vr_Date: r.vr_date || r.Vr_Date || r.dated || r.Dated,
+          Customer_id: Number(r.customer_id || r.Customer_id),
+          Publica_id: Number(r.publica_id || r.Publica_id),
+          Copies: Number(r.copies || r.Copies || 1),
+          Rate: Number(r.rate !== undefined && r.rate !== null ? r.rate : (r.Rate || 0)),
+          Amt: r.amt !== undefined && r.amt !== null ? Number(r.amt) : (r.Amt !== undefined && r.Amt !== null ? Number(r.Amt) : (r.amount || 0)),
+          Narr: r.narr || r.Narr || r.narration || ''
+        })));
       }
     }
-  } catch (err) {
-    console.error('Error fetching retail sales from Supabase:', err);
-  }
+  } catch (_) {}
 
   const seen = new Set<string>();
   const merged: any[] = [];
