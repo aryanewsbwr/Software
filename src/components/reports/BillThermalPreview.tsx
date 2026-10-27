@@ -60,6 +60,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [printMode, setPrintMode] = useState<BillPrintMode>(initialPrintMode);
+  const [viewAll, setViewAll] = useState(false);
   const [scale, setScale] = useState(1);
   const [isSendingWa, setIsSendingWa] = useState(false);
   const [waStatus, setWaStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -396,8 +397,30 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           </button>
         </div>
 
-        {/* Format Selector: Simple vs Detail */}
+        {/* Format Selector: Simple vs Detail & View Mode */}
         <div className="flex items-center gap-2">
+          {/* View Toggle: Single vs All Bills */}
+          <div className="flex items-center bg-slate-900 px-1 py-0.5 rounded border border-slate-700">
+            <button
+              onClick={() => setViewAll(false)}
+              className={`px-2 py-0.5 text-[11px] font-bold rounded cursor-pointer ${
+                !viewAll ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Show one bill at a time with Prev/Next buttons"
+            >
+              Single
+            </button>
+            <button
+              onClick={() => setViewAll(true)}
+              className={`px-2 py-0.5 text-[11px] font-bold rounded cursor-pointer ${
+                viewAll ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Show all bills in a continuous scrolling list"
+            >
+              All Bills ({bills.length})
+            </button>
+          </div>
+
           <div className="flex items-center bg-slate-900 px-1 py-0.5 rounded border border-slate-700">
             <button
               onClick={() => setPrintMode('simple')}
@@ -469,7 +492,13 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           transformOrigin: 'top center'
         }}
       >
-        {renderBill(currentBill, currentIndex)}
+        {viewAll ? (
+          <div className="flex flex-col items-center gap-6 w-full max-h-[80vh] overflow-y-auto px-4 py-2">
+            {bills.map((b, idx) => renderBill(b, idx))}
+          </div>
+        ) : (
+          renderBill(currentBill, currentIndex)
+        )}
       </div>
     </div>
   );
