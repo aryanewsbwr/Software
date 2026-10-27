@@ -217,27 +217,55 @@ async function getActiveCustomerIds(targetCustIds: number[], month: string, year
 
   const activeCustSet = new Set<number>();
 
-  // Fetch subscriptions from Supabase customer_detail in chunks
-  const CHUNK_SIZE = 100;
-  for (let i = 0; i < targetCustIds.length; i += CHUNK_SIZE) {
-    const chunk = targetCustIds.slice(i, i + CHUNK_SIZE);
+  // Optimized: If targetCustIds is large (e.g. All Regions with 24k customers),
+  // fetch active subscriptions directly by querying customer_detail instead of 250 sequential chunks!
+  if (targetCustIds.length > 500) {
     try {
-      const { data: cdSubs } = await supabase
-        .from('customer_detail')
-        .select('customer_id, s_date, c_date')
-        .in('customer_id', chunk);
+      const PAGE_SIZE = 5000;
+      let from = 0;
+      while (true) {
+        const { data: cdBatch, error } = await supabase
+          .from('customer_detail')
+          .select('customer_id, s_date, c_date')
+          .range(from, from + PAGE_SIZE - 1);
 
-      if (cdSubs && cdSubs.length > 0) {
-        for (const s of cdSubs) {
+        if (error || !cdBatch || cdBatch.length === 0) break;
+        for (const s of cdBatch) {
           const sDateIso = parseLegacyDateToIso(s.s_date) || '2000-01-01';
           const cDateIso = parseLegacyDateToIso(s.c_date);
           if (sDateIso <= mEndIso && (!cDateIso || cDateIso >= mStartIso)) {
             activeCustSet.add(Number(s.customer_id));
           }
         }
+        if (cdBatch.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
       }
     } catch (err) {
-      console.error('Error fetching customer_detail in getActiveCustomerIds:', err);
+      console.error('Error fetching all customer_detail in getActiveCustomerIds:', err);
+    }
+  } else {
+    // Single Region or targeted customers (chunk by 200)
+    const CHUNK_SIZE = 200;
+    for (let i = 0; i < targetCustIds.length; i += CHUNK_SIZE) {
+      const chunk = targetCustIds.slice(i, i + CHUNK_SIZE);
+      try {
+        const { data: cdSubs } = await supabase
+          .from('customer_detail')
+          .select('customer_id, s_date, c_date')
+          .in('customer_id', chunk);
+
+        if (cdSubs && cdSubs.length > 0) {
+          for (const s of cdSubs) {
+            const sDateIso = parseLegacyDateToIso(s.s_date) || '2000-01-01';
+            const cDateIso = parseLegacyDateToIso(s.c_date);
+            if (sDateIso <= mEndIso && (!cDateIso || cDateIso >= mStartIso)) {
+              activeCustSet.add(Number(s.customer_id));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching customer_detail in getActiveCustomerIds:', err);
+      }
     }
   }
 
