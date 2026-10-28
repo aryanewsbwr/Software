@@ -63,6 +63,8 @@ export default function BackupRestoreModal({ mode: initialMode, onClose }: Backu
       'publication',
       'publica',
       'rate',
+      'ratechange',
+      'publicationdis',
       'discontinue20262027',
       'discontinue',
       'regiond',
@@ -70,6 +72,10 @@ export default function BackupRestoreModal({ mode: initialMode, onClose }: Backu
       'regions',
       'holiday',
       'receipt20262027',
+      'billno20262027',
+      'bill20262027',
+      'billdel20262027',
+      'retailsale20262027',
     ]);
 
     const parsedTables: Record<string, any[]> = {};
@@ -133,7 +139,23 @@ export default function BackupRestoreModal({ mode: initialMode, onClose }: Backu
           const match = trimmed.match(/^insert\s+into\s+[`"]?([a-zA-Z0-9_]+)[`"]?/i);
           if (match) {
             const tbl = match[1].toLowerCase();
-            currentTbl = coreTables.has(tbl) ? tbl : null;
+            if (coreTables.has(tbl)) {
+              currentTbl = tbl;
+            } else if (tbl.startsWith('discontinue')) {
+              currentTbl = 'discontinue20262027';
+            } else if (tbl.startsWith('receipt') && tbl.includes('2026')) {
+              currentTbl = 'receipt20262027';
+            } else if (tbl.startsWith('billno') && tbl.includes('2026')) {
+              currentTbl = 'billno20262027';
+            } else if (tbl.startsWith('billdel') && tbl.includes('2026')) {
+              currentTbl = 'billdel20262027';
+            } else if (tbl.startsWith('bill') && tbl.includes('2026')) {
+              currentTbl = 'bill20262027';
+            } else if (tbl.startsWith('retailsale') && tbl.includes('2026')) {
+              currentTbl = 'retailsale20262027';
+            } else {
+              currentTbl = null;
+            }
           }
         }
 
