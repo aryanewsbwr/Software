@@ -123,7 +123,7 @@ function saveJsonDirect(filename: string, data: any[]) {
 async function syncDiscontinueClosuresToSubscriptions(discontinues: any[]) {
   try {
     const permanentStops = discontinues.filter(d => 
-      (d.temp_perma === 'Permanent' || d.temp_perma === 'P') && d.temp_from
+      (d.temp_perma === 'Permanent' || d.temp_perma === 'P') && d.temp_from && d.temp_from >= '2026-04-01'
     );
 
     if (permanentStops.length === 0) return;

@@ -252,8 +252,8 @@ export default function BackupRestoreModal({ mode: initialMode, onClose }: Backu
           currentStep++;
           setProgressMsg(`Saving table '${tblName}' (${rows.length.toLocaleString()} records) [${currentStep}/${tableEntries.length}]...`);
 
-          // Split into 500-row chunks (~120KB per POST request to guarantee 0 payload limits and high speed)
-          const CHUNK_SIZE = 500;
+          // Split into 1000-row chunks (~200KB per POST request for high speed)
+          const CHUNK_SIZE = 1000;
           for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
             const chunk = rows.slice(i, i + CHUNK_SIZE);
             const res = await fetch('/api/backup-restore', {
