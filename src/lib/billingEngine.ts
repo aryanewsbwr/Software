@@ -1096,44 +1096,50 @@ export function calculateBilling({
           const rCid = Number(r.customer_id || r.Customer_id);
           if (rCid !== Number(custId)) continue;
           const rNo = String(r.recp_no || r.id || '');
-          const rDate = String(r.recp_date || '');
-          const key = `${rNo}_${rDate}`;
+          const rMonth = (r.month || r.Month || '').toLowerCase().trim();
+          const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
+          const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
+          
+          const key = r.recp_no && Number(r.recp_no) !== 0
+            ? String(r.recp_no)
+            : `${rCid}_${rMonth}_${recpAmt}`;
           if (seenRecpKeys.has(key)) continue;
           seenRecpKeys.add(key);
 
           // Only deduct receipts for months strictly prior to target billing month
-          const rMonth = (r.month || r.Month || '').toLowerCase().trim();
           const rMIdx = FY_MONTH_ORDER[rMonth];
           if (rMIdx !== undefined && rMIdx >= targetFyIndex) continue;
 
-          const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
-          const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
           priorReceiptsTotal += (recpAmt + lessAmt);
         }
 
         // Compute net dues across all bills up to and including target month minus all receipts
-        // In Payment Receipt:
-        // Total Bills (including target month) = ₹7,271
-        // Total Receipts (all received) = ₹7,071
-        // Total Due = ₹100
         const allCustBillsTotal = priorBillsTotal + customerPaperTotal + customerDeliveryTotal - customerDiscountTotal;
 
-        const allReceiptsTotal = receipts.reduce((sum, r) => {
+        const seenAllRecpKeys = new Set<string>();
+        let allReceiptsTotal = 0;
+        for (const r of receipts) {
           const rCid = Number(r.customer_id || r.Customer_id);
-          if (rCid !== Number(custId)) return sum;
+          if (rCid !== Number(custId)) continue;
+          const rMonth = (r.month || r.Month || '').toLowerCase().trim();
           const recpAmt = Number(r.mal_recp_amt !== undefined ? r.mal_recp_amt : (r.MalRecpAmt || r.bill_amt || r.BillAmt || 0));
           const lessAmt = Number(r.less_amt !== undefined ? r.less_amt : (r.LessAmt || 0));
-          return sum + recpAmt + lessAmt;
-        }, 0);
+
+          const key = r.recp_no && Number(r.recp_no) !== 0
+            ? String(r.recp_no)
+            : `${rCid}_${rMonth}_${recpAmt}`;
+          if (seenAllRecpKeys.has(key)) continue;
+          seenAllRecpKeys.add(key);
+
+          allReceiptsTotal += (recpAmt + lessAmt);
+        }
 
         // If total receipts cover all prior bills and partially/fully pay the current month bill,
         // then the remaining net payable right now is (allCustBillsTotal - allReceiptsTotal).
         const netTotalDue = allCustBillsTotal - allReceiptsTotal;
 
         if (allReceiptsTotal > priorBillsTotal) {
-          // Customer already made a payment that includes current month bill (e.g. ₹6,971 was paid towards Oct bill leaving net ₹100 due)
-          // Total Payable must be netTotalDue (₹100)
-          // Therefore: previousDue = netTotalDue - currentMonthCharges
+          // Customer already made a payment that includes current month bill
           customerPreviousBalance = netTotalDue - (customerPaperTotal + customerDeliveryTotal - customerDiscountTotal);
         } else {
           // Standard case: customer has unpaid prior balance
@@ -1143,9 +1149,9 @@ export function calculateBilling({
         const recordedBalanceDue = -Number(existingHeader.balance);
         customerPreviousBalance = recordedBalanceDue - latePaid;
       } else {
-        if (rawCbal !== null && rawCbal !== 0) {
-          customerPreviousBalance = -rawCbal;
-        }
+        // Customer has no prior billing headers in this financial year.
+        // Opening balance for current FY starts clean at 0 (never use corrupted 2007 cbal / dueamount).
+        customerPreviousBalance = 0;
       }
     }
 
@@ -1221,7 +1227,7 @@ export function calculateBilling({
       Dis_Amt: customerDiscountTotal > 0 ? customerDiscountTotal : null,
       Month: standardMonthName,
       year: String(startYear),
-      Balance: openingBalanceThisBill !== 0 ? -openingBalanceThisBill : 0
+      Balance: totalPayable !== 0 ? -totalPayable : 0
     };
 
     const reg = regMap.get(custRegionId);

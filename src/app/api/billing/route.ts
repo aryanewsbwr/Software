@@ -47,20 +47,19 @@ function loadJson(filename: string): any[] {
 }
 
 async function fetchAllFromSupabase(table: string): Promise<any[]> {
-  const all: any[] = [];
-  const PAGE_SIZE = 1000;
-  let from = 0;
-  while (true) {
-    const { data, error } = await supabase
-      .from(table)
-      .select('*')
-      .range(from, from + PAGE_SIZE - 1);
-    if (error || !data || data.length === 0) break;
-    all.push(...data);
-    if (data.length < PAGE_SIZE) break;
-    from += PAGE_SIZE;
+  try {
+    const { count } = await supabase.from(table).select('*', { count: 'exact', head: true });
+    const total = count || 0;
+    if (total === 0) return [];
+    const ranges: number[] = [];
+    for (let from = 0; from < total; from += 1000) ranges.push(from);
+    const promises = ranges.map(from => supabase.from(table).select('*').range(from, from + 999));
+    const results = await Promise.all(promises);
+    return results.flatMap(r => r.data || []);
+  } catch (err) {
+    console.error(`Error in fetchAllFromSupabase for ${table}:`, err);
+    return [];
   }
-  return all;
 }
 
 async function getRates(): Promise<any[]> {
@@ -79,6 +78,7 @@ async function getRates(): Promise<any[]> {
 }
 
 async function getRateChanges(): Promise<any[]> {
+  if (cachedRateChanges && cachedRateChanges.length > 0) return cachedRateChanges;
   let localRcs = loadJson('ratechanges.json').map((rc: any) => ({
     publica_id: rc.publica_id ?? rc.Publica_id,
     dayofweek: rc.dayofweek ?? rc.Dayofweek,
@@ -89,11 +89,7 @@ async function getRateChanges(): Promise<any[]> {
   }));
 
   try {
-    const { data: sbRcs } = await supabase
-      .from('ratechange')
-      .select('*')
-      .order('effective_date', { ascending: false });
-
+    const sbRcs = await fetchAllFromSupabase('ratechange');
     if (sbRcs && sbRcs.length > 0) {
       const seen = new Set(
         localRcs.map((r: any) => `${r.publica_id}-${r.dayofweek}-${r.effective_date}-${r.new_rate}`)
@@ -119,7 +115,8 @@ async function getRateChanges(): Promise<any[]> {
       });
     }
   } catch (_) {}
-  return localRcs || [];
+  cachedRateChanges = localRcs;
+  return cachedRateChanges;
 }
 
 function getPublications(): any[] {
@@ -218,27 +215,18 @@ async function getActiveCustomerIds(targetCustIds: number[], month: string, year
   const activeCustSet = new Set<number>();
 
   // Optimized: If targetCustIds is large (e.g. All Regions with 24k customers),
-  // fetch active subscriptions directly by querying customer_detail instead of 250 sequential chunks!
+  // fetch active subscriptions directly by querying customer_detail with parallel ranges!
   if (targetCustIds.length > 500) {
     try {
-      const PAGE_SIZE = 5000;
-      let from = 0;
-      while (true) {
-        const { data: cdBatch, error } = await supabase
-          .from('customer_detail')
-          .select('customer_id, s_date, c_date')
-          .range(from, from + PAGE_SIZE - 1);
-
-        if (error || !cdBatch || cdBatch.length === 0) break;
-        for (const s of cdBatch) {
-          const sDateIso = parseLegacyDateToIso(s.s_date) || '2000-01-01';
-          const cDateIso = parseLegacyDateToIso(s.c_date);
-          if (sDateIso <= mEndIso && (!cDateIso || cDateIso >= mStartIso)) {
-            activeCustSet.add(Number(s.customer_id));
-          }
+      const ranges = [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000];
+      const promises = ranges.map(from => supabase.from('customer_detail').select('customer_id, s_date, c_date').is('c_date', null).range(from, from + 999));
+      const results = await Promise.all(promises);
+      const cdSubs = results.flatMap(r => r.data || []);
+      for (const s of cdSubs) {
+        const cDateIso = parseLegacyDateToIso(s.c_date);
+        if (!cDateIso || cDateIso >= mStartIso) {
+          activeCustSet.add(Number(s.customer_id));
         }
-        if (cdBatch.length < PAGE_SIZE) break;
-        from += PAGE_SIZE;
       }
     } catch (err) {
       console.error('Error fetching all customer_detail in getActiveCustomerIds:', err);
@@ -256,9 +244,8 @@ async function getActiveCustomerIds(targetCustIds: number[], month: string, year
 
         if (cdSubs && cdSubs.length > 0) {
           for (const s of cdSubs) {
-            const sDateIso = parseLegacyDateToIso(s.s_date) || '2000-01-01';
             const cDateIso = parseLegacyDateToIso(s.c_date);
-            if (sDateIso <= mEndIso && (!cDateIso || cDateIso >= mStartIso)) {
+            if (!cDateIso || cDateIso >= mStartIso) {
               activeCustSet.add(Number(s.customer_id));
             }
           }
@@ -338,6 +325,19 @@ async function getMaxBillId(fySuffix: string): Promise<number> {
 async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
   if (customerIds.length === 0) return [];
 
+  // When querying many customers (> 500, e.g. All Regions), fetch all active subscriptions in parallel ranges!
+  if (customerIds.length > 500) {
+    try {
+      const ranges = [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000];
+      const promises = ranges.map(from => supabase.from('customer_detail').select('*').is('c_date', null).range(from, from + 999));
+      const results = await Promise.all(promises);
+      const allActiveSubs = results.flatMap(r => r.data || []);
+      if (allActiveSubs.length > 0) return allActiveSubs;
+    } catch (err) {
+      console.error('Error fetching parallel active subscriptions:', err);
+    }
+  }
+
   const CHUNK_SIZE = 250;
   const result: any[] = [];
 
@@ -363,6 +363,38 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
 
 async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
   if (customerIds.length === 0) return { bills: [], billHeaders: [], receipts: [] };
+
+  // When querying all customers (> 500), load entire FY ledger in parallel ranges!
+  if (customerIds.length > 500) {
+    try {
+      const recRanges: number[] = [];
+      for (let from = 0; from < 35000; from += 1000) recRanges.push(from);
+      const recPromises = recRanges.map(from => supabase.from(`receipt${fySuffix}`).select('customer_id, month, mal_recp_amt, less_amt, recp_no, recp_date').range(from, from + 999));
+
+      const billRanges: number[] = [];
+      for (let from = 0; from < 50000; from += 1000) billRanges.push(from);
+      const billPromises = billRanges.map(from => supabase.from(`bill${fySuffix}`).select('bill_id, customer_id, publica_id, qty, rate, total_amt, month').range(from, from + 999));
+
+      const headerRanges: number[] = [];
+      for (let from = 0; from < 45000; from += 1000) headerRanges.push(from);
+      const headerPromises = headerRanges.map(from => supabase.from(`billno${fySuffix}`).select('bill_id, customer_id, due_amt, del_amt, dis_amt, month, balance').range(from, from + 999));
+
+      const [recRes, billRes, headerRes] = await Promise.all([
+        Promise.all(recPromises),
+        Promise.all(billPromises),
+        Promise.all(headerPromises)
+      ]);
+
+      return {
+        receipts: recRes.flatMap(r => r.data || []),
+        bills: billRes.flatMap(r => r.data || []),
+        billHeaders: headerRes.flatMap(r => r.data || [])
+      };
+    } catch (e) {
+      console.error('Error in parallel fetchBillsAndReceipts:', e);
+    }
+  }
+
   const CHUNK_SIZE = 250;
   const allBills: any[] = [];
   const allBillHeaders: any[] = [];
@@ -808,14 +840,16 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Update customer cbal in customer table to reflect closing balance
-        for (let i = 0; i < result.bills.length; i += 100) {
-          const chunk = result.bills.slice(i, i + 100);
-          await Promise.all(
-            chunk.map(b =>
-              supabase.from('customer').update({ cbal: -b.total_payable }).eq('customer_id', b.customer_id)
-            )
-          );
+        // Update customer cbal for single or small region runs without blocking batch execution
+        if (result.bills.length <= 100) {
+          for (let i = 0; i < result.bills.length; i += 50) {
+            const chunk = result.bills.slice(i, i + 50);
+            await Promise.all(
+              chunk.map(b =>
+                supabase.from('customer').update({ cbal: -b.total_payable }).eq('customer_id', b.customer_id)
+              )
+            );
+          }
         }
 
         savedToSupabase = true;
