@@ -162,16 +162,16 @@ export async function POST(request: NextRequest) {
       console.warn('Supabase discontinue warning:', dbErr);
     }
 
-    // 2. If permanent stop, update c_date in customer_detail ONLY for subscriptions started before or on the discontinue date
+    // 2. If permanent stop, update c_date in customer_detail on active subscriptions
     if (isPerm) {
       try {
         let query = supabase
           .from('customer_detail')
           .update({ c_date: fromIso })
           .eq('customer_id', cid)
-          .lte('s_date', fromIso);
+          .is('c_date', null);
         if (pubId > 0) {
-          query = query.eq('publication_id', pubId);
+          query = query.eq('publica_id', pubId);
         }
         await query;
       } catch (cdErr) {}
