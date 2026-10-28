@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
+import os from 'os';
 import { supabase } from '@/lib/supabaseClient';
 
 export const dynamic = 'force-dynamic';
@@ -87,20 +88,21 @@ function saveJsonWithDeduplication<T extends Record<string, any>>(
 
   const result = Array.from(itemMap.values());
 
-  // Safety backup before clean write
-  const backupDir = path.join(process.cwd(), 'public', 'data_backup');
-  if (!fs.existsSync(backupDir)) {
-    fs.mkdirSync(backupDir, { recursive: true });
-  }
-  if (fs.existsSync(filePath) && !isAppendMode) {
-    try {
-      fs.copyFileSync(filePath, path.join(backupDir, filename));
-    } catch (err) {
-      console.warn(`Could not create backup of ${filename}:`, err);
+  // Safety backup and local file write (wrapped in try-catch for serverless / Vercel read-only filesystem)
+  try {
+    const backupDir = path.join(process.cwd(), 'public', 'data_backup');
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
     }
+    if (fs.existsSync(filePath) && !isAppendMode) {
+      fs.copyFileSync(filePath, path.join(backupDir, filename));
+    }
+    fs.writeFileSync(filePath, JSON.stringify(result, null, 2), 'utf-8');
+  } catch (err: any) {
+    // In Vercel serverless environment, filesystem is read-only. Data is securely stored in Supabase.
+    console.warn(`Local file write bypassed for ${filename} (serverless environment):`, err?.message);
   }
 
-  fs.writeFileSync(filePath, JSON.stringify(result, null, 2), 'utf-8');
   return result;
 }
 
@@ -517,7 +519,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'No SQL file uploaded' }, { status: 400 });
       }
 
-      const tempPath = path.join(process.cwd(), 'public', `temp_restore_${Date.now()}.sql`);
+      const tempPath = path.join(os.tmpdir(), `temp_restore_${Date.now()}.sql`);
       const buffer = Buffer.from(await file.arrayBuffer());
       fs.writeFileSync(tempPath, buffer);
 
