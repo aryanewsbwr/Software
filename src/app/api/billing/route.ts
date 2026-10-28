@@ -338,7 +338,7 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
     }
   }
 
-  const CHUNK_SIZE = 250;
+  const CHUNK_SIZE = 40;
   const result: any[] = [];
 
   // Query customer_detail directly from Supabase (authoritative active subscriptions)
@@ -349,7 +349,7 @@ async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
         .from('customer_detail')
         .select('*')
         .in('customer_id', chunk)
-        .limit(50000);
+        .limit(1000);
       if (cdSubs && cdSubs.length > 0) {
         result.push(...cdSubs);
       }
@@ -395,7 +395,8 @@ async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
     }
   }
 
-  const CHUNK_SIZE = 250;
+  // Safe chunk size (40 customers) ensures that line items never exceed Supabase's hard 1,000 max_rows limit
+  const CHUNK_SIZE = 40;
   const allBills: any[] = [];
   const allBillHeaders: any[] = [];
   const allReceipts: any[] = [];
@@ -404,9 +405,9 @@ async function fetchBillsAndReceipts(customerIds: number[], fySuffix: string) {
     for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
       const chunk = customerIds.slice(i, i + CHUNK_SIZE);
       const [{ data: bData }, { data: itemsData }, { data: rData }] = await Promise.all([
-        supabase.from(`billno${fySuffix}`).select('*').in('customer_id', chunk).limit(50000),
-        supabase.from(`bill${fySuffix}`).select('*').in('customer_id', chunk).limit(50000),
-        supabase.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk).limit(50000)
+        supabase.from(`billno${fySuffix}`).select('*').in('customer_id', chunk).limit(1000),
+        supabase.from(`bill${fySuffix}`).select('*').in('customer_id', chunk).limit(1000),
+        supabase.from(`receipt${fySuffix}`).select('*').in('customer_id', chunk).limit(1000)
       ]);
       if (bData) allBillHeaders.push(...bData);
       if (itemsData) allBills.push(...itemsData);
@@ -706,6 +707,45 @@ export async function POST(request: NextRequest) {
     });
 
     const targetCustIds = targetCusts.map(c => c.customer_id || c.Customer_id);
+
+    // If committing to DB, first clean any previously generated bills for this month for target customers
+    // to guarantee an exact, clean overwrite without accumulating ghost duplicates or inflating bill counts!
+    if (commitToDb && supabase && targetCustIds.length > 0) {
+      const monthName = month.trim();
+      const monthPrefix = monthName.slice(0, 3);
+      const billnoTable = `billno${fySuffix}`;
+      const billTable = `bill${fySuffix}`;
+      const billdelTable = `billdel${fySuffix}`;
+
+      try {
+        const oldBids: number[] = [];
+        for (let i = 0; i < targetCustIds.length; i += 200) {
+          const chunk = targetCustIds.slice(i, i + 200);
+          const { data: oldB } = await supabase
+            .from(billnoTable)
+            .select('bill_id')
+            .in('customer_id', chunk)
+            .or(`month.ilike.${monthName},month.ilike.${monthPrefix}%`);
+          if (oldB && oldB.length > 0) {
+            oldBids.push(...oldB.map(b => b.bill_id));
+          }
+        }
+        if (oldBids.length > 0) {
+          for (let i = 0; i < oldBids.length; i += 200) {
+            const chunk = oldBids.slice(i, i + 200);
+            await supabase.from(billTable).delete().in('bill_id', chunk);
+            await supabase.from(billnoTable).delete().in('bill_id', chunk);
+          }
+        }
+        for (let i = 0; i < targetCustIds.length; i += 200) {
+          const chunk = targetCustIds.slice(i, i + 200);
+          await supabase.from(billdelTable).delete().in('customer_id', chunk).or(`month.ilike.${monthName},month.ilike.${monthPrefix}%`);
+        }
+      } catch (cleanErr) {
+        console.warn('Error pre-cleaning month bills for clean overwrite:', cleanErr);
+      }
+    }
+
     const [targetSubs, { bills: liveCustBills, billHeaders: liveCustBillHeaders, receipts: liveCustReceipts }, pubDis, dbBatchRetail, maxBillId, liveHolidays, rates, ratechanges, pubs, discontinues, regions, liveSupps] = await Promise.all([
       fetchSubscriptions(targetCustIds),
       fetchBillsAndReceipts(targetCustIds, fySuffix),

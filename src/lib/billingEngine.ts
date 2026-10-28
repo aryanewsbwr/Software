@@ -1085,6 +1085,9 @@ export function calculateBilling({
             } else {
               paperAmt = Number(h.paper_amount ?? h.paper_amt ?? h.Paper_Amt ?? h.bill_amt ?? h.BillAmt ?? 0);
             }
+            if (paperAmt === 0 && h.balance !== null && h.balance !== undefined && Number(h.balance) !== 0) {
+              paperAmt = Math.abs(Number(h.balance));
+            }
             priorBillsTotal += (paperAmt + delAmt - disAmt);
           }
         }
@@ -1155,7 +1158,7 @@ export function calculateBilling({
       }
     }
 
-    const previousDue = Math.round(customerPreviousBalance * 100) / 100;
+    const previousDue = Math.abs(customerPreviousBalance) < 0.01 ? 0 : Math.round(customerPreviousBalance * 100) / 100;
 
     const openingBalanceThisBill = previousDue;
     const roundedPaperTotal = roundToFoxProRule(customerPaperTotal + customerRetailTotal + customerSupplementTotal);
