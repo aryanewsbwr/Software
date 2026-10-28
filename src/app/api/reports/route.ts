@@ -1086,10 +1086,20 @@ export async function GET(request: NextRequest) {
         const discountCharge = roundToFoxProRule(Number(h.dis_amt || 0));
         const paperAmount = roundToFoxProRule(paperTotal);
         const currentBill = roundToFoxProRule(paperAmount + deliveryCharge - discountCharge);
-        const rawPrevDue = h.balance !== null && h.balance !== undefined ? -Number(h.balance) : Number(h.due_amt || 0);
+        let prevDue = 0;
+        if (h.due_amt !== null && h.due_amt !== undefined && h.due_amt !== '') {
+          prevDue = Number(h.due_amt);
+        } else if (h.balance !== null && h.balance !== undefined && Number(h.balance) !== 0) {
+          // In FoxPro, balance is the net closing balance. If due_amt is not populated,
+          // Previous Due = Total Payable - Current Bill.
+          const totalFromBalance = Math.abs(Number(h.balance));
+          if (Math.abs(totalFromBalance - currentBill) > 0.01) {
+            prevDue = roundToFoxProRule(totalFromBalance - currentBill);
+          }
+        }
 
         const isGovtSupply = c.govt_supply === -1 || c.govt_supply === 1 || c.govt_supply === true || String(c.govt_supply) === '1' || String(c.govt_supply) === '-1';
-        const prevDue = isGovtSupply ? 0 : roundToFoxProRule(rawPrevDue);
+        if (isGovtSupply) prevDue = 0;
         const netPayable = isGovtSupply ? currentBill : roundToFoxProRule(currentBill + prevDue);
 
         // Extract phone number from c.phone, c.hindi_add, c.add1, or c.add2 if present

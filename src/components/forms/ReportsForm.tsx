@@ -78,9 +78,9 @@ export default function ReportsForm({
   const [regions, setRegions] = useState<any[]>(propsRegions || []);
   const [hawkers, setHawkers] = useState<any[]>(propsHawkers || []);
   const [publications, setPublications] = useState<any[]>(propsPubs || []);
-  const [selectedRegion, setSelectedRegion] = useState<string>(String(initialRegion));
-  const [selectedHawker, setSelectedHawker] = useState<string>(String(initialHawker));
-  const [selectedPub, setSelectedPub] = useState<string>(String(initialPub));
+  const [selectedRegion, setSelectedRegion] = useState<string>(initialRegion !== undefined && initialRegion !== 'undefined' ? String(initialRegion) : 'all');
+  const [selectedHawker, setSelectedHawker] = useState<string>(initialHawker !== undefined && initialHawker !== 'undefined' ? String(initialHawker) : 'all');
+  const [selectedPub, setSelectedPub] = useState<string>(initialPub !== undefined && initialPub !== 'undefined' ? String(initialPub) : 'all');
   const [selectedMonth, setSelectedMonth] = useState<string>('September');
   const [selectedYear, setSelectedYear] = useState<string>('2026');
   const [targetCustId, setTargetCustId] = useState<string>('');

@@ -1222,7 +1222,7 @@ export function calculateBilling({
       Bill_id: assignedBillId,
       Customer_id: custId,
       Region_id: custRegionId,
-      Due_Amt: null,
+      Due_Amt: openingBalanceThisBill !== 0 ? openingBalanceThisBill : null,
       Del_Amt: customerDeliveryTotal > 0 ? customerDeliveryTotal : null,
       Dis_Amt: customerDiscountTotal > 0 ? customerDiscountTotal : null,
       Month: standardMonthName,
