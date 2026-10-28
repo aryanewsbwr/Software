@@ -264,8 +264,17 @@ async function getActiveCustomerIds(targetCustIds: number[], month: string, year
   return activeCustSet;
 }
 
-function getHolidays(): any[] {
+async function getHolidays(): Promise<any[]> {
   if (cachedHolidays && cachedHolidays.length > 0) return cachedHolidays;
+  try {
+    const all = await fetchAllFromSupabase('holiday');
+    if (all && all.length > 0) {
+      cachedHolidays = all;
+      return cachedHolidays;
+    }
+  } catch (err) {
+    console.warn('Failed to fetch holidays from Supabase in billing route:', err);
+  }
   cachedHolidays = loadJson('holidays.json');
   return cachedHolidays || [];
 }
