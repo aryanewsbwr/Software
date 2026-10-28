@@ -1035,6 +1035,13 @@ export function calculateBilling({
 
     const hasTargetMonthReceipt = currentMonthReceipts.length > 0;
 
+    const hasPriorHeaders = allHeaders.some(h => {
+      const hCid = Number(h.customer_id || h.Customer_id);
+      const hMonth = (h.month || h.Month || '').toLowerCase().trim();
+      const mIdx = FY_MONTH_ORDER[hMonth];
+      return hCid === Number(custId) && mIdx !== undefined && mIdx < targetFyIndex;
+    });
+
     // Current month charges
     const currentMonthCharges = roundToFoxProRule(customerPaperTotal + customerDeliveryTotal + customerRetailTotal + customerSupplementTotal - customerDiscountTotal);
 
@@ -1049,13 +1056,6 @@ export function calculateBilling({
       customerPreviousBalance = targetPayable - currentMonthCharges;
     } else {
       const latePaid = lateReceiptsByCust.get(custId) || 0;
-
-      const hasPriorHeaders = allHeaders.some(h => {
-        const hCid = Number(h.customer_id || h.Customer_id);
-        const hMonth = (h.month || h.Month || '').toLowerCase().trim();
-        const mIdx = FY_MONTH_ORDER[hMonth];
-        return hCid === Number(custId) && mIdx !== undefined && mIdx < targetFyIndex;
-      });
 
       if (hasPriorHeaders) {
         // Calculate cumulative prior bills (Dues + Apr..Sep)
@@ -1164,10 +1164,12 @@ export function calculateBilling({
     const roundedPaperTotal = roundToFoxProRule(customerPaperTotal + customerRetailTotal + customerSupplementTotal);
     const totalPayable = roundToFoxProRule(openingBalanceThisBill + currentMonthCharges);
 
-    // In FoxPro billing, customers receive a bill if they had deliveries/sales this month OR have an outstanding prior balance/dues.
-    // Only skip customer if they have 0 current deliveries/sales AND 0 outstanding balance/dues.
+    // In FoxPro billing, customers receive a bill if they had deliveries/sales this month OR had prior bills/dues in this FY.
+    // If they had 0 paper charges and 0 opening balance, only skip if they have no prior billing history in this financial year.
     if (customerPaperTotal === 0 && customerRetailTotal === 0 && customerSupplementTotal === 0 && openingBalanceThisBill === 0) {
-      continue;
+      if (!hasPriorHeaders) {
+        continue;
+      }
     }
 
     // Insert "Current Month Charges" Subtotal row into Breakup

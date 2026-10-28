@@ -87,8 +87,9 @@ export default function BillingForm({ onClose }: BillingFormProps) {
       });
       const data = await res.json();
 
-      // 2. Load first page of bills for preview
-      const gridRes = await fetch(`/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}&page=1&limit=200`);
+      const pageSize = selectedRegion === 'all' ? 200 : 1000;
+      // 2. Load bills for preview (full list for single region, paginated for all regions)
+      const gridRes = await fetch(`/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}&page=1&limit=${pageSize}`);
       const gridData = await gridRes.json();
 
       setProgress(100);
@@ -111,7 +112,8 @@ export default function BillingForm({ onClose }: BillingFormProps) {
   // Fetch paginated / searched bills when grid is open
   const fetchBillsPage = async (p: number, s: string) => {
     try {
-      const query = `/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}&search=${encodeURIComponent(s)}&page=${p}&limit=200`;
+      const pageSize = selectedRegion === 'all' ? 200 : 1000;
+      const query = `/api/billing?month=${month}&year=${selectedYear}&region_id=${selectedRegion}&search=${encodeURIComponent(s)}&page=${p}&limit=${pageSize}`;
       const res = await fetch(query);
       const data = await res.json();
       setBills(data.bills || []);
@@ -149,7 +151,8 @@ export default function BillingForm({ onClose }: BillingFormProps) {
     }
   };
 
-  const totalPages = Math.ceil(totalCustomers / 200) || 1;
+  const pageSize = selectedRegion === 'all' ? 200 : 1000;
+  const totalPages = Math.ceil(totalCustomers / pageSize) || 1;
 
   return (
     <div className={`relative w-full ${showGrid ? 'max-w-[920px]' : 'max-w-[600px]'} max-h-[calc(100vh-60px)] sm:max-h-[calc(100vh-70px)] bg-[#ECE9D8] border-2 border-t-white border-l-white border-r-[#404040] border-b-[#404040] shadow-2xl flex flex-col font-tahoma select-none overflow-hidden my-auto shrink-0 transition-all duration-200`}>
