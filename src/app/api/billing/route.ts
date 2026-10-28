@@ -200,7 +200,7 @@ function getAllSubscriptions(): any[] {
   return cachedAllSubs || [];
 }
 
-async function getActiveCustomerIds(targetCustIds: number[], month: string, year: number | string): Promise<Set<number>> {
+async function getActiveCustomerIds(targetCustIds: number[], month: string, year: number | string, fySuffix: string): Promise<Set<number>> {
   const allRetail = loadJson('retailsale.json') || [];
 
   const targetMonthIdx = MONTH_NAMES.findIndex(m => m.toLowerCase() === month.toLowerCase() || m.toLowerCase().startsWith(month.toLowerCase().slice(0, 3)));
@@ -210,49 +210,48 @@ async function getActiveCustomerIds(targetCustIds: number[], month: string, year
   const calYr = actualMonthIdx >= 3 ? startYr : startYr + 1;
   const daysInM = new Date(calYr, actualMonthIdx + 1, 0).getDate();
   const mStartIso = `${calYr}-${String(actualMonthNum).padStart(2, '0')}-01`;
-  const mEndIso = `${calYr}-${String(actualMonthNum).padStart(2, '0')}-${String(daysInM).padStart(2, '0')}`;
+
+  // Determine prior month in financial year cycle
+  const priorMonthName = actualMonthIdx > 0 ? MONTH_NAMES[actualMonthIdx - 1] : 'March';
+  const priorMonthShort = priorMonthName.slice(0, 4);
 
   const activeCustSet = new Set<number>();
 
-  // Optimized: If targetCustIds is large (e.g. All Regions with 24k customers),
-  // fetch active subscriptions directly by querying customer_detail with parallel ranges!
-  if (targetCustIds.length > 500) {
+  // Single Region or targeted customers (chunk by 100 for reliable Supabase queries)
+  const CHUNK_SIZE = 100;
+  for (let i = 0; i < targetCustIds.length; i += CHUNK_SIZE) {
+    const chunk = targetCustIds.slice(i, i + CHUNK_SIZE);
     try {
-      const ranges = [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000];
-      const promises = ranges.map(from => supabase.from('customer_detail').select('customer_id, s_date, c_date').is('c_date', null).range(from, from + 999));
-      const results = await Promise.all(promises);
-      const cdSubs = results.flatMap(r => r.data || []);
-      for (const s of cdSubs) {
-        const cDateIso = parseLegacyDateToIso(s.c_date);
-        if (!cDateIso || cDateIso >= mStartIso) {
-          activeCustSet.add(Number(s.customer_id));
+      const [cdRes, billRes] = await Promise.all([
+        supabase
+          .from('customer_detail')
+          .select('customer_id, s_date, c_date')
+          .in('customer_id', chunk),
+        supabase
+          .from(`billno${fySuffix}`)
+          .select('customer_id, balance')
+          .in('customer_id', chunk)
+          .or(`month.ilike.${priorMonthName},month.ilike.${priorMonthShort}%`)
+      ]);
+
+      if (cdRes.data && cdRes.data.length > 0) {
+        for (const s of cdRes.data) {
+          const cDateIso = parseLegacyDateToIso(s.c_date);
+          if (!cDateIso || cDateIso >= mStartIso) {
+            activeCustSet.add(Number(s.customer_id));
+          }
+        }
+      }
+
+      if (billRes.data && billRes.data.length > 0) {
+        for (const b of billRes.data) {
+          if (b.balance !== null && Number(b.balance) !== 0) {
+            activeCustSet.add(Number(b.customer_id));
+          }
         }
       }
     } catch (err) {
-      console.error('Error fetching all customer_detail in getActiveCustomerIds:', err);
-    }
-  } else {
-    // Single Region or targeted customers (chunk by 200)
-    const CHUNK_SIZE = 200;
-    for (let i = 0; i < targetCustIds.length; i += CHUNK_SIZE) {
-      const chunk = targetCustIds.slice(i, i + CHUNK_SIZE);
-      try {
-        const { data: cdSubs } = await supabase
-          .from('customer_detail')
-          .select('customer_id, s_date, c_date')
-          .in('customer_id', chunk);
-
-        if (cdSubs && cdSubs.length > 0) {
-          for (const s of cdSubs) {
-            const cDateIso = parseLegacyDateToIso(s.c_date);
-            if (!cDateIso || cDateIso >= mStartIso) {
-              activeCustSet.add(Number(s.customer_id));
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching customer_detail in getActiveCustomerIds:', err);
-      }
+      console.error('Error fetching active customer details in getActiveCustomerIds:', err);
     }
   }
 
@@ -325,23 +324,10 @@ async function getMaxBillId(fySuffix: string): Promise<number> {
 async function fetchSubscriptions(customerIds: number[]): Promise<any[]> {
   if (customerIds.length === 0) return [];
 
-  // When querying many customers (> 500, e.g. All Regions), fetch all active subscriptions in parallel ranges!
-  if (customerIds.length > 500) {
-    try {
-      const ranges = [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000];
-      const promises = ranges.map(from => supabase.from('customer_detail').select('*').is('c_date', null).range(from, from + 999));
-      const results = await Promise.all(promises);
-      const allActiveSubs = results.flatMap(r => r.data || []);
-      if (allActiveSubs.length > 0) return allActiveSubs;
-    } catch (err) {
-      console.error('Error fetching parallel active subscriptions:', err);
-    }
-  }
-
-  const CHUNK_SIZE = 40;
+  const CHUNK_SIZE = 100;
   const result: any[] = [];
 
-  // Query customer_detail directly from Supabase (authoritative active subscriptions)
+  // Query customer_detail directly from Supabase in safe 100-customer chunks
   for (let i = 0; i < customerIds.length; i += CHUNK_SIZE) {
     const chunk = customerIds.slice(i, i + CHUNK_SIZE);
     try {
@@ -595,7 +581,7 @@ export async function GET(request: NextRequest) {
       // In FoxPro monthly delivery billing, only active delivery customers receive bills.
       // Filter out discontinued / closed customers with 0 current deliveries.
       const candidateIds = targetCusts.map(c => Number(c.customer_id || c.Customer_id));
-      const activeCustSet = await getActiveCustomerIds(candidateIds, month, year);
+      const activeCustSet = await getActiveCustomerIds(candidateIds, month, year, fySuffix);
       targetCusts = targetCusts.filter(c => activeCustSet.has(Number(c.customer_id || c.Customer_id)));
     }
 
@@ -696,7 +682,7 @@ export async function POST(request: NextRequest) {
     // In FoxPro monthly delivery billing, only active delivery customers receive bills.
     // Filter out discontinued / closed customers with 0 current deliveries.
     const candidateIds = targetCusts.map(c => Number(c.customer_id || c.Customer_id));
-    const activeCustSet = await getActiveCustomerIds(candidateIds, month, year);
+    const activeCustSet = await getActiveCustomerIds(candidateIds, month, year, fySuffix);
     targetCusts = targetCusts.filter(c => activeCustSet.has(Number(c.customer_id || c.Customer_id)));
 
     // Sort target customers strictly by customer_id ascending

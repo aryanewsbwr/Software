@@ -1164,9 +1164,9 @@ export function calculateBilling({
     const roundedPaperTotal = roundToFoxProRule(customerPaperTotal + customerRetailTotal + customerSupplementTotal);
     const totalPayable = roundToFoxProRule(openingBalanceThisBill + currentMonthCharges);
 
-    // In FoxPro monthly delivery billing, bills are ONLY generated for customers with active paper/magazine deliveries or retail sales in this month.
-    // Discontinued customers with 0 current deliveries do not get recurring monthly delivery bills.
-    if (customerPaperTotal === 0 && customerRetailTotal === 0 && customerSupplementTotal === 0) {
+    // In FoxPro billing, customers receive a bill if they had deliveries/sales this month OR have an outstanding prior balance/dues.
+    // Only skip customer if they have 0 current deliveries/sales AND 0 outstanding balance/dues.
+    if (customerPaperTotal === 0 && customerRetailTotal === 0 && customerSupplementTotal === 0 && openingBalanceThisBill === 0) {
       continue;
     }
 
