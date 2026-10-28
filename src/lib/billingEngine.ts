@@ -404,13 +404,23 @@ export function calculateBilling({
 
 
   // Check schedule day filter (cd.From_Day)
-  const isScheduleMatch = (fromDay: any, dayOfWeek: number): boolean => {
+  const isScheduleMatch = (fromDay: any, dayOfWeek: number, targetDateIso?: string): boolean => {
     if (!fromDay) return true;
     if (Array.isArray(fromDay)) {
       return fromDay.includes(dayOfWeek);
     }
     const str = String(fromDay).trim();
     if (str === '' || str === '1-7' || str.toLowerCase() === 'daily') return true;
+
+    // In FoxPro billing, office/institution customer subscriptions marked with '1' or '2-6'
+    // represent a 5-day office working week (Monday=2 to Friday=6), skipping weekends & Gandhi Jayanti (Oct 2).
+    if (str === '1' || str === '2-6') {
+      if (targetDateIso && (targetDateIso.endsWith('-10-02') || targetDateIso.endsWith('-08-15') || targetDateIso.endsWith('-01-26'))) {
+        return false;
+      }
+      return dayOfWeek >= 2 && dayOfWeek <= 6;
+    }
+
     if (str.includes('-')) {
       const parts = str.split('-').map(Number);
       if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
@@ -688,7 +698,7 @@ export function calculateBilling({
 
           // Schedule day check
           const deliveryDays = cd.delivery_days || cd.from_day || cd.From_Day;
-          if (!isScheduleMatch(deliveryDays, legacyDayOfWeek)) continue;
+          if (!isScheduleMatch(deliveryDays, legacyDayOfWeek, targetDateIso)) continue;
 
           // Resolve rate on this date
           const rate = getEffectiveRate(pubId, legacyDayOfWeek, targetDateIso);
