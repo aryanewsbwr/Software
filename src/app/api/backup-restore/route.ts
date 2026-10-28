@@ -128,57 +128,21 @@ async function syncDiscontinueClosuresToSubscriptions(discontinues: any[]) {
 
     if (permanentStops.length === 0) return;
 
-    const subs = loadJson('all_subscriptions.json');
-    if (!subs || subs.length === 0) return;
-
-    const snoToUpdate = new Map<number, string>();
-    for (const disc of permanentStops) {
-      const cid = Number(disc.customer_id);
-      const pid = Number(disc.publica_id);
-      const stopDate = disc.temp_from;
-      const sno = Number(disc.sno);
-
-      if (sno > 0) {
-        snoToUpdate.set(sno, stopDate);
-      } else {
-        const match = subs.find((s: any) => 
-          Number(s.customer_id) === cid && 
-          Number(s.publica_id) === pid &&
-          (!s.c_date || s.c_date > stopDate)
-        );
-        if (match) {
-          snoToUpdate.set(Number(match.sno), stopDate);
-        }
-      }
-    }
-
-    let updatedCount = 0;
-    const dbUpdates: { sno: number; c_date: string }[] = [];
-    for (const s of subs) {
-      const newCdate = snoToUpdate.get(Number(s.sno));
-      if (newCdate && (!s.c_date || s.c_date > newCdate)) {
-        s.c_date = newCdate;
-        dbUpdates.push({ sno: Number(s.sno), c_date: newCdate });
-        updatedCount++;
-      }
-    }
-
-    if (updatedCount > 0) {
-      saveJsonDirect('all_subscriptions.json', subs);
-
-      // Batch update Supabase customer_detail in chunks of 100
-      for (let i = 0; i < dbUpdates.length; i += 100) {
-        const chunk = dbUpdates.slice(i, i + 100);
-        await Promise.all(
-          chunk.map(u => 
-            supabase
-              .from('customer_detail')
-              .update({ c_date: u.c_date })
-              .eq('sno', u.sno)
-          )
-        );
-      }
-      console.log(`Discontinue sync: updated ${updatedCount} active subscriptions with c_date.`);
+    for (let i = 0; i < permanentStops.length; i += 50) {
+      const chunk = permanentStops.slice(i, i + 50);
+      await Promise.all(
+        chunk.map(disc => {
+          const cid = Number(disc.customer_id);
+          const pid = Number(disc.publica_id);
+          const stopDate = disc.temp_from;
+          return supabase
+            .from('customer_detail')
+            .update({ c_date: stopDate })
+            .eq('customer_id', cid)
+            .eq('publica_id', pid)
+            .or(`c_date.is.null,c_date.gt.${stopDate}`);
+        })
+      );
     }
   } catch (err) {
     console.error('Error synchronizing discontinue closures to subscriptions:', err);
@@ -638,16 +602,32 @@ export async function POST(req: NextRequest) {
           dis: String(r.dis ?? '0'),
           dely: Number(r.dely ?? 0),
         };
-      }).filter(s => s.sno > 0);
+      }).filter(s => s.customer_id > 0);
 
       const dedupedSubs = saveJsonWithDeduplication('all_subscriptions.json', mappedSubs, 'sno', isAppendMode);
       stats['customer_detail'] = dedupedSubs.length;
 
-      // Synchronously upsert into Supabase in batches of 500
-      for (let i = 0; i < mappedSubs.length; i += 500) {
-        const batch = mappedSubs.slice(i, i + 500);
-        const { error } = await supabase.from('customer_detail').upsert(batch, { onConflict: 'sno' });
-        if (error) console.error('Subscription Supabase upsert error batch', i, error.message);
+      // Clean batch for customer_detail: omit local per-customer line number 'sno'
+      // so Supabase generates a unique auto-increment serial ID without code 21000 duplicate key conflict!
+      const cleanBatch = mappedSubs.map(s => ({
+        customer_id: s.customer_id,
+        publica_id: s.publica_id,
+        hawker_id: s.hawker_id,
+        qty: s.qty,
+        circulation: s.circulation,
+        s_date: s.s_date,
+        c_date: s.c_date,
+        from_day: s.from_day,
+        hawk_sub: s.hawk_sub,
+        dis: s.dis,
+        dely: s.dely,
+      }));
+
+      // Synchronously insert into Supabase in batches of 500
+      for (let i = 0; i < cleanBatch.length; i += 500) {
+        const batch = cleanBatch.slice(i, i + 500);
+        const { error } = await supabase.from('customer_detail').insert(batch);
+        if (error) console.error('Subscription Supabase insert error batch', i, error.message);
       }
     }
 
