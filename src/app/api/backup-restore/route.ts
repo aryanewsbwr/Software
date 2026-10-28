@@ -19,33 +19,167 @@ function loadJson(filename: string): any[] {
   return [];
 }
 
-function saveJson(filename: string, data: any[], append = false) {
+/**
+ * Robust ISO date converter.
+ * Converts 'DD/MM/YYYY', 'DD-MM-YYYY', 'YYYY-MM-DD' into 'YYYY-MM-DD'.
+ * Safely converts empty strings, '0000-00-00', 'NULL' to null.
+ */
+function toIsoDate(val: any): string | null {
+  if (!val || typeof val !== 'string' || val.trim() === '' || val === 'NULL' || val === 'null' || val === '0000-00-00') {
+    return null;
+  }
+  const s = val.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    return s;
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    return s.slice(0, 10);
+  }
+  const parts = s.split(/[\/\-.]/);
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    }
+    if (parts[2].length === 4) {
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    }
+  }
+  return null;
+}
+
+/**
+ * Saves JSON file with in-memory primary key deduplication.
+ * Guarantees zero duplicate entries across chunked uploads or re-restores.
+ */
+function saveJsonWithDeduplication<T extends Record<string, any>>(
+  filename: string,
+  incomingData: T[],
+  primaryKey: keyof T,
+  isAppendMode: boolean
+): T[] {
+  const dataDir = path.join(process.cwd(), 'public', 'data');
+  const filePath = path.join(dataDir, filename);
+
+  const itemMap = new Map<any, T>();
+
+  // If append mode, load existing data first
+  if (isAppendMode && fs.existsSync(filePath)) {
+    try {
+      const existing: T[] = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      for (const item of existing) {
+        const key = item[primaryKey];
+        if (key !== undefined && key !== null) {
+          itemMap.set(key, item);
+        }
+      }
+    } catch (e) {
+      console.error(`Error loading existing ${filename} for append:`, e);
+    }
+  }
+
+  // Merge incoming data (overwrites by primary key, preventing duplicates)
+  for (const item of incomingData) {
+    const key = item[primaryKey];
+    if (key !== undefined && key !== null) {
+      itemMap.set(key, item);
+    }
+  }
+
+  const result = Array.from(itemMap.values());
+
+  // Safety backup before clean write
+  const backupDir = path.join(process.cwd(), 'public', 'data_backup');
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true });
+  }
+  if (fs.existsSync(filePath) && !isAppendMode) {
+    try {
+      fs.copyFileSync(filePath, path.join(backupDir, filename));
+    } catch (err) {
+      console.warn(`Could not create backup of ${filename}:`, err);
+    }
+  }
+
+  fs.writeFileSync(filePath, JSON.stringify(result, null, 2), 'utf-8');
+  return result;
+}
+
+function saveJsonDirect(filename: string, data: any[]) {
   try {
     const dataDir = path.join(process.cwd(), 'public', 'data');
     const p = path.join(dataDir, filename);
-
-    // If append mode, load existing data and concatenate
-    if (append && fs.existsSync(p)) {
-      const existing = JSON.parse(fs.readFileSync(p, 'utf-8'));
-      const combined = existing.concat(data);
-      fs.writeFileSync(p, JSON.stringify(combined, null, 2), 'utf-8');
-      return;
-    }
-
-    // First chunk / clean replace: keep 1 prior backup for safety
-    const backupDir = path.join(process.cwd(), 'public', 'data_backup');
-    if (!fs.existsSync(backupDir)) {
-      fs.mkdirSync(backupDir, { recursive: true });
-    }
-    const priorBackup = path.join(backupDir, filename);
-    if (fs.existsSync(p)) {
-      fs.copyFileSync(p, priorBackup);
-    }
-
-    // Direct clean replace (100% replaces old content, prevents duplicate records)
     fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf-8');
   } catch (e) {
-    console.error(`Error writing ${filename}:`, e);
+    console.error(`Error direct writing ${filename}:`, e);
+  }
+}
+
+/**
+ * Synchronizes discontinue closure dates with customer_detail subscriptions.
+ * Whenever permanent discontinues are restored, updates c_date on matching active subscriptions.
+ */
+async function syncDiscontinueClosuresToSubscriptions(discontinues: any[]) {
+  try {
+    const permanentStops = discontinues.filter(d => 
+      (d.temp_perma === 'Permanent' || d.temp_perma === 'P') && d.temp_from
+    );
+
+    if (permanentStops.length === 0) return;
+
+    const subs = loadJson('all_subscriptions.json');
+    if (!subs || subs.length === 0) return;
+
+    const snoToUpdate = new Map<number, string>();
+    for (const disc of permanentStops) {
+      const cid = Number(disc.customer_id);
+      const pid = Number(disc.publica_id);
+      const stopDate = disc.temp_from;
+      const sno = Number(disc.sno);
+
+      if (sno > 0) {
+        snoToUpdate.set(sno, stopDate);
+      } else {
+        const match = subs.find((s: any) => 
+          Number(s.customer_id) === cid && 
+          Number(s.publica_id) === pid &&
+          (!s.c_date || s.c_date > stopDate)
+        );
+        if (match) {
+          snoToUpdate.set(Number(match.sno), stopDate);
+        }
+      }
+    }
+
+    let updatedCount = 0;
+    const dbUpdates: { sno: number; c_date: string }[] = [];
+    for (const s of subs) {
+      const newCdate = snoToUpdate.get(Number(s.sno));
+      if (newCdate && (!s.c_date || s.c_date > newCdate)) {
+        s.c_date = newCdate;
+        dbUpdates.push({ sno: Number(s.sno), c_date: newCdate });
+        updatedCount++;
+      }
+    }
+
+    if (updatedCount > 0) {
+      saveJsonDirect('all_subscriptions.json', subs);
+
+      // Batch update Supabase customer_detail in chunks of 100
+      for (let i = 0; i < dbUpdates.length; i += 100) {
+        const chunk = dbUpdates.slice(i, i + 100);
+        await Promise.all(
+          chunk.map(u => 
+            supabase
+              .from('customer_detail')
+              .update({ c_date: u.c_date })
+              .eq('sno', u.sno)
+          )
+        );
+      }
+      console.log(`Discontinue sync: updated ${updatedCount} active subscriptions with c_date.`);
+    }
+  } catch (err) {
+    console.error('Error synchronizing discontinue closures to subscriptions:', err);
   }
 }
 
@@ -66,7 +200,6 @@ function escapeSqlNum(val: any, fallback = 0): string {
 // -------------------------------------------------------------
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
     const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 
     let sqlContent = `-- ========================================================\n` +
@@ -77,12 +210,10 @@ export async function GET(req: NextRequest) {
       `SET FOREIGN_KEY_CHECKS=0;\n` +
       `SET SQL_MODE="NO_AUTO_VALUE_ON_ZERO";\n\n`;
 
-    // 1. Region Master (regions / region)
+    // 1. Region Master
     const regions = loadJson('regions.json');
     if (regions.length > 0) {
-      sqlContent += `-- --------------------------------------------------------\n` +
-        `-- Table structure and data for table \`region\`\n` +
-        `-- --------------------------------------------------------\n` +
+      sqlContent += `-- Table structure and data for table \`region\`\n` +
         `CREATE TABLE IF NOT EXISTS \`region\` (\n` +
         `  \`Region_id\` int(11) NOT NULL default '0',\n` +
         `  \`Region_Name\` varchar(50) default NULL,\n` +
@@ -102,12 +233,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 2. Hawker Master (hawker)
+    // 2. Hawker Master
     const hawkers = loadJson('hawkers.json');
     if (hawkers.length > 0) {
-      sqlContent += `-- --------------------------------------------------------\n` +
-        `-- Table structure and data for table \`hawker\`\n` +
-        `-- --------------------------------------------------------\n` +
+      sqlContent += `-- Table structure and data for table \`hawker\`\n` +
         `CREATE TABLE IF NOT EXISTS \`hawker\` (\n` +
         `  \`Hawker_id\` int(11) NOT NULL default '0',\n` +
         `  \`Name\` varchar(50) default NULL,\n` +
@@ -137,13 +266,11 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 3. Publication Master (publica / publication)
+    // 3. Publication Master
     const publications = loadJson('publications.json');
     if (publications.length > 0) {
-      sqlContent += `-- --------------------------------------------------------\n` +
-        `-- Table structure and data for table \`publica\`\n` +
-        `-- --------------------------------------------------------\n` +
-        `CREATE TABLE IF NOT EXISTS \`publica\` (\n` +
+      sqlContent += `-- Table structure and data for table \`publication\`\n` +
+        `CREATE TABLE IF NOT EXISTS \`publication\` (\n` +
         `  \`Publica_id\` int(11) NOT NULL default '0',\n` +
         `  \`Public_Name\` varchar(100) default NULL,\n` +
         `  \`Type_P\` varchar(30) default NULL,\n` +
@@ -174,16 +301,14 @@ export async function GET(req: NextRequest) {
           const pubhindi = escapeSqlString(p.pub_hindi || '');
           return `(${id}, ${name}, ${type}, ${pubid}, ${abrv}, ${circ}, ${dur}, ${magd}, ${magm}, ${chrd}, ${pubhindi})`;
         }).join(',\n');
-        sqlContent += `INSERT INTO \`publica\` (\`Publica_id\`, \`Public_Name\`, \`Type_P\`, \`Publish_id\`, \`Abrv\`, \`Circulation\`, \`Duration\`, \`Magzine_day\`, \`Magzine_month\`, \`Chr_Del\`, \`Pub_Hindi\`) VALUES\n${values};\n\n`;
+        sqlContent += `INSERT INTO \`publication\` (\`Publica_id\`, \`Public_Name\`, \`Type_P\`, \`Publish_id\`, \`Abrv\`, \`Circulation\`, \`Duration\`, \`Magzine_day\`, \`Magzine_month\`, \`Chr_Del\`, \`Pub_Hindi\`) VALUES\n${values};\n\n`;
       }
     }
 
-    // 4. Rates Master (rate)
+    // 4. Rates Master
     const rates = loadJson('rates.json');
     if (rates.length > 0) {
-      sqlContent += `-- --------------------------------------------------------\n` +
-        `-- Table structure and data for table \`rate\`\n` +
-        `-- --------------------------------------------------------\n` +
+      sqlContent += `-- Table structure and data for table \`rate\`\n` +
         `CREATE TABLE IF NOT EXISTS \`rate\` (\n` +
         `  \`Publica_id\` int(11) NOT NULL default '0',\n` +
         `  \`Rate\` decimal(10,2) default '0.00',\n` +
@@ -202,12 +327,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 5. Customer Master (customer)
+    // 5. Customer Master
     const customers = loadJson('all_customers.json');
     if (customers.length > 0) {
-      sqlContent += `-- --------------------------------------------------------\n` +
-        `-- Table structure and data for table \`customer\`\n` +
-        `-- --------------------------------------------------------\n` +
+      sqlContent += `-- Table structure and data for table \`customer\`\n` +
         `CREATE TABLE IF NOT EXISTS \`customer\` (\n` +
         `  \`Customer_id\` bigint(20) NOT NULL default '0',\n` +
         `  \`name_eng\` varchar(100) default NULL,\n` +
@@ -265,13 +388,11 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 6. Subscriptions (custdetail / customer_detail)
+    // 6. Subscriptions
     const subs = loadJson('all_subscriptions.json');
     if (subs.length > 0) {
-      sqlContent += `-- --------------------------------------------------------\n` +
-        `-- Table structure and data for table \`custdetail\`\n` +
-        `-- --------------------------------------------------------\n` +
-        `CREATE TABLE IF NOT EXISTS \`custdetail\` (\n` +
+      sqlContent += `-- Table structure and data for table \`customer_detail\`\n` +
+        `CREATE TABLE IF NOT EXISTS \`customer_detail\` (\n` +
         `  \`sno\` bigint(20) NOT NULL default '0',\n` +
         `  \`Customer_id\` bigint(20) default '0',\n` +
         `  \`Publica_id\` int(11) default '0',\n` +
@@ -304,19 +425,18 @@ export async function GET(req: NextRequest) {
           const dely = escapeSqlNum(s.dely || s.Dely, 0);
           return `(${sno}, ${cid}, ${pid}, ${hid}, ${qty}, ${circ}, ${sdate}, ${cdate}, ${fday}, ${hsub}, ${dis}, ${dely})`;
         }).join(',\n');
-        sqlContent += `INSERT INTO \`custdetail\` (\`sno\`, \`Customer_id\`, \`Publica_id\`, \`Hawker_id\`, \`Qty\`, \`Circulation\`, \`S_Date\`, \`C_Date\`, \`From_Day\`, \`Hawk_Sub\`, \`Dis\`, \`Dely\`) VALUES\n${values};\n\n`;
+        sqlContent += `INSERT INTO \`customer_detail\` (\`sno\`, \`Customer_id\`, \`Publica_id\`, \`Hawker_id\`, \`Qty\`, \`Circulation\`, \`S_Date\`, \`C_Date\`, \`From_Day\`, \`Hawk_Sub\`, \`Dis\`, \`Dely\`) VALUES\n${values};\n\n`;
       }
     }
 
-    // 7. Discontinue (discontinue)
+    // 7. Discontinue
     const discontinues = loadJson('discontinues.json');
     if (discontinues.length > 0) {
-      sqlContent += `-- --------------------------------------------------------\n` +
-        `-- Table structure and data for table \`discontinue\`\n` +
-        `-- --------------------------------------------------------\n` +
-        `CREATE TABLE IF NOT EXISTS \`discontinue\` (\n` +
+      sqlContent += `-- Table structure and data for table \`discontinue20262027\`\n` +
+        `CREATE TABLE IF NOT EXISTS \`discontinue20262027\` (\n` +
         `  \`discontinue_id\` bigint(20) NOT NULL default '0',\n` +
         `  \`sno\` bigint(20) default '0',\n` +
+        `  \`entry_date\` varchar(20) default NULL,\n` +
         `  \`Customer_id\` bigint(20) NOT NULL default '0',\n` +
         `  \`Publica_id\` int(11) NOT NULL default '0',\n` +
         `  \`Temp_Perma\` varchar(10) default 'T',\n` +
@@ -333,6 +453,7 @@ export async function GET(req: NextRequest) {
         const values = chunk.map(d => {
           const did = escapeSqlNum(d.discontinue_id);
           const sno = escapeSqlNum(d.sno);
+          const edate = escapeSqlString(d.entry_date || '');
           const cid = escapeSqlNum(d.customer_id || d.Customer_id);
           const pid = escapeSqlNum(d.publica_id || d.Publica_id);
           const tp = escapeSqlString(d.temp_perma || d.Temp_Perma || 'T');
@@ -341,16 +462,14 @@ export async function GET(req: NextRequest) {
           const sdate = escapeSqlString(d.s_date || d.S_Date || '');
           const cdate = escapeSqlString(d.c_date || d.C_Date || '');
           const hid = escapeSqlNum(d.hawker_id || d.Hawker_id);
-          return `(${did}, ${sno}, ${cid}, ${pid}, ${tp}, ${tfrom}, ${tto}, ${sdate}, ${cdate}, ${hid})`;
+          return `(${did}, ${sno}, ${edate}, ${cid}, ${pid}, ${tp}, ${tfrom}, ${tto}, ${sdate}, ${cdate}, ${hid})`;
         }).join(',\n');
-        sqlContent += `INSERT INTO \`discontinue\` (\`discontinue_id\`, \`sno\`, \`Customer_id\`, \`Publica_id\`, \`Temp_Perma\`, \`Temp_From\`, \`Temp_To\`, \`S_Date\`, \`C_Date\`, \`Hawker_id\`) VALUES\n${values};\n\n`;
+        sqlContent += `INSERT INTO \`discontinue20262027\` (\`discontinue_id\`, \`sno\`, \`entry_date\`, \`Customer_id\`, \`Publica_id\`, \`Temp_Perma\`, \`Temp_From\`, \`Temp_To\`, \`S_Date\`, \`C_Date\`, \`Hawker_id\`) VALUES\n${values};\n\n`;
       }
     }
 
     sqlContent += `\nSET FOREIGN_KEY_CHECKS=1;\n`;
-    sqlContent += `-- ========================================================\n`;
     sqlContent += `-- BACKUP COMPLETED: ${dateStr}\n`;
-    sqlContent += `-- ========================================================\n`;
 
     return new NextResponse(sqlContent, {
       status: 200,
@@ -372,28 +491,25 @@ export async function POST(req: NextRequest) {
   try {
     const contentType = req.headers.get('content-type') || '';
     let parsedTables: Record<string, any[]> = {};
-
     let isAppendMode = false;
-    // 1. If JSON payload (client-side pre-filtered or server local stream)
+
+    // 1. If JSON payload (streamed from browser or server local file path)
     if (contentType.includes('application/json')) {
       const body = await req.json();
       isAppendMode = !!body.appendMode;
 
-      // Mode A: Server local file path
       if (body.filePath) {
         if (!fs.existsSync(body.filePath)) {
           return NextResponse.json({ success: false, error: `File not found at ${body.filePath}` }, { status: 404 });
         }
         parsedTables = await parseSqlFileStream(body.filePath);
-      }
-      // Mode B: Client extracted tables directly
-      else if (body.tables) {
+      } else if (body.tables) {
         parsedTables = body.tables;
       } else {
         return NextResponse.json({ success: false, error: 'No tables or filePath provided' }, { status: 400 });
       }
     } 
-    // 2. Fallback: multipart/form-data for smaller SQL files (< 50MB)
+    // 2. Fallback: multipart/form-data for smaller SQL files
     else {
       const formData = await req.formData();
       const file = formData.get('file') as File;
@@ -401,7 +517,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'No SQL file uploaded' }, { status: 400 });
       }
 
-      // Save file temporarily to disk to stream-parse without RAM exhaustion
       const tempPath = path.join(process.cwd(), 'public', `temp_restore_${Date.now()}.sql`);
       const buffer = Buffer.from(await file.arrayBuffer());
       fs.writeFileSync(tempPath, buffer);
@@ -416,81 +531,78 @@ export async function POST(req: NextRequest) {
     const stats: Record<string, number> = {};
 
     // -------------------------------------------------------------
-    // Map & Update Active Stores
-    // -------------------------------------------------------------
-
     // 1. Customers
+    // -------------------------------------------------------------
     const customerRows = parsedTables['customer'] || parsedTables['tbl_customer'];
     if (customerRows && customerRows.length > 0) {
       const mappedCusts = customerRows.map(r => {
         if (Array.isArray(r)) {
           return {
             customer_id: Number(r[0]),
-            name_eng: r[1] || '',
+            name_eng: String(r[1] || ''),
             type_cust: Number(r[2] ?? -1),
-            name_hindi: r[3] || '',
-            add1: r[4] || '',
-            add2: r[5] || '',
-            phone: r[6] || '',
+            name_hindi: String(r[3] || ''),
+            add1: String(r[4] || ''),
+            add2: String(r[5] || ''),
+            phone: String(r[6] || ''),
             security_deposit: Number(r[7] ?? 0),
-            type: r[8] || '',
+            type: String(r[8] || ''),
             priority: Number(r[9] ?? 1),
             self_agent: Number(r[10] ?? -1),
             font_type: Number(r[11] ?? -1),
             dueamount: Number(r[12] ?? 0),
             region_id: Number(r[13] ?? 0),
-            paid: r[14] || 'P',
+            paid: String(r[14] || 'P'),
             delivery: Number(r[15] ?? 0),
             discount: Number(r[16] ?? 0),
             govt_supply: Number(r[17] ?? 0),
-            hindi_add: r[18] || '',
+            hindi_add: String(r[18] || ''),
             cbal: Number(r[19] ?? 0),
-            pmonth: r[20] || '',
-            pyear: r[21] || '',
+            pmonth: String(r[20] || ''),
+            pyear: String(r[21] || ''),
           };
         }
         return {
           customer_id: Number(r.customer_id ?? r.customerid ?? 0),
-          name_eng: r.name_eng ?? r.nameeng ?? '',
+          name_eng: String(r.name_eng ?? r.nameeng ?? ''),
           type_cust: Number(r.type_cust ?? -1),
-          name_hindi: r.name_hindi ?? r.namehindi ?? '',
-          add1: r.add1 ?? '',
-          add2: r.add2 ?? '',
-          phone: r.phone ?? '',
+          name_hindi: String(r.name_hindi ?? r.namehindi ?? ''),
+          add1: String(r.add1 ?? ''),
+          add2: String(r.add2 ?? ''),
+          phone: String(r.phone ?? ''),
           security_deposit: Number(r.security_deposit ?? 0),
-          type: r.type ?? '',
+          type: String(r.type ?? ''),
           priority: Number(r.priority ?? 1),
           self_agent: Number(r.self_agent ?? -1),
-          font_type: Number(r.fonttype ?? -1),
+          font_type: Number(r.font_type ?? r.fonttype ?? -1),
           dueamount: Number(r.dueamount ?? 0),
           region_id: Number(r.region_id ?? r.regionid ?? 0),
-          paid: r.paid ?? 'P',
+          paid: String(r.paid ?? 'P'),
           delivery: Number(r.delivery ?? 0),
           discount: Number(r.discount ?? 0),
-          govt_supply: Number(r.govtsupply ?? 0),
-          hindi_add: r.hindi_add ?? r.hindiadd ?? '',
+          govt_supply: Number(r.govt_supply ?? r.govtsupply ?? 0),
+          hindi_add: String(r.hindi_add ?? r.hindiadd ?? ''),
           cbal: Number(r.cbal ?? 0),
-          pmonth: r.pmonth ?? '',
-          pyear: r.pyear ?? '',
+          pmonth: String(r.pmonth ?? ''),
+          pyear: String(r.pyear ?? ''),
         };
-      });
-      saveJson('all_customers.json', mappedCusts, isAppendMode);
-      stats['customer'] = mappedCusts.length;
+      }).filter(c => c.customer_id > 0);
 
-      // Upsert full customer master into Supabase in batches of 500
-      (async () => {
-        try {
-          for (let i = 0; i < mappedCusts.length; i += 500) {
-            const batch = mappedCusts.slice(i, i + 500);
-            await supabase.from('customer').upsert(batch, { onConflict: 'customer_id' });
-          }
-        } catch (err) {
-          console.warn('Supabase customer full sync error:', err);
-        }
-      })();
+      // Save into local store with zero duplicates
+      const dedupedCusts = saveJsonWithDeduplication('all_customers.json', mappedCusts, 'customer_id', isAppendMode);
+      stats['customer'] = dedupedCusts.length;
+
+      // Synchronously upsert into Supabase in batches of 500
+      for (let i = 0; i < mappedCusts.length; i += 500) {
+        const batch = mappedCusts.slice(i, i + 500);
+        const { error } = await supabase.from('customer').upsert(batch, { onConflict: 'customer_id' });
+        if (error) console.error('Customer Supabase upsert error batch', i, error.message);
+      }
     }
 
-    // 2. Subscriptions
+    // -------------------------------------------------------------
+    // 2. Subscriptions (customer_detail)
+    // -------------------------------------------------------------
     const subRows = parsedTables['customer_detail'] || parsedTables['custdetail'];
     if (subRows && subRows.length > 0) {
       const mappedSubs = subRows.map(r => {
@@ -501,12 +613,12 @@ export async function POST(req: NextRequest) {
             publica_id: Number(r[2]),
             hawker_id: Number(r[3]),
             qty: Number(r[4] ?? 1),
-            circulation: r[5] || 'Morning',
-            s_date: r[6] || '',
-            c_date: r[7] || '',
-            from_day: r[8] || '1-7',
+            circulation: String(r[5] || 'Morning'),
+            s_date: toIsoDate(r[6]),
+            c_date: toIsoDate(r[7]),
+            from_day: String(r[8] || '1-7'),
             hawk_sub: Number(r[9] ?? -1),
-            dis: r[10] || 0,
+            dis: String(r[10] || '0'),
             dely: Number(r[11] ?? 0),
           };
         }
@@ -516,223 +628,311 @@ export async function POST(req: NextRequest) {
           publica_id: Number(r.publica_id ?? r.publicaid ?? 0),
           hawker_id: Number(r.hawker_id ?? r.hawkerid ?? 0),
           qty: Number(r.qty ?? 1),
-          circulation: r.circulation ?? 'Morning',
-          s_date: r.s_date ?? r.sdate ?? '',
-          c_date: r.c_date ?? r.cdate ?? '',
-          from_day: r.from_day ?? r.fromday ?? '1-7',
+          circulation: String(r.circulation ?? 'Morning'),
+          s_date: toIsoDate(r.s_date ?? r.sdate),
+          c_date: toIsoDate(r.c_date ?? r.cdate),
+          from_day: String(r.from_day ?? r.fromday ?? '1-7'),
           hawk_sub: Number(r.hawk_sub ?? -1),
-          dis: r.dis ?? 0,
+          dis: String(r.dis ?? '0'),
           dely: Number(r.dely ?? 0),
         };
-      });
-      saveJson('all_subscriptions.json', mappedSubs, isAppendMode);
-      stats['customer_detail'] = mappedSubs.length;
+      }).filter(s => s.sno > 0);
 
-      // Upsert full customer_detail into Supabase in batches
-      (async () => {
-        try {
-          for (let i = 0; i < mappedSubs.length; i += 500) {
-            const batch = mappedSubs.slice(i, i + 500);
-            await supabase.from('customer_detail').upsert(batch, { onConflict: 'sno' });
-          }
-        } catch (err) {
-          console.warn('Supabase customer_detail sync error:', err);
-        }
-      })();
+      const dedupedSubs = saveJsonWithDeduplication('all_subscriptions.json', mappedSubs, 'sno', isAppendMode);
+      stats['customer_detail'] = dedupedSubs.length;
+
+      // Synchronously upsert into Supabase in batches of 500
+      for (let i = 0; i < mappedSubs.length; i += 500) {
+        const batch = mappedSubs.slice(i, i + 500);
+        const { error } = await supabase.from('customer_detail').upsert(batch, { onConflict: 'sno' });
+        if (error) console.error('Subscription Supabase upsert error batch', i, error.message);
+      }
     }
 
-    // 3. Discontinue
+    // -------------------------------------------------------------
+    // 3. Discontinue (discontinue20262027)
+    // -------------------------------------------------------------
     const discRows = parsedTables['discontinue20262027'] || parsedTables['discontinue'];
     if (discRows && discRows.length > 0) {
       const mappedDiscs = discRows.map(r => {
         if (Array.isArray(r)) {
+          const rawTp = String(r[5] || 'T').trim();
+          const isPerma = rawTp.toUpperCase() === 'PERMANENT' || rawTp.toUpperCase() === 'P';
           return {
             discontinue_id: Number(r[0]),
             sno: Number(r[1] ?? 0),
-            entry_date: r[2] || '',
+            entry_date: toIsoDate(r[2]),
             customer_id: Number(r[3]),
             publica_id: Number(r[4]),
-            temp_perma: r[5] || 'T',
-            temp_from: r[6] || '',
-            temp_to: r[7] || '',
-            s_date: r[8] || '',
-            c_date: r[9] || '',
+            temp_perma: isPerma ? 'Permanent' : 'Temporary',
+            temp_from: toIsoDate(r[6]),
+            temp_to: toIsoDate(r[7]),
+            s_date: toIsoDate(r[8]),
+            c_date: toIsoDate(r[9]),
             hawker_id: Number(r[10] ?? 0),
+            financial_year: '2026-2027',
           };
         }
+        const rawTp = String(r.temp_perma ?? r.tempperma ?? 'T').trim();
+        const isPerma = rawTp.toUpperCase() === 'PERMANENT' || rawTp.toUpperCase() === 'P';
         return {
           discontinue_id: Number(r.discontinue_id ?? r.discontinueid ?? 0),
           sno: Number(r.sno ?? 0),
-          entry_date: r.entry_date ?? r.entrydate ?? '',
+          entry_date: toIsoDate(r.entry_date ?? r.entrydate),
           customer_id: Number(r.customer_id ?? r.customerid ?? 0),
           publica_id: Number(r.publica_id ?? r.publicaid ?? 0),
-          temp_perma: r.temp_perma ?? r.tempperma ?? 'T',
-          temp_from: r.temp_from ?? r.tempfrom ?? '',
-          temp_to: r.temp_to ?? r.tempto ?? '',
-          s_date: r.s_date ?? r.sdate ?? '',
-          c_date: r.c_date ?? r.cdate ?? '',
+          temp_perma: isPerma ? 'Permanent' : 'Temporary',
+          temp_from: toIsoDate(r.temp_from ?? r.tempfrom),
+          temp_to: toIsoDate(r.temp_to ?? r.tempto),
+          s_date: toIsoDate(r.s_date ?? r.sdate),
+          c_date: toIsoDate(r.c_date ?? r.cdate),
           hawker_id: Number(r.hawker_id ?? r.hawkerid ?? 0),
+          financial_year: '2026-2027',
         };
-      });
-      saveJson('discontinues.json', mappedDiscs, isAppendMode);
-      stats['discontinue'] = mappedDiscs.length;
+      }).filter(d => d.discontinue_id > 0);
 
-      // Upsert full discontinue into Supabase in batches
-      (async () => {
-        try {
-          for (let i = 0; i < mappedDiscs.length; i += 500) {
-            const batch = mappedDiscs.slice(i, i + 500);
-            await supabase.from('discontinue').upsert(batch, { onConflict: 'discontinue_id' });
-          }
-        } catch (err) {
-          console.warn('Supabase discontinue upsert warning:', err);
-        }
-      })();
+      const dedupedDiscs = saveJsonWithDeduplication('discontinues.json', mappedDiscs, 'discontinue_id', isAppendMode);
+      stats['discontinue'] = dedupedDiscs.length;
+
+      // Clean Supabase payload: only columns that exist in Supabase 'discontinue' table
+      const supabaseDiscs = mappedDiscs.map(d => ({
+        discontinue_id: d.discontinue_id,
+        sno: d.sno,
+        customer_id: d.customer_id,
+        publica_id: d.publica_id,
+        temp_perma: d.temp_perma,
+        temp_from: d.temp_from,
+        temp_to: d.temp_to,
+        entry_date: d.entry_date,
+        financial_year: d.financial_year,
+      }));
+
+      for (let i = 0; i < supabaseDiscs.length; i += 500) {
+        const batch = supabaseDiscs.slice(i, i + 500);
+        const { error } = await supabase.from('discontinue').upsert(batch, { onConflict: 'discontinue_id' });
+        if (error) console.error('Discontinue Supabase upsert error batch', i, error.message);
+      }
+
+      // CRUCIAL: Automatically update c_date on all matching active subscriptions
+      await syncDiscontinueClosuresToSubscriptions(mappedDiscs);
     }
 
+    // -------------------------------------------------------------
     // 4. Hawkers
+    // -------------------------------------------------------------
     const hawkerRows = parsedTables['hawker'];
     if (hawkerRows && hawkerRows.length > 0) {
       const mappedHawkers = hawkerRows.map(r => {
         if (Array.isArray(r)) {
           return {
             hawker_id: Number(r[0]),
-            name: r[1] || '',
-            address: r[2] || '',
-            city: r[3] || '',
-            phone: r[4] || '',
-            mobile: r[5] || '',
+            name: String(r[1] || ''),
+            address: String(r[2] || ''),
+            city: String(r[3] || ''),
+            phone: String(r[4] || ''),
+            mobile: String(r[5] || ''),
             region_id: Number(r[6] ?? 0),
             commission_rate: Number(r[7] ?? 0),
           };
         }
         return {
           hawker_id: Number(r.hawker_id ?? r.hawkerid ?? 0),
-          name: r.name ?? '',
-          address: r.address ?? '',
-          city: r.city ?? '',
-          phone: r.phone ?? '',
-          mobile: r.mobile ?? '',
+          name: String(r.name ?? ''),
+          address: String(r.address ?? ''),
+          city: String(r.city ?? ''),
+          phone: String(r.phone ?? ''),
+          mobile: String(r.mobile ?? ''),
           region_id: Number(r.region_id ?? 0),
           commission_rate: Number(r.commission_rate ?? 0),
         };
-      });
-      saveJson('hawkers.json', mappedHawkers);
-      stats['hawker'] = mappedHawkers.length;
+      }).filter(h => h.hawker_id > 0);
+
+      const dedupedHawkers = saveJsonWithDeduplication('hawkers.json', mappedHawkers, 'hawker_id', isAppendMode);
+      stats['hawker'] = dedupedHawkers.length;
+
+      // Sync Supabase hawker table
+      for (let i = 0; i < mappedHawkers.length; i += 500) {
+        const batch = mappedHawkers.slice(i, i + 500).map(h => ({
+          hawker_id: h.hawker_id,
+          name: h.name,
+          address: h.address,
+          city: h.city,
+          phone: h.phone,
+          mobile: h.mobile,
+        }));
+        await supabase.from('hawker').upsert(batch, { onConflict: 'hawker_id' });
+      }
     }
 
+    // -------------------------------------------------------------
     // 5. Publications
+    // -------------------------------------------------------------
     const pubRows = parsedTables['publication'] || parsedTables['publica'];
     if (pubRows && pubRows.length > 0) {
       const mappedPubs = pubRows.map(r => {
         if (Array.isArray(r)) {
           return {
             publica_id: Number(r[0]),
-            name: r[1] || '',
-            public_name: r[1] || '',
-            type_p: r[2] || 'Newspaper',
+            name: String(r[1] || ''),
+            public_name: String(r[1] || ''),
+            type_p: String(r[2] || 'Newspaper'),
             publish_id: Number(r[3] ?? 0),
-            abrv: r[4] || '',
-            circulation: r[5] || 'Morning',
-            duration: r[6] || null,
+            abrv: String(r[4] || ''),
+            circulation: String(r[5] || 'Morning'),
+            duration: r[6] ? String(r[6]) : null,
             magzine_day: Number(r[7] ?? 0),
             magzine_month: Number(r[8] ?? 0),
             chr_del: Number(r[9] ?? 0),
-            pub_hindi: r[10] || '',
+            pub_hindi: String(r[10] || ''),
           };
         }
         return {
           publica_id: Number(r.publica_id ?? r.publicaid ?? 0),
-          name: r.public_name ?? r.name ?? '',
-          public_name: r.public_name ?? r.name ?? '',
-          type_p: r.type_p ?? 'Newspaper',
+          name: String(r.public_name ?? r.name ?? ''),
+          public_name: String(r.public_name ?? r.name ?? ''),
+          type_p: String(r.type_p ?? 'Newspaper'),
           publish_id: Number(r.publish_id ?? 0),
-          abrv: r.abrv ?? '',
-          circulation: r.circulation ?? 'Morning',
-          duration: r.duration ?? null,
+          abrv: String(r.abrv ?? ''),
+          circulation: String(r.circulation ?? 'Morning'),
+          duration: r.duration ? String(r.duration) : null,
           magzine_day: Number(r.magzine_day ?? 0),
           magzine_month: Number(r.magzine_month ?? 0),
           chr_del: Number(r.chr_del ?? 0),
-          pub_hindi: r.pub_hindi ?? '',
+          pub_hindi: String(r.pub_hindi ?? ''),
         };
-      });
-      saveJson('publications.json', mappedPubs);
-      stats['publication'] = mappedPubs.length;
+      }).filter(p => p.publica_id > 0);
+
+      const dedupedPubs = saveJsonWithDeduplication('publications.json', mappedPubs, 'publica_id', isAppendMode);
+      stats['publication'] = dedupedPubs.length;
+
+      // Sync Supabase publication table
+      for (let i = 0; i < mappedPubs.length; i += 500) {
+        const batch = mappedPubs.slice(i, i + 500);
+        await supabase.from('publication').upsert(batch, { onConflict: 'publica_id' });
+      }
     }
 
+    // -------------------------------------------------------------
     // 6. Rates
+    // -------------------------------------------------------------
     const rateRows = parsedTables['rate'];
     if (rateRows && rateRows.length > 0) {
       const mappedRates = rateRows.map(r => {
         if (Array.isArray(r)) {
+          const pid = Number(r[0]);
+          const dow = Number(r[2] ?? 1);
           return {
-            publica_id: Number(r[0]),
+            id: `${pid}_${dow}`,
+            publica_id: pid,
             rate: Number(r[1] ?? 0),
-            dayofweek: Number(r[2] ?? 1),
+            dayofweek: dow,
           };
         }
+        const pid = Number(r.publica_id ?? r.publicaid ?? 0);
+        const dow = Number(r.dayofweek ?? 1);
         return {
-          publica_id: Number(r.publica_id ?? r.publicaid ?? 0),
+          id: `${pid}_${dow}`,
+          publica_id: pid,
           rate: Number(r.rate ?? 0),
-          dayofweek: Number(r.dayofweek ?? 1),
+          dayofweek: dow,
         };
       });
-      saveJson('rates.json', mappedRates);
-      stats['rate'] = mappedRates.length;
+
+      const dedupedRates = saveJsonWithDeduplication('rates.json', mappedRates, 'id', isAppendMode);
+      stats['rate'] = dedupedRates.length;
+
+      for (let i = 0; i < mappedRates.length; i += 500) {
+        const batch = mappedRates.slice(i, i + 500);
+        await supabase.from('rate').upsert(batch, { onConflict: 'id' });
+      }
     }
 
+    // -------------------------------------------------------------
     // 7. Regions (regiond / region / regions)
+    // -------------------------------------------------------------
     const regionRows = parsedTables['regiond'] || parsedTables['region'] || parsedTables['regions'];
     if (regionRows && regionRows.length > 0) {
       const mappedRegions = regionRows.map(r => {
         if (Array.isArray(r)) {
           return {
             region_id: Number(r[0]),
-            region_name: r[1] || '',
-            name: r[1] || '',
-            zone: r[2] || '',
+            region_name: String(r[1] || ''),
+            name: String(r[1] || ''),
+            zone: String(r[2] || ''),
           };
         }
         return {
           region_id: Number(r.region_id ?? r.regionid ?? 0),
-          region_name: r.region_name ?? r.regionname ?? r.name ?? '',
-          name: r.region_name ?? r.regionname ?? r.name ?? '',
-          zone: r.zone ?? '',
+          region_name: String(r.region_name ?? r.regionname ?? r.name ?? ''),
+          name: String(r.region_name ?? r.regionname ?? r.name ?? ''),
+          zone: String(r.zone ?? ''),
         };
-      });
-      saveJson('regions.json', mappedRegions);
-      stats['region'] = mappedRegions.length;
+      }).filter(reg => reg.region_id > 0);
+
+      const dedupedRegions = saveJsonWithDeduplication('regions.json', mappedRegions, 'region_id', isAppendMode);
+      stats['region'] = dedupedRegions.length;
+
+      for (let i = 0; i < mappedRegions.length; i += 200) {
+        const batch = mappedRegions.slice(i, i + 200).map(rg => ({
+          region_id: rg.region_id,
+          name: rg.name,
+        }));
+        await supabase.from('region').upsert(batch, { onConflict: 'region_id' });
+      }
     }
 
+    // -------------------------------------------------------------
     // 8. Holidays (holiday)
+    // -------------------------------------------------------------
     const holidayRows = parsedTables['holiday'];
     if (holidayRows && holidayRows.length > 0) {
-      const mappedHolidays = holidayRows.map(r => {
+      const mappedHolidays = holidayRows.map((r, idx) => {
         if (Array.isArray(r)) {
+          const dt = toIsoDate(r[0]) || String(r[0] || '');
+          const pid = Number(r[2] ?? 0);
           return {
-            oc_date: r[0] || '',
-            occasion: r[1] || '',
-            publica_id: Number(r[2] ?? 0),
+            id: `${dt}_${pid}_${idx}`,
+            holiday_id: idx + 1,
+            oc_date: dt,
+            dated: dt,
+            occasion: String(r[1] || ''),
+            remark: String(r[1] || ''),
+            publica_id: pid,
           };
         }
+        const dt = toIsoDate(r.oc_date ?? r.ocdate ?? r.dated) || '';
+        const pid = Number(r.publica_id ?? r.publicaid ?? 0);
         return {
-          oc_date: r.oc_date ?? r.ocdate ?? '',
-          occasion: r.occasion ?? '',
-          publica_id: Number(r.publica_id ?? r.publicaid ?? 0),
+          id: `${dt}_${pid}_${idx}`,
+          holiday_id: idx + 1,
+          oc_date: dt,
+          dated: dt,
+          occasion: String(r.occasion ?? r.remark ?? ''),
+          remark: String(r.occasion ?? r.remark ?? ''),
+          publica_id: pid,
         };
       });
-      saveJson('holidays.json', mappedHolidays);
-      stats['holiday'] = mappedHolidays.length;
+
+      const dedupedHolidays = saveJsonWithDeduplication('holidays.json', mappedHolidays, 'id', isAppendMode);
+      stats['holiday'] = dedupedHolidays.length;
+
+      for (let i = 0; i < mappedHolidays.length; i += 500) {
+        const batch = mappedHolidays.slice(i, i + 500);
+        await supabase.from('holiday').upsert(batch, { onConflict: 'id' });
+      }
     }
 
-    // 9. Current Financial Year Receipts (receipt20262027)
+    // -------------------------------------------------------------
+    // 9. Receipts (receipt20262027)
+    // -------------------------------------------------------------
     const receiptRows = parsedTables['receipt20262027'];
     if (receiptRows && receiptRows.length > 0) {
       const mappedReceipts = receiptRows.map(r => {
         if (Array.isArray(r)) {
-          // MySQL: (`Receipt_id`,`Bill_id`,`ReceiptNo`,`ManualRepNo`,`BillDate`,`BillAmt`,`MalRecpDt`,`Month`,`Year`,`DueAmt`,`MalRecpAmt`,`Balance`,`LessAmt`,`RAmt`,`ChequeNo`,`ChequeDate`,`Debit`,`Credit`,`Cash_Chq`,`Narr`,`customer_id`)
           const repId = Number(r[0] ?? 0);
           const recpNo = Number(r[2] ?? 0);
+          const rawBillDt = r[4] ? String(r[4]) : '';
+          const rawMalDt = r[6] ? String(r[6]) : '';
           return {
             receipt_id: repId,
             id: repId,
@@ -742,11 +942,11 @@ export async function POST(req: NextRequest) {
             recp_no: recpNo,
             manual_rep_no: String(r[3] ?? ''),
             mal_rep_no: String(r[3] ?? ''),
-            bill_date: r[4] || '',
-            recp_date: r[4] || r[6] || '',
+            bill_date: toIsoDate(rawBillDt) || rawBillDt,
+            recp_date: toIsoDate(rawBillDt) || toIsoDate(rawMalDt) || rawBillDt,
             bill_amt: Number(r[5] ?? 0),
-            mal_recp_dt: r[6] || '',
-            month: r[7] || '',
+            mal_recp_dt: toIsoDate(rawMalDt) || rawMalDt,
+            month: String(r[7] || ''),
             year: String(r[8] ?? '2026'),
             due_amt: Number(r[9] ?? 0),
             mal_recp_amt: Number(r[10] ?? 0),
@@ -754,14 +954,16 @@ export async function POST(req: NextRequest) {
             balance: Number(r[11] ?? 0),
             less_amt: Number(r[12] ?? 0),
             cheque_no: String(r[14] ?? ''),
-            cheque_date: String(r[15] ?? ''),
-            cash_chq: r[18] || 'Cash',
-            narr: r[19] || '',
+            cheque_date: toIsoDate(r[15]) || String(r[15] ?? ''),
+            cash_chq: String(r[18] || 'Cash'),
+            narr: String(r[19] || ''),
             customer_id: Number(r[20] ?? 0),
           };
         }
         const repId = Number(r.receipt_id ?? r.receiptid ?? r.id ?? 0);
         const recpNo = Number(r.receipt_no ?? r.receiptno ?? r.recp_no ?? 0);
+        const rawBillDt = r.bill_date ?? r.billdate ?? '';
+        const rawMalDt = r.mal_recp_dt ?? r.malrecpdt ?? '';
         return {
           receipt_id: repId,
           id: repId,
@@ -771,11 +973,11 @@ export async function POST(req: NextRequest) {
           recp_no: recpNo,
           manual_rep_no: String(r.manual_rep_no ?? r.manualrepno ?? r.mal_rep_no ?? ''),
           mal_rep_no: String(r.manual_rep_no ?? r.manualrepno ?? r.mal_rep_no ?? ''),
-          bill_date: r.bill_date ?? r.billdate ?? '',
-          recp_date: r.recp_date ?? r.recpdate ?? r.bill_date ?? '',
+          bill_date: toIsoDate(rawBillDt) || rawBillDt,
+          recp_date: toIsoDate(rawBillDt) || toIsoDate(rawMalDt) || rawBillDt,
           bill_amt: Number(r.bill_amt ?? r.billamt ?? 0),
-          mal_recp_dt: r.mal_recp_dt ?? r.malrecpdt ?? '',
-          month: r.month ?? '',
+          mal_recp_dt: toIsoDate(rawMalDt) || rawMalDt,
+          month: String(r.month ?? ''),
           year: String(r.year ?? '2026'),
           due_amt: Number(r.due_amt ?? r.dueamt ?? 0),
           mal_recp_amt: Number(r.mal_recp_amt ?? r.malrecpamt ?? 0),
@@ -783,55 +985,49 @@ export async function POST(req: NextRequest) {
           balance: Number(r.balance ?? 0),
           less_amt: Number(r.less_amt ?? r.lessamt ?? 0),
           cheque_no: String(r.cheque_no ?? r.chequeno ?? ''),
-          cheque_date: String(r.cheque_date ?? r.chequedate ?? ''),
-          cash_chq: r.cash_chq ?? r.cashchq ?? 'Cash',
-          narr: r.narr ?? '',
+          cheque_date: toIsoDate(r.cheque_date ?? r.chequedate) || String(r.cheque_date ?? ''),
+          cash_chq: String(r.cash_chq ?? r.cashchq ?? 'Cash'),
+          narr: String(r.narr ?? ''),
           customer_id: Number(r.customer_id ?? r.customerid ?? 0),
         };
-      });
+      }).filter(rc => rc.id > 0);
 
-      // Save into active JSON store
-      saveJson('all_receipts.json', mappedReceipts, isAppendMode);
-      stats['receipt20262027'] = mappedReceipts.length;
+      const dedupedReceipts = saveJsonWithDeduplication('all_receipts.json', mappedReceipts, 'id', isAppendMode);
+      stats['receipt20262027'] = dedupedReceipts.length;
 
-      // Sync into Supabase receipt20262027 table
-      (async () => {
-        try {
-          const supabaseBatch = mappedReceipts.map(rc => ({
-            id: rc.receipt_id,
-            recp_no: rc.recp_no,
-            recp_date: rc.recp_date,
-            customer_id: rc.customer_id,
-            bill_amt: rc.bill_amt,
-            less_amt: rc.less_amt,
-            mal_recp_amt: rc.mal_recp_amt,
-            month: rc.month,
-            year: rc.year,
-            region_id: null,
-            remarks: JSON.stringify({
-              bill_no: rc.bill_no,
-              manual_rep_no: rc.manual_rep_no,
-              mal_rep_no: rc.mal_rep_no,
-              mal_recp_dt: rc.mal_recp_dt,
-              balance: rc.balance,
-              cash_chq: rc.cash_chq,
-              r_amt: rc.r_amt
-            })
-          }));
+      // Sync into Supabase receipt20262027 table synchronously
+      const supabaseBatch = mappedReceipts.map(rc => ({
+        id: rc.receipt_id,
+        recp_no: rc.recp_no,
+        recp_date: rc.recp_date || null,
+        customer_id: rc.customer_id,
+        bill_amt: rc.bill_amt,
+        less_amt: rc.less_amt,
+        mal_recp_amt: rc.mal_recp_amt,
+        month: rc.month,
+        year: rc.year,
+        region_id: null,
+        remarks: JSON.stringify({
+          bill_no: rc.bill_no,
+          manual_rep_no: rc.manual_rep_no,
+          mal_rep_no: rc.mal_rep_no,
+          mal_recp_dt: rc.mal_recp_dt,
+          balance: rc.balance,
+          cash_chq: rc.cash_chq,
+          r_amt: rc.r_amt
+        })
+      }));
 
-          for (let i = 0; i < supabaseBatch.length; i += 300) {
-            const chunk = supabaseBatch.slice(i, i + 300);
-            await supabase.from('receipt20262027').upsert(chunk, { onConflict: 'id' });
-          }
-        } catch (err) {
-          console.warn('Supabase receipt20262027 sync error:', err);
-        }
-      })();
+      for (let i = 0; i < supabaseBatch.length; i += 300) {
+        const chunk = supabaseBatch.slice(i, i + 300);
+        const { error } = await supabase.from('receipt20262027').upsert(chunk, { onConflict: 'id' });
+        if (error) console.error('Receipt Supabase upsert error batch', i, error.message);
+      }
     }
 
     return NextResponse.json({
       success: true,
-      message: 'SQL Backup file parsed and restored successfully into active database and local JSON stores!',
+      message: 'SQL Backup file parsed and restored successfully into active database and local JSON stores with zero duplicates!',
       stats,
     });
   } catch (error: any) {
@@ -841,7 +1037,7 @@ export async function POST(req: NextRequest) {
 }
 
 // -------------------------------------------------------------
-// Stream Parser Helper (Handles huge 500MB+ MySQL dumps in seconds)
+// Stream Parser Helper (Handles huge 500MB+ MySQL dumps safely)
 // -------------------------------------------------------------
 async function parseSqlFileStream(filePath: string): Promise<Record<string, any[]>> {
   const fileStream = fs.createReadStream(filePath, { encoding: 'latin1' });
@@ -875,7 +1071,13 @@ async function parseSqlFileStream(filePath: string): Promise<Record<string, any[
 
     for (let i = 0; i < trimmed.length; i++) {
       const ch = trimmed[i];
-      if (ch === '\'' && (i === 0 || trimmed[i - 1] !== '\\')) {
+
+      let backslashCount = 0;
+      for (let j = i - 1; j >= 0 && trimmed[j] === '\\'; j--) {
+        backslashCount++;
+      }
+
+      if (ch === '\'' && backslashCount % 2 === 0) {
         inQuote = !inQuote;
       } else if (ch === ',' && !inQuote) {
         tokens.push(cur.trim());
@@ -899,15 +1101,18 @@ async function parseSqlFileStream(filePath: string): Promise<Record<string, any[
   let currentTbl: string | null = null;
 
   for await (const line of rl) {
-    if (line.startsWith('INSERT INTO ' + String.fromCharCode(96))) {
-      const b1 = line.indexOf(String.fromCharCode(96));
-      const b2 = line.indexOf(String.fromCharCode(96), b1 + 1);
-      if (b2 !== -1) {
-        const tbl = line.slice(b1 + 1, b2);
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    if (trimmed.toLowerCase().startsWith('insert into ')) {
+      const match = trimmed.match(/^insert\s+into\s+[`"]?([a-zA-Z0-9_]+)[`"]?/i);
+      if (match) {
+        const tbl = match[1].toLowerCase();
         currentTbl = coreTables.has(tbl) ? tbl : null;
       }
-    } else if (currentTbl) {
-      const trimmed = line.trim();
+    }
+
+    if (currentTbl) {
       if (trimmed.startsWith('(')) {
         parsedTables[currentTbl].push(parseRow(trimmed));
       }

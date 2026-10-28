@@ -14,7 +14,7 @@ export default function BackupRestoreModal({ mode: initialMode, onClose }: Backu
   );
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [localFilePath, setLocalFilePath] = useState<string>('C:\\Users\\rahul\\Downloads\\15102026.sql');
+  const [localFilePath, setLocalFilePath] = useState<string>('C:\\Users\\rahul\\Downloads\\27102026BeforeBillProcc\\27102026BeforeBillProcc\\New Project 20261027 2103.sql');
   const [restoreMethod, setRestoreMethod] = useState<'file' | 'local_path'>('file');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
@@ -83,7 +83,13 @@ export default function BackupRestoreModal({ mode: initialMode, onClose }: Backu
 
       for (let i = 0; i < trimmed.length; i++) {
         const ch = trimmed[i];
-        if (ch === '\'' && (i === 0 || trimmed[i - 1] !== '\\')) {
+
+        let backslashCount = 0;
+        for (let j = i - 1; j >= 0 && trimmed[j] === '\\'; j--) {
+          backslashCount++;
+        }
+
+        if (ch === '\'' && backslashCount % 2 === 0) {
           inQuote = !inQuote;
         } else if (ch === ',' && !inQuote) {
           tokens.push(cur.trim());
@@ -120,15 +126,18 @@ export default function BackupRestoreModal({ mode: initialMode, onClose }: Backu
       buffer = lines.pop() || '';
 
       for (const line of lines) {
-        if (line.startsWith('INSERT INTO ' + String.fromCharCode(96))) {
-          const b1 = line.indexOf(String.fromCharCode(96));
-          const b2 = line.indexOf(String.fromCharCode(96), b1 + 1);
-          if (b2 !== -1) {
-            const tbl = line.slice(b1 + 1, b2);
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        if (trimmed.toLowerCase().startsWith('insert into ')) {
+          const match = trimmed.match(/^insert\s+into\s+[`"]?([a-zA-Z0-9_]+)[`"]?/i);
+          if (match) {
+            const tbl = match[1].toLowerCase();
             currentTbl = coreTables.has(tbl) ? tbl : null;
           }
-        } else if (currentTbl) {
-          const trimmed = line.trim();
+        }
+
+        if (currentTbl) {
           if (trimmed.startsWith('(')) {
             parsedTables[currentTbl].push(parseRow(trimmed));
           }
@@ -221,8 +230,8 @@ export default function BackupRestoreModal({ mode: initialMode, onClose }: Backu
           currentStep++;
           setProgressMsg(`Saving table '${tblName}' (${rows.length.toLocaleString()} records) [${currentStep}/${tableEntries.length}]...`);
 
-          // Split into small 300-row chunks (~100KB per POST request to guarantee 0 payload limits)
-          const CHUNK_SIZE = 300;
+          // Split into 500-row chunks (~120KB per POST request to guarantee 0 payload limits and high speed)
+          const CHUNK_SIZE = 500;
           for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
             const chunk = rows.slice(i, i + CHUNK_SIZE);
             const res = await fetch('/api/backup-restore', {
