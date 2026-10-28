@@ -1025,6 +1025,214 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // -------------------------------------------------------------
+    // 10. Bill Headers (billno20262027)
+    // -------------------------------------------------------------
+    const billnoRows = parsedTables['billno20262027'];
+    if (billnoRows && billnoRows.length > 0) {
+      const mappedBillno = billnoRows.map(r => {
+        if (Array.isArray(r)) {
+          return {
+            bill_id: Number(r[0]),
+            customer_id: Number(r[1] ?? 0),
+            region_id: Number(r[2] ?? 0),
+            due_amt: r[3] !== null && r[3] !== undefined && r[3] !== '' ? Number(r[3]) : null,
+            del_amt: r[4] !== null && r[4] !== undefined && r[4] !== '' ? Number(r[4]) : null,
+            dis_amt: r[5] !== null && r[5] !== undefined && r[5] !== '' ? Number(r[5]) : null,
+            month: String(r[6] || ''),
+            year: String(r[7] || '2026'),
+            balance: r[8] !== null && r[8] !== undefined && r[8] !== '' ? Number(r[8]) : null,
+          };
+        }
+        return {
+          bill_id: Number(r.bill_id ?? r.billid ?? 0),
+          customer_id: Number(r.customer_id ?? r.customerid ?? 0),
+          region_id: Number(r.region_id ?? r.regionid ?? 0),
+          due_amt: r.due_amt ?? r.dueamt ?? null,
+          del_amt: r.del_amt ?? r.delamt ?? null,
+          dis_amt: r.dis_amt ?? r.disamt ?? null,
+          month: String(r.month ?? ''),
+          year: String(r.year ?? '2026'),
+          balance: r.balance !== null && r.balance !== undefined && r.balance !== '' ? Number(r.balance) : null,
+        };
+      }).filter(b => b.bill_id > 0);
+
+      const dedupedBillno = saveJsonWithDeduplication('all_bill_headers.json', mappedBillno, 'bill_id', isAppendMode);
+      stats['billno20262027'] = dedupedBillno.length;
+
+      for (let i = 0; i < mappedBillno.length; i += 500) {
+        const batch = mappedBillno.slice(i, i + 500);
+        const { error } = await supabase.from('billno20262027').upsert(batch, { onConflict: 'bill_id' });
+        if (error) console.error('Billno Supabase upsert error batch', i, error.message);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 11. Bill Items (bill20262027)
+    // -------------------------------------------------------------
+    const billRows = parsedTables['bill20262027'];
+    if (billRows && billRows.length > 0) {
+      const mappedBills = billRows.map(r => {
+        if (Array.isArray(r)) {
+          return {
+            bill_id: Number(r[0]),
+            customer_id: Number(r[1] ?? 0),
+            publica_id: Number(r[2] ?? 0),
+            region_id: Number(r[3] ?? 0),
+            qty: Number(r[4] ?? 1),
+            rate: Number(r[5] ?? 0),
+            d_charges: Number(r[6] ?? 0),
+            total_amt: Number(r[7] ?? 0),
+            month: String(r[8] || ''),
+            year: String(r[9] || '2026'),
+            sno: Number(r[10] ?? 0),
+          };
+        }
+        return {
+          bill_id: Number(r.bill_id ?? r.billid ?? 0),
+          customer_id: Number(r.customer_id ?? r.customerid ?? 0),
+          publica_id: Number(r.publica_id ?? r.publicaid ?? 0),
+          region_id: Number(r.region_id ?? r.regionid ?? 0),
+          qty: Number(r.qty ?? 1),
+          rate: Number(r.rate ?? 0),
+          d_charges: Number(r.d_charges ?? r.dcharges ?? 0),
+          total_amt: Number(r.total_amt ?? r.totalamt ?? 0),
+          month: String(r.month ?? ''),
+          year: String(r.year ?? '2026'),
+          sno: Number(r.sno ?? 0),
+        };
+      }).filter(b => b.bill_id > 0);
+
+      stats['bill20262027'] = mappedBills.length;
+      for (let i = 0; i < mappedBills.length; i += 500) {
+        const batch = mappedBills.slice(i, i + 500);
+        const { error } = await supabase.from('bill20262027').upsert(batch);
+        if (error) console.error('Bill item Supabase upsert error batch', i, error.message);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 12. Retail Sales (retailsale20262027)
+    // -------------------------------------------------------------
+    const retailRows = parsedTables['retailsale20262027'];
+    if (retailRows && retailRows.length > 0) {
+      const mappedRetail = retailRows.map(r => {
+        if (Array.isArray(r)) {
+          return {
+            retail_id: Number(r[0]),
+            vr_date: toIsoDate(r[1]),
+            customer_id: Number(r[2] ?? 0),
+            publica_id: Number(r[3] ?? 0),
+            copies: Number(r[4] ?? 1),
+            rate: Number(r[5] ?? 0),
+            amt: Number(r[6] ?? 0),
+            narr: String(r[7] || ''),
+          };
+        }
+        return {
+          retail_id: Number(r.retail_id ?? r.retailid ?? 0),
+          vr_date: toIsoDate(r.vr_date ?? r.vrdate),
+          customer_id: Number(r.customer_id ?? r.customerid ?? 0),
+          publica_id: Number(r.publica_id ?? r.publicaid ?? 0),
+          copies: Number(r.copies ?? 1),
+          rate: Number(r.rate ?? 0),
+          amt: Number(r.amt ?? 0),
+          narr: String(r.narr ?? ''),
+        };
+      }).filter(rt => rt.retail_id > 0);
+
+      const dedupedRetail = saveJsonWithDeduplication('retailsale.json', mappedRetail, 'retail_id', isAppendMode);
+      stats['retailsale20262027'] = dedupedRetail.length;
+
+      for (let i = 0; i < mappedRetail.length; i += 500) {
+        const batch = mappedRetail.slice(i, i + 500);
+        const { error } = await supabase.from('retailsale20262027').upsert(batch, { onConflict: 'retail_id' });
+        if (error) console.error('Retail sale Supabase upsert error batch', i, error.message);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 13. Rate Changes (ratechange)
+    // -------------------------------------------------------------
+    const rcRows = parsedTables['ratechange'];
+    if (rcRows && rcRows.length > 0) {
+      const mappedRc = rcRows.map((r, idx) => {
+        if (Array.isArray(r)) {
+          const pid = Number(r[0]);
+          const oldR = Number(r[1] ?? 0);
+          const newR = Number(r[2] ?? 0);
+          const dt = toIsoDate(r[3]) || String(r[3] || '');
+          const dow = Number(r[4] ?? 1);
+          return {
+            id: `${pid}_${dow}_${dt}`,
+            publica_id: pid,
+            oldrate: oldR,
+            newrate: newR,
+            effective_date: dt,
+            dayofweek: dow
+          };
+        }
+        const pid = Number(r.publica_id ?? r.publicaid ?? 0);
+        const dt = toIsoDate(r.dated ?? r.effective_date) || '';
+        const dow = Number(r.dayofweek ?? 1);
+        return {
+          id: `${pid}_${dow}_${dt}`,
+          publica_id: pid,
+          oldrate: Number(r.oldrate ?? 0),
+          newrate: Number(r.newrate ?? r.new_rate ?? 0),
+          effective_date: dt,
+          dayofweek: dow
+        };
+      });
+
+      const dedupedRc = saveJsonWithDeduplication('ratechanges.json', mappedRc, 'id', isAppendMode);
+      stats['ratechange'] = dedupedRc.length;
+      for (let i = 0; i < mappedRc.length; i += 500) {
+        const batch = mappedRc.slice(i, i + 500);
+        const { error } = await supabase.from('ratechange').upsert(batch, { onConflict: 'id' });
+        if (error) console.error('Ratechange Supabase upsert error batch', i, error.message);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 14. Publication Discontinues (publicationdis)
+    // -------------------------------------------------------------
+    const pubDisRows = parsedTables['publicationdis'];
+    if (pubDisRows && pubDisRows.length > 0) {
+      const mappedPubDis = pubDisRows.map((r, idx) => {
+        if (Array.isArray(r)) {
+          const pid = Number(r[0]);
+          const fDate = toIsoDate(r[1]) || String(r[1] || '');
+          const tDate = toIsoDate(r[2]) || String(r[2] || '');
+          return {
+            id: `${pid}_${fDate}_${idx}`,
+            publica_id: pid,
+            entry_date: fDate,
+            oc_date: tDate,
+            dis_type: 'Permanent'
+          };
+        }
+        const pid = Number(r.publica_id ?? r.publicaid ?? 0);
+        const fDate = toIsoDate(r.fromdate ?? r.from_date ?? r.entry_date) || '';
+        const tDate = toIsoDate(r.todate ?? r.to_date ?? r.oc_date) || '';
+        return {
+          id: `${pid}_${fDate}_${idx}`,
+          publica_id: pid,
+          entry_date: fDate,
+          oc_date: tDate,
+          dis_type: 'Permanent'
+        };
+      });
+
+      const dedupedPubDis = saveJsonWithDeduplication('publicationdis.json', mappedPubDis, 'id', isAppendMode);
+      stats['publicationdis'] = dedupedPubDis.length;
+      for (let i = 0; i < mappedPubDis.length; i += 500) {
+        const batch = mappedPubDis.slice(i, i + 500);
+        const { error } = await supabase.from('publicationdis').upsert(batch, { onConflict: 'id' });
+        if (error) console.error('Publicationdis Supabase upsert error batch', i, error.message);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: 'SQL Backup file parsed and restored successfully into active database and local JSON stores with zero duplicates!',
@@ -1051,6 +1259,8 @@ async function parseSqlFileStream(filePath: string): Promise<Record<string, any[
     'publication',
     'publica',
     'rate',
+    'ratechange',
+    'publicationdis',
     'discontinue20262027',
     'discontinue',
     'regiond',
@@ -1058,6 +1268,10 @@ async function parseSqlFileStream(filePath: string): Promise<Record<string, any[
     'regions',
     'holiday',
     'receipt20262027',
+    'billno20262027',
+    'bill20262027',
+    'billdel20262027',
+    'retailsale20262027',
   ]);
 
   const parsedTables: Record<string, any[]> = {};
@@ -1108,7 +1322,23 @@ async function parseSqlFileStream(filePath: string): Promise<Record<string, any[
       const match = trimmed.match(/^insert\s+into\s+[`"]?([a-zA-Z0-9_]+)[`"]?/i);
       if (match) {
         const tbl = match[1].toLowerCase();
-        currentTbl = coreTables.has(tbl) ? tbl : null;
+        if (coreTables.has(tbl)) {
+          currentTbl = tbl;
+        } else if (tbl.startsWith('discontinue')) {
+          currentTbl = 'discontinue20262027';
+        } else if (tbl.startsWith('receipt') && tbl.includes('2026')) {
+          currentTbl = 'receipt20262027';
+        } else if (tbl.startsWith('billno') && tbl.includes('2026')) {
+          currentTbl = 'billno20262027';
+        } else if (tbl.startsWith('billdel') && tbl.includes('2026')) {
+          currentTbl = 'billdel20262027';
+        } else if (tbl.startsWith('bill') && tbl.includes('2026')) {
+          currentTbl = 'bill20262027';
+        } else if (tbl.startsWith('retailsale') && tbl.includes('2026')) {
+          currentTbl = 'retailsale20262027';
+        } else {
+          currentTbl = null;
+        }
       }
     }
 
