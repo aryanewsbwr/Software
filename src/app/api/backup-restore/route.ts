@@ -1086,10 +1086,13 @@ export async function POST(req: NextRequest) {
       }).filter(b => b.bill_id > 0);
 
       stats['bill20262027'] = mappedBills.length;
+      if (!isAppendMode) {
+        await supabase.from('bill20262027').delete().gte('id', 0);
+      }
       for (let i = 0; i < mappedBills.length; i += 500) {
         const batch = mappedBills.slice(i, i + 500);
-        const { error } = await supabase.from('bill20262027').upsert(batch);
-        if (error) console.error('Bill item Supabase upsert error batch', i, error.message);
+        const { error } = await supabase.from('bill20262027').insert(batch);
+        if (error) console.error('Bill item Supabase insert error batch', i, error.message);
       }
     }
 
@@ -1215,6 +1218,45 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // -------------------------------------------------------------
+    // 15. Delivery Charges (billdel20262027)
+    // -------------------------------------------------------------
+    const billdelRows = parsedTables['billdel20262027'];
+    if (billdelRows && billdelRows.length > 0) {
+      const mappedBilldel = billdelRows.map(r => {
+        if (Array.isArray(r)) {
+          return {
+            customer_id: Number(r[0] ?? 0),
+            region_id: Number(r[1] ?? 0),
+            publica_id: Number(r[2] ?? 0),
+            month: String(r[3] || ''),
+            year: String(r[4] || '2026'),
+            dely: Number(r[5] ?? 0),
+            sno: Number(r[6] ?? 0),
+          };
+        }
+        return {
+          customer_id: Number(r.customer_id ?? r.customerid ?? 0),
+          region_id: Number(r.region_id ?? r.regionid ?? 0),
+          publica_id: Number(r.publica_id ?? r.publicaid ?? 0),
+          month: String(r.month || ''),
+          year: String(r.year || '2026'),
+          dely: Number(r.dely ?? r.Dely ?? 0),
+          sno: Number(r.sno ?? 0),
+        };
+      }).filter(b => b.customer_id > 0);
+
+      stats['billdel20262027'] = mappedBilldel.length;
+      if (!isAppendMode) {
+        await supabase.from('billdel20262027').delete().gte('customer_id', 0);
+      }
+      for (let i = 0; i < mappedBilldel.length; i += 500) {
+        const batch = mappedBilldel.slice(i, i + 500);
+        const { error } = await supabase.from('billdel20262027').insert(batch);
+        if (error) console.error('Billdel Supabase insert error batch', i, error.message);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: 'SQL Backup file parsed and restored successfully into active database and local JSON stores with zero duplicates!',
@@ -1306,17 +1348,17 @@ async function parseSqlFileStream(filePath: string): Promise<Record<string, any[
         const tbl = match[1].toLowerCase();
         if (coreTables.has(tbl)) {
           currentTbl = tbl;
-        } else if (tbl === 'discontinue' || (tbl.startsWith('discontinue') && tbl.includes('2026'))) {
+        } else if (tbl === 'discontinue' || (tbl.startsWith('discontinue') && tbl.includes('20262027'))) {
           currentTbl = 'discontinue20262027';
-        } else if (tbl.startsWith('receipt') && tbl.includes('2026')) {
+        } else if (tbl.startsWith('receipt') && tbl.includes('20262027')) {
           currentTbl = 'receipt20262027';
-        } else if (tbl.startsWith('billno') && tbl.includes('2026')) {
+        } else if (tbl.startsWith('billno') && tbl.includes('20262027')) {
           currentTbl = 'billno20262027';
-        } else if (tbl.startsWith('billdel') && tbl.includes('2026')) {
+        } else if (tbl.startsWith('billdel') && tbl.includes('20262027')) {
           currentTbl = 'billdel20262027';
-        } else if (tbl.startsWith('bill') && tbl.includes('2026')) {
+        } else if (tbl.startsWith('bill') && tbl.includes('20262027')) {
           currentTbl = 'bill20262027';
-        } else if (tbl.startsWith('retailsale') && tbl.includes('2026')) {
+        } else if (tbl.startsWith('retailsale') && tbl.includes('20262027')) {
           currentTbl = 'retailsale20262027';
         } else {
           currentTbl = null;

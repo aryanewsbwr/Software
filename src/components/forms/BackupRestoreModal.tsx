@@ -141,17 +141,17 @@ export default function BackupRestoreModal({ mode: initialMode, onClose }: Backu
             const tbl = match[1].toLowerCase();
             if (coreTables.has(tbl)) {
               currentTbl = tbl;
-            } else if (tbl === 'discontinue' || (tbl.startsWith('discontinue') && tbl.includes('2026'))) {
+            } else if (tbl === 'discontinue' || (tbl.startsWith('discontinue') && tbl.includes('20262027'))) {
               currentTbl = 'discontinue20262027';
-            } else if (tbl.startsWith('receipt') && tbl.includes('2026')) {
+            } else if (tbl.startsWith('receipt') && tbl.includes('20262027')) {
               currentTbl = 'receipt20262027';
-            } else if (tbl.startsWith('billno') && tbl.includes('2026')) {
+            } else if (tbl.startsWith('billno') && tbl.includes('20262027')) {
               currentTbl = 'billno20262027';
-            } else if (tbl.startsWith('billdel') && tbl.includes('2026')) {
+            } else if (tbl.startsWith('billdel') && tbl.includes('20262027')) {
               currentTbl = 'billdel20262027';
-            } else if (tbl.startsWith('bill') && tbl.includes('2026')) {
+            } else if (tbl.startsWith('bill') && tbl.includes('20262027')) {
               currentTbl = 'bill20262027';
-            } else if (tbl.startsWith('retailsale') && tbl.includes('2026')) {
+            } else if (tbl.startsWith('retailsale') && tbl.includes('20262027')) {
               currentTbl = 'retailsale20262027';
             } else {
               currentTbl = null;
