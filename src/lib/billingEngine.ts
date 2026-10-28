@@ -355,6 +355,9 @@ export function calculateBilling({
   // Holiday check: Daily newspapers skip on general (pub=0) and pub-specific holidays.
   // Periodicals ONLY skip if holiday explicitly specifies that exact publication_id.
   const isHoliday = (publicaId: number, targetDateIso: string, isDaily: boolean = true): boolean => {
+    // Oct 2 is Gandhi Jayanti (national press holiday)
+    if (isDaily && targetDateIso.endsWith('-10-02')) return true;
+
     const entry = holidayMap.get(targetDateIso);
     if (!entry) return false;
     if (isDaily) {
