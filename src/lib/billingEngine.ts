@@ -1164,12 +1164,10 @@ export function calculateBilling({
     const roundedPaperTotal = roundToFoxProRule(customerPaperTotal + customerRetailTotal + customerSupplementTotal);
     const totalPayable = roundToFoxProRule(openingBalanceThisBill + currentMonthCharges);
 
-    // In FoxPro billing, customers receive a bill if they had deliveries/sales this month OR had prior bills/dues in this FY.
-    // If they had 0 paper charges and 0 opening balance, only skip if they have no prior billing history in this financial year.
-    if (customerPaperTotal === 0 && customerRetailTotal === 0 && customerSupplementTotal === 0 && openingBalanceThisBill === 0) {
-      if (!hasPriorHeaders) {
-        continue;
-      }
+    // In FoxPro billing, customers NEVER receive a bill if they have ₹0 current charges AND ₹0 previous due / opening balance.
+    // We only generate a bill if there are active deliveries/sales (currentMonthCharges > 0) OR an outstanding balance (openingBalanceThisBill !== 0).
+    if (customerPaperTotal === 0 && customerRetailTotal === 0 && customerSupplementTotal === 0 && openingBalanceThisBill === 0 && currentMonthCharges === 0) {
+      continue;
     }
 
     // Insert "Current Month Charges" Subtotal row into Breakup
