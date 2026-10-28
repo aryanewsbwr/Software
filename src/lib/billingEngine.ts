@@ -1149,8 +1149,10 @@ export function calculateBilling({
           customerPreviousBalance = priorBillsTotal - priorReceiptsTotal;
         }
       } else if (existingHeader && existingHeader.balance !== null && existingHeader.balance !== undefined) {
-        const recordedBalanceDue = -Number(existingHeader.balance);
-        customerPreviousBalance = recordedBalanceDue - latePaid;
+        // When there are no prior headers in the FY, this customer had no previous bills before October.
+        // Therefore, the balance recorded in October's bill header IS the total net payable for this bill,
+        // and their previous due is 0.
+        customerPreviousBalance = 0;
       } else {
         // Customer has no prior billing headers in this financial year.
         // Opening balance for current FY starts clean at 0 (never use corrupted 2007 cbal / dueamount).
