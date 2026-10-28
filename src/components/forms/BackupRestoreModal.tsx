@@ -141,7 +141,7 @@ export default function BackupRestoreModal({ mode: initialMode, onClose }: Backu
             const tbl = match[1].toLowerCase();
             if (coreTables.has(tbl)) {
               currentTbl = tbl;
-            } else if (tbl.startsWith('discontinue')) {
+            } else if (tbl === 'discontinue' || (tbl.startsWith('discontinue') && tbl.includes('2026'))) {
               currentTbl = 'discontinue20262027';
             } else if (tbl.startsWith('receipt') && tbl.includes('2026')) {
               currentTbl = 'receipt20262027';
