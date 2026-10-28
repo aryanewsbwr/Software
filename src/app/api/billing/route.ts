@@ -124,14 +124,15 @@ function getPublications(): any[] {
 }
 
 async function getDiscontinues(): Promise<any[]> {
+  if (cachedDiscontinues && cachedDiscontinues.length > 0) return cachedDiscontinues;
   const localDiscs = loadJson('discontinues.json') || [];
   try {
     const [dRes, cdRes] = await Promise.all([
-      supabase.from('discontinue').select('*'),
-      supabase.from('customer_discontinue').select('*')
+      fetchAllFromSupabase('discontinue'),
+      fetchAllFromSupabase('customer_discontinue')
     ]);
 
-    const liveList = [...(dRes.data || []), ...(cdRes.data || [])];
+    const liveList = [...(dRes || []), ...(cdRes || [])];
     if (liveList.length > 0) {
       const merged = [...liveList];
       const seen = new Set(liveList.map((d: any) => `${d.customer_id}-${d.publica_id}-${d.temp_from}-${d.temp_to}`));
@@ -142,12 +143,14 @@ async function getDiscontinues(): Promise<any[]> {
           seen.add(key);
         }
       }
-      return merged;
+      cachedDiscontinues = merged;
+      return cachedDiscontinues;
     }
   } catch (err) {
     console.warn('Supabase live discontinue fetch error in billing:', err);
   }
-  return localDiscs;
+  cachedDiscontinues = localDiscs;
+  return cachedDiscontinues;
 }
 
 function getRegions(): any[] {

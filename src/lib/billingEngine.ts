@@ -1071,7 +1071,7 @@ export function calculateBilling({
           const delAmt = Number(h.del_amt ?? h.Del_Amt ?? 0);
           const disAmt = Number(h.dis_amt ?? h.Dis_Amt ?? 0);
 
-          if (hMonth === 'dues' || (h.due_amt !== null && h.due_amt !== undefined && h.due_amt !== '')) {
+          if (hMonth === 'dues') {
             priorBillsTotal += Number(h.due_amt || h.Due_Amt || 0);
           } else {
             let paperAmt = 0;
