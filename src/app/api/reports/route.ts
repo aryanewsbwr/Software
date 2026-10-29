@@ -1082,10 +1082,11 @@ export async function GET(request: NextRequest) {
           };
         });
 
-        const deliveryCharge = roundToFoxProRule(Number(h.del_amt || 0));
-        const discountCharge = roundToFoxProRule(Number(h.dis_amt || 0));
+        const deliveryCharge = Number(h.del_amt || 0);
+        const discountCharge = Number(h.dis_amt || 0);
+        const rawCurrent = paperTotal + deliveryCharge - discountCharge;
         const paperAmount = roundToFoxProRule(paperTotal);
-        const currentBill = roundToFoxProRule(paperAmount + deliveryCharge - discountCharge);
+        const currentBill = roundToFoxProRule(rawCurrent);
         let prevDue = 0;
         if (h.due_amt !== null && h.due_amt !== undefined && h.due_amt !== '') {
           prevDue = Number(h.due_amt);
@@ -1100,7 +1101,7 @@ export async function GET(request: NextRequest) {
 
         const isGovtSupply = c.govt_supply === -1 || c.govt_supply === 1 || c.govt_supply === true || String(c.govt_supply) === '1' || String(c.govt_supply) === '-1';
         if (isGovtSupply) prevDue = 0;
-        const netPayable = isGovtSupply ? currentBill : roundToFoxProRule(currentBill + prevDue);
+        const netPayable = isGovtSupply ? currentBill : roundToFoxProRule(rawCurrent + prevDue);
 
         // Extract phone number from c.phone, c.hindi_add, c.add1, or c.add2 if present
         let rawPhone = c.phone || '';
