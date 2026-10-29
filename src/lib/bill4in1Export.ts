@@ -36,6 +36,8 @@ export interface BillRecord {
   items: BillItem[];
   paper_amount: number;
   delivery_charge: number;
+  discount_amount?: number;
+  current_bill?: number;
   previous_due: number;
   advance?: number;
   net_payable: number;
@@ -154,9 +156,10 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
   const isTop = qIndex < 2;
   const quadrantClass = `bill-quadrant ${isLeft ? 'quad-left' : 'quad-right'} ${isTop ? 'quad-top' : 'quad-bottom'}`;
 
+  const discountAmount = roundToFoxProRule(b.discount_amount || 0);
   const summaryPaperTotal = printMode === 'simple'
-    ? roundToFoxProRule(b.paper_amount + (b.delivery_charge || 0))
-    : roundToFoxProRule(b.paper_amount);
+    ? roundToFoxProRule(Math.max(0, b.paper_amount + (b.delivery_charge || 0) - discountAmount))
+    : roundToFoxProRule(Math.max(0, b.paper_amount - discountAmount));
 
   const summaryDelivery = printMode === 'simple'
     ? 0

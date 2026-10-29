@@ -171,9 +171,14 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
 
   const paperAmount = roundToFoxProRule(b.paper_amount || 0);
   const deliveryCharge = roundToFoxProRule(b.delivery_charge || 0);
-  const monthBillAmount = roundToFoxProRule(paperAmount + deliveryCharge);
+  const discountAmount = roundToFoxProRule(b.discount_amount || 0);
+  const monthBillAmount = b.current_bill !== undefined && b.current_bill !== null
+    ? roundToFoxProRule(b.current_bill)
+    : roundToFoxProRule(Math.max(0, paperAmount + deliveryCharge - discountAmount));
   const previousDue = roundToFoxProRule(b.previous_due || 0);
-  const netPayable = roundToFoxProRule(b.net_payable || (monthBillAmount + previousDue));
+  const netPayable = b.net_payable !== undefined && b.net_payable !== null
+    ? roundToFoxProRule(b.net_payable)
+    : roundToFoxProRule(monthBillAmount + previousDue);
 
   const monthYearDisplay = formatShortMonthYear(b.month, b.year);
   const formattedPhone = cleanPhone(b.phone);

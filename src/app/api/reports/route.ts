@@ -1144,6 +1144,7 @@ export async function GET(request: NextRequest) {
           year: year,
           items: lineItems,
           delivery_charge: deliveryCharge,
+          discount_amount: discountCharge,
           paper_amount: paperAmount,
           current_bill: currentBill,
           previous_due: prevDue,

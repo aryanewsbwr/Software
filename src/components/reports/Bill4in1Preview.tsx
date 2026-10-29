@@ -227,9 +227,10 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
 
                 const rowCount = Math.max(displayItems.length, minRows);
 
+                const discountAmount = roundToFoxProRule(b.discount_amount || 0);
                 const summaryPaperTotal = printMode === 'simple'
-                  ? roundToFoxProRule(b.paper_amount + (b.delivery_charge || 0))
-                  : roundToFoxProRule(b.paper_amount);
+                  ? roundToFoxProRule(Math.max(0, b.paper_amount + (b.delivery_charge || 0) - discountAmount))
+                  : roundToFoxProRule(Math.max(0, b.paper_amount - discountAmount));
 
                 const summaryDelivery = printMode === 'simple'
                   ? 0
