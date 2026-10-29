@@ -259,11 +259,12 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
 
       <!-- Boxed TOTAL / कुल देय Banner -->
       <div class="total-banner-box">
-        <div class="total-label-left">TOTAL / कुल देय</div>
-        <div class="total-amount-right">₹ ${formatMoney(netPayable)}</div>
+        <div class="total-label-left">${netPayable < 0 ? 'ADVANCE / अग्रिम जमा' : 'TOTAL / कुल देय'}</div>
+        <div class="total-amount-right">${netPayable < 0 ? `-₹ ${formatMoney(Math.abs(netPayable))}` : `₹ ${formatMoney(netPayable)}`}</div>
       </div>
 
       <!-- Dynamic UPI QR Payment Section -->
+      ${netPayable > 0 ? `
       <div class="qr-payment-section">
         <div class="qr-code-wrapper">
           ${rawQrSvg}
@@ -271,6 +272,16 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
         <div class="qr-title-en">Scan &amp; Pay ₹${Math.round(netPayable)} via any UPI app</div>
         <div class="qr-subtitle-hi">किसी भी UPI ऐप से स्कैन कर भुगतान करें</div>
       </div>
+      ` : `
+      <div class="qr-payment-section" style="padding: 8px 4px; border: 1px dashed #059669; border-radius: 4px; margin: 6px 0; background-color: #f0fdf4; text-align: center;">
+        <div style="font-size: 11px; font-weight: 800; color: #065f46;">
+          ${netPayable < 0 ? `अग्रिम जमा राशि: ₹${formatMoney(Math.abs(netPayable))}` : 'बिल पूर्ण चुकता (Nil Balance)'}
+        </div>
+        <div style="font-size: 9.5px; color: #475569; margin-top: 3px;">
+          ${netPayable < 0 ? 'कोई भुगतान देय नहीं है (No Payment Required)' : 'इस माह कोई राशि देय नहीं है'}
+        </div>
+      </div>
+      `}
 
       <!-- Dashed Divider -->
       <div class="dashed-divider"></div>

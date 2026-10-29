@@ -344,31 +344,46 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 
         {/* Total Banner Box */}
         <div className="border-[1.4px] border-black rounded-md px-2.5 py-1.5 flex justify-between items-center mb-2.5 bg-white whitespace-nowrap">
-          <span className="font-black text-[12.5px] text-black whitespace-nowrap">TOTAL / कुल देय</span>
-          <span className="font-black text-[14.5px] text-black whitespace-nowrap">₹ {formatMoney(netPayable)}</span>
+          <span className="font-black text-[12.5px] text-black whitespace-nowrap">
+            {netPayable < 0 ? 'ADVANCE / अग्रिम जमा' : 'TOTAL / कुल देय'}
+          </span>
+          <span className="font-black text-[14.5px] text-black whitespace-nowrap">
+            {netPayable < 0 ? `-₹ ${formatMoney(Math.abs(netPayable))}` : `₹ ${formatMoney(netPayable)}`}
+          </span>
         </div>
 
         {/* QR Payment Section */}
-        <div className="flex flex-col items-center justify-center mb-2">
-          <div 
-            className="w-28 h-28 flex items-center justify-center bg-white p-1 mb-1"
-            dangerouslySetInnerHTML={{
-              __html: generateDynamicUpiQrSvg(
-                netPayable,
-                b.bill_no || b.customer_id,
-                `${b.month || ''} ${b.year || ''}`.trim(),
-                110,
-                0
-              )
-            }}
-          />
-          <div className="font-extrabold text-[11px] text-black">
-            Scan &amp; Pay ₹{Math.round(netPayable)} via any UPI app
+        {netPayable > 0 ? (
+          <div className="flex flex-col items-center justify-center mb-2">
+            <div 
+              className="w-28 h-28 flex items-center justify-center bg-white p-1 mb-1"
+              dangerouslySetInnerHTML={{
+                __html: generateDynamicUpiQrSvg(
+                  netPayable,
+                  b.bill_no || b.customer_id,
+                  `${b.month || ''} ${b.year || ''}`.trim(),
+                  110,
+                  0
+                )
+              }}
+            />
+            <div className="font-extrabold text-[11px] text-black">
+              Scan &amp; Pay ₹{Math.round(netPayable)} via any UPI app
+            </div>
+            <div className="font-medium text-[10px] text-slate-800 mt-0.5">
+              किसी भी UPI ऐप से स्कैन कर भुगतान करें
+            </div>
           </div>
-          <div className="font-medium text-[10px] text-slate-800 mt-0.5">
-            किसी भी UPI ऐप से स्कैन कर भुगतान करें
+        ) : (
+          <div className="flex flex-col items-center justify-center py-2 px-3 my-1.5 border border-dashed border-emerald-600 rounded bg-emerald-50 text-emerald-800 text-center">
+            <div className="font-extrabold text-[12px]">
+              {netPayable < 0 ? `अग्रिम जमा राशि: ₹${formatMoney(Math.abs(netPayable))}` : 'बिल पूर्ण चुकता (Nil Balance)'}
+            </div>
+            <div className="text-[10px] text-slate-600 mt-0.5">
+              {netPayable < 0 ? 'कोई भुगतान देय नहीं है (No Payment Required)' : 'इस माह कोई राशि देय नहीं है'}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Dashed Divider */}
         <div className="w-full border-t border-dashed border-zinc-500 my-1.5"></div>
