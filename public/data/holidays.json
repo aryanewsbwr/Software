@@ -9016,5 +9016,12 @@
   },
   {
     "publica_id": 478
+  },
+  {
+    "holiday_id": 3007,
+    "oc_date": "05/10/2026",
+    "dated": "05/10/2026",
+    "publica_id": 80,
+    "remark": "IndianExpress"
   }
 ]
