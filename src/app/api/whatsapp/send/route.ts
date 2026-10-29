@@ -282,67 +282,81 @@ export async function POST(request: NextRequest) {
       const results: any[] = [];
 
       for (const cid of selected_customer_ids) {
-        // Fetch customer + bill data from Supabase
-        const { data: cust } = await supabaseAdmin
-          .from('customers')
+        // Fetch customer + bill data from Supabase (check primary customer table first)
+        let { data: cust } = await supabaseAdmin
+          .from('customer')
           .select('*')
           .eq('customer_id', cid)
           .single();
+
+        if (!cust) {
+          const { data: legacyCust } = await supabaseAdmin
+            .from('customers')
+            .select('*')
+            .eq('customer_id', cid)
+            .single();
+          cust = legacyCust;
+        }
 
         if (!cust || !cust.phone) {
           results.push({ customer_id: cid, status: 'skipped', reason: 'No phone' });
           continue;
         }
 
-        const phone = formatWhatsAppPhone(cust.phone);
-        if (!phone) {
+        // Support multiple comma-separated phones if customer has more than one
+        const rawPhones = String(cust.phone).split(',').map((p: string) => p.trim()).filter(Boolean);
+        const validPhones = rawPhones.map((p: string) => formatWhatsAppPhone(p)).filter(Boolean) as string[];
+
+        if (validPhones.length === 0) {
           results.push({ customer_id: cid, status: 'skipped', reason: 'Invalid phone format' });
           continue;
         }
 
-        const billData = {
-          bill_no: String(cid),
-          customer_id: String(cid),
-          customer_name: cust.name_eng || `Customer #${cid}`,
-          customer_hindi: cust.name_hindi || cust.name_eng || '',
-          month,
-          region_name: cust.region_id || '',
-          phone,
-          paper_amount: 1000.00,
-          previous_due: 0.00,
-          net_payable: 1000.00
-        };
+        for (const phone of validPhones) {
+          const billData = {
+            bill_no: String(cid),
+            customer_id: String(cid),
+            customer_name: cust.name_eng || `Customer #${cid}`,
+            customer_hindi: cust.name_hindi || cust.name_eng || '',
+            month,
+            region_name: cust.region_id || '',
+            phone,
+            paper_amount: 1000.00,
+            previous_due: 0.00,
+            net_payable: 1000.00
+          };
 
-        const imageBuffer = await generateBillPngBuffer(billData);
+          const imageBuffer = await generateBillPngBuffer(billData);
 
-        const res = await sendWhatsAppBillMessage({
-          toPhone: phone,
-          customerName: billData.customer_hindi,
-          month: billData.month,
-          billNo: billData.bill_no,
-          accountNo: billData.customer_id,
-          currentAmount: billData.paper_amount,
-          previousDue: billData.previous_due,
-          totalPayable: billData.net_payable,
-          billImageBuffer: imageBuffer,
-          imageFileName: `Bill_${billData.bill_no}.png`
-        });
+          const res = await sendWhatsAppBillMessage({
+            toPhone: phone,
+            customerName: billData.customer_hindi,
+            month: billData.month,
+            billNo: billData.bill_no,
+            accountNo: billData.customer_id,
+            currentAmount: billData.paper_amount,
+            previousDue: billData.previous_due,
+            totalPayable: billData.net_payable,
+            billImageBuffer: imageBuffer,
+            imageFileName: `Bill_${billData.bill_no}.png`
+          });
 
-        // Insert tracking row
-        await supabaseAdmin.from('whatsapp_messages').insert({
-          customer_id: String(cid),
-          bill_id: billData.bill_no,
-          phone,
-          wamid: res.wamid || null,
-          status: res.success ? 'sent' : 'failed',
-          error_code: res.errorCode || null,
-          error_json: res.errorJson || null,
-          media_id: res.mediaId || null,
-          bill_month: month,
-          total_amount: billData.net_payable
-        });
+          // Insert tracking row
+          await supabaseAdmin.from('whatsapp_messages').insert({
+            customer_id: String(cid),
+            bill_id: billData.bill_no,
+            phone,
+            wamid: res.wamid || null,
+            status: res.success ? 'sent' : 'failed',
+            error_code: res.errorCode || null,
+            error_json: res.errorJson || null,
+            media_id: res.mediaId || null,
+            bill_month: month,
+            total_amount: billData.net_payable
+          });
 
-        results.push({ customer_id: cid, ...res });
+          results.push({ customer_id: cid, phone, ...res });
+        }
       }
 
       return NextResponse.json({ success: true, count: results.length, results });
