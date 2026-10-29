@@ -412,12 +412,14 @@ export function calculateBilling({
     const str = String(fromDay).trim();
     if (str === '' || str === '1-7' || str.toLowerCase() === 'daily') return true;
 
-    // In FoxPro billing, office/institution customer subscriptions marked with '1' or '2-6'
-    // represent a 5-day office working week (Monday=2 to Friday=6), skipping weekends & Gandhi Jayanti (Oct 2).
-    if (str === '1' || str === '2-6') {
-      if (targetDateIso && (targetDateIso.endsWith('-10-02') || targetDateIso.endsWith('-08-15') || targetDateIso.endsWith('-01-26'))) {
-        return false;
-      }
+    // In FoxPro billing:
+    // '1' = Sunday only (Day 1 in legacy VFP / JS Sunday=1)
+    if (str === '1') {
+      return dayOfWeek === 1;
+    }
+
+    // '2-6' = Monday to Friday (5-day office working week)
+    if (str === '2-6') {
       return dayOfWeek >= 2 && dayOfWeek <= 6;
     }
 
@@ -1053,7 +1055,8 @@ export function calculateBilling({
     });
 
     // Current month charges
-    const currentMonthCharges = roundToFoxProRule(customerPaperTotal + customerDeliveryTotal + customerRetailTotal + customerSupplementTotal - customerDiscountTotal);
+    const rawCurrentCharges = customerPaperTotal + customerDeliveryTotal + customerRetailTotal + customerSupplementTotal - customerDiscountTotal;
+    const currentMonthCharges = roundToFoxProRule(rawCurrentCharges);
 
     if (hasTargetMonthReceipt) {
       // The customer entered payment receipt(s) specifically against this target month or with net balance
@@ -1174,7 +1177,7 @@ export function calculateBilling({
 
     const openingBalanceThisBill = previousDue;
     const roundedPaperTotal = roundToFoxProRule(customerPaperTotal + customerRetailTotal + customerSupplementTotal);
-    const totalPayable = roundToFoxProRule(openingBalanceThisBill + currentMonthCharges);
+    const totalPayable = roundToFoxProRule(customerPreviousBalance + rawCurrentCharges);
 
     // In FoxPro monthly delivery billing, bills are generated strictly for customers with active paper deliveries / sales (paperTotal > 0).
     // Customers with 0 newspaper deliveries in the current month do NOT receive a monthly newspaper bill.
