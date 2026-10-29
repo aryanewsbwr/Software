@@ -134,8 +134,25 @@ async function getDiscontinues(): Promise<any[]> {
 
     const liveList = [...(dRes || []), ...(cdRes || [])];
     if (liveList.length > 0) {
-      const merged = [...liveList];
-      const seen = new Set(liveList.map((d: any) => `${d.customer_id}-${d.publica_id}-${d.temp_from}-${d.temp_to}`));
+      const localMap = new Map<string, any>();
+      for (const ld of localDiscs) {
+        if (ld.discontinue_id) localMap.set(`id-${ld.discontinue_id}`, ld);
+        localMap.set(`${ld.customer_id}-${ld.publica_id}-${ld.temp_from}`, ld);
+      }
+      const enrichedLiveList = liveList.map((d: any) => {
+        const match = localMap.get(`id-${d.discontinue_id}`) || localMap.get(`${d.customer_id}-${d.publica_id}-${d.temp_from}`);
+        if (match) {
+          return {
+            ...d,
+            s_date: d.s_date || match.s_date,
+            c_date: d.c_date || match.c_date
+          };
+        }
+        return d;
+      });
+
+      const merged = [...enrichedLiveList];
+      const seen = new Set(enrichedLiveList.map((d: any) => `${d.customer_id}-${d.publica_id}-${d.temp_from}-${d.temp_to}`));
       for (const ld of localDiscs) {
         const key = `${ld.customer_id || ld.Customer_id}-${ld.publica_id || ld.Publica_id}-${ld.temp_from || ld.Temp_From}-${ld.temp_to || ld.Temp_To}`;
         if (!seen.has(key)) {
