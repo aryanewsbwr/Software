@@ -172,7 +172,8 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                   const pubConsolidatedMap = new Map<string, {
                     pub_name: string;
                     totalQty: number;
-                    totalAmount: number;
+                    paperAmount: number;
+                    deliveryAmount: number;
                   }>();
 
                   const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
@@ -189,17 +190,18 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                     } else if (totalDelivery > 0 && idx === 0) {
                       itemDelivery = totalDelivery;
                     }
-                    const itemAmt = roundToFoxProRule(it.amount + itemDelivery);
 
                     const existing = pubConsolidatedMap.get(pubKey);
                     if (existing) {
                       existing.totalQty += qty;
-                      existing.totalAmount = roundToFoxProRule(existing.totalAmount + itemAmt);
+                      existing.paperAmount += it.amount;
+                      existing.deliveryAmount += itemDelivery;
                     } else {
                       pubConsolidatedMap.set(pubKey, {
                         pub_name: cleanPub,
                         totalQty: qty,
-                        totalAmount: itemAmt
+                        paperAmount: it.amount,
+                        deliveryAmount: itemDelivery
                       });
                     }
                   });
@@ -208,7 +210,7 @@ export const Bill4in1Preview: React.FC<Bill4in1PreviewProps> = ({
                     pub_name: entry.pub_name,
                     qtyOrDays: entry.totalQty,
                     rate: null, // Rate is omitted in simple mode
-                    amount: entry.totalAmount
+                    amount: roundToFoxProRule(entry.paperAmount + entry.deliveryAmount)
                   }));
                 } else {
                   // Detail Mode: keep separate rate lines with pure paper rate & amounts

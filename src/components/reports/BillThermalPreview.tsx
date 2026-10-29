@@ -158,7 +158,8 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
       const pubConsolidatedMap = new Map<string, {
         pub_name: string;
         totalQty: number;
-        totalAmount: number;
+        paperAmount: number;
+        deliveryAmount: number;
       }>();
 
       const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
@@ -174,22 +175,27 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         } else if (totalDelivery > 0 && pIdx === 0) {
           itemDelivery = totalDelivery;
         }
-        const itemAmt = roundToFoxProRule(it.amount + itemDelivery);
 
         const existing = pubConsolidatedMap.get(pubKey);
         if (existing) {
           existing.totalQty += qty;
-          existing.totalAmount = roundToFoxProRule(existing.totalAmount + itemAmt);
+          existing.paperAmount += it.amount;
+          existing.deliveryAmount += itemDelivery;
         } else {
           pubConsolidatedMap.set(pubKey, {
             pub_name: pubDisplayName,
             totalQty: qty,
-            totalAmount: itemAmt
+            paperAmount: it.amount,
+            deliveryAmount: itemDelivery
           });
         }
       });
 
-      const displayItems = Array.from(pubConsolidatedMap.values());
+      const displayItems = Array.from(pubConsolidatedMap.values()).map(entry => ({
+        pub_name: entry.pub_name,
+        totalQty: entry.totalQty,
+        totalAmount: roundToFoxProRule(entry.paperAmount + entry.deliveryAmount)
+      }));
       const monthBillAmount = roundToFoxProRule((b.paper_amount || 0) + (b.delivery_charge || 0));
 
       itemsElements = displayItems.length > 0 ? (

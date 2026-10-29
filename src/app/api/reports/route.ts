@@ -1057,6 +1057,7 @@ export async function GET(request: NextRequest) {
         });
 
         let paperTotal = 0;
+        const seenPubDelivery = new Set<number>();
         const lineItems = rawItems.map((it, idx) => {
           const pub = pubMap.get(it.publica_id);
           const rawHindi = pub?.pub_hindi || pub?.Pub_Hindi;
@@ -1068,7 +1069,14 @@ export async function GET(request: NextRequest) {
           const itemAmt = Number(it.total_amt || 0);
           paperTotal += itemAmt;
 
-          const delyAmt = delMap.get(`${cid}_${it.publica_id}`) || 0;
+          // Delivery charge is per publication per customer per month.
+          // If a publication has multiple rate tiers (e.g. weekdays vs Sundays),
+          // assign delivery charge only to the first tier of that publication.
+          let delyAmt = 0;
+          if (!seenPubDelivery.has(it.publica_id)) {
+            delyAmt = delMap.get(`${cid}_${it.publica_id}`) || 0;
+            seenPubDelivery.add(it.publica_id);
+          }
 
           return {
             sno: idx + 1,

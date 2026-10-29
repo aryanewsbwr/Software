@@ -72,7 +72,8 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
     const pubConsolidatedMap = new Map<string, {
       pub_name: string;
       totalQty: number;
-      totalAmount: number;
+      paperAmount: number;
+      deliveryAmount: number;
     }>();
 
     const hasItemDelivery = items.some(it => (it.delivery_amount || 0) > 0);
@@ -89,17 +90,18 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
       } else if (totalDelivery > 0 && idx === 0) {
         itemDelivery = totalDelivery;
       }
-      const itemAmt = roundToFoxProRule(it.amount + itemDelivery);
 
       const existing = pubConsolidatedMap.get(pubKey);
       if (existing) {
         existing.totalQty += qty;
-        existing.totalAmount = roundToFoxProRule(existing.totalAmount + itemAmt);
+        existing.paperAmount += it.amount;
+        existing.deliveryAmount += itemDelivery;
       } else {
         pubConsolidatedMap.set(pubKey, {
           pub_name: cleanPub,
           totalQty: qty,
-          totalAmount: itemAmt
+          paperAmount: it.amount,
+          deliveryAmount: itemDelivery
         });
       }
     });
@@ -108,7 +110,7 @@ export function renderSingleBillHtml(b: BillRecord, qIndex: number, printMode: B
       pub_name: entry.pub_name,
       qtyOrDays: entry.totalQty,
       rate: null, // Omit rate in simple mode
-      amount: entry.totalAmount
+      amount: roundToFoxProRule(entry.paperAmount + entry.deliveryAmount)
     }));
   } else {
     // Detail Mode: keep separate rate lines with pure paper rate & amounts
