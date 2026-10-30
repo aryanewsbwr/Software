@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendWhatsAppBillMessage, formatWhatsAppPhone, getSecureWhatsAppToken } from '@/lib/whatsappService';
 import { getThermalPublicationDisplayName } from '@/lib/billThermalExport';
 import { generateDynamicUpiQrSvg } from '@/lib/upiQrHelper';
+import { MANGAL_FONT_BASE64 } from '@/assets/fonts/mangalBase64';
 import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
@@ -10,25 +11,8 @@ import path from 'path';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Cache embedded font base64 in memory
-let cachedFontBase64 = '';
 function getEmbeddedMangalBase64(): string {
-  if (cachedFontBase64) return cachedFontBase64;
-  try {
-    const localFontPath = path.join(process.cwd(), 'src', 'assets', 'fonts', 'mangal.ttf');
-    if (fs.existsSync(localFontPath)) {
-      cachedFontBase64 = fs.readFileSync(localFontPath).toString('base64');
-      return cachedFontBase64;
-    }
-    const winFontPath = 'C:\\Windows\\Fonts\\mangal.ttf';
-    if (fs.existsSync(winFontPath)) {
-      cachedFontBase64 = fs.readFileSync(winFontPath).toString('base64');
-      return cachedFontBase64;
-    }
-  } catch (err) {
-    console.warn('[Font Embed] Could not load Mangal font file:', err);
-  }
-  return '';
+  return MANGAL_FONT_BASE64;
 }
 
 function escapeXml(unsafe: string | number | undefined | null): string {
