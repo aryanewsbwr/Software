@@ -73,7 +73,7 @@ function formatWhatsAppCustomerName(rawName: string | undefined | null): string 
  * Creates a standalone high-contrast SVG of the exact 48mm thermal bill slip
  * and rasterizes it to a clean PNG buffer using sharp.
  */
-export async function generateBillPngBuffer(bill: any): Promise<Buffer> {
+async function generateBillPngBuffer(bill: any): Promise<Buffer> {
   const rawEngName = (bill.customer_name || bill.name_eng || '').trim();
   const engName = rawEngName.replace(/\s+crd\b/i, '').trim();
   const billNo = bill.bill_no || bill.customer_id || '37210';
