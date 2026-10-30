@@ -203,8 +203,15 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           totalSent += data.sent_count || 0;
           totalFailed += data.failed_count || 0;
           totalSkipped += data.skipped_count || 0;
+          if (data.failed_count > 0 && Array.isArray(data.results)) {
+            const firstFail = data.results.find((r: any) => !r.success && r.status !== 'skipped');
+            if (firstFail) {
+              console.error('[WhatsApp Send All Error Detail]:', firstFail);
+            }
+          }
         } else {
           totalFailed += chunk.length;
+          console.error('[WhatsApp Batch API Error]:', data.error);
         }
 
         setWaProgress({ sent: Math.min(i + chunk.length, eligibleBills.length), total: eligibleBills.length });
