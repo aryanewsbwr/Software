@@ -106,7 +106,7 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
   } else {
     // Single summary row if individual item breakdown wasn't supplied
     itemRowsSvg += `
-    <text x="16" y="${curY}" font-size="12" class="t-reg" fill="#000000">मासिक समाचार पत्र (Monthly Papers)</text>
+    <text x="16" y="${curY}" font-size="12" class="t-reg" fill="#000000">Monthly Newspaper</text>
     <text x="250" y="${curY}" font-size="12" class="t-bold" fill="#000000" text-anchor="middle">30</text>
     <text x="384" y="${curY}" font-size="12" class="t-bold" fill="#000000" text-anchor="end">${escapeXml(currentAmt)}</text>
     `;
@@ -116,7 +116,7 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
   // Delivery charge row if applicable
   if (deliveryChg > 0) {
     itemRowsSvg += `
-    <text x="16" y="${curY}" font-size="12" class="t-reg" fill="#000000">Delivery Charge / वितरण शुल्क</text>
+    <text x="16" y="${curY}" font-size="12" class="t-reg" fill="#000000">Delivery Charge</text>
     <text x="250" y="${curY}" font-size="12" class="t-bold" fill="#000000" text-anchor="middle">-</text>
     <text x="384" y="${curY}" font-size="12" class="t-bold" fill="#000000" text-anchor="end">${deliveryChg.toFixed(2)}</text>
     `;
@@ -173,7 +173,7 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
       </g>
       
       <!-- Greeting Text -->
-      <text x="200" y="26" font-size="13" class="t-bold" fill="#92400E" text-anchor="middle" letter-spacing="1">॥ शुभ दीपावली ॥</text>
+      <text x="200" y="26" font-size="13" class="t-bold" fill="#92400E" text-anchor="middle" letter-spacing="1">HAPPY DIWALI</text>
       
       <!-- Right Deepak (Diya) -->
       <g transform="translate(324, 12)">
@@ -187,35 +187,34 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
     <g transform="translate(0, 36)">
     <!-- Header -->
     <text x="200" y="32" font-size="19" class="t-bold" fill="#000000" text-anchor="middle" letter-spacing="0.5">ARYAN NEWS AGENCY</text>
-    <text x="200" y="56" font-size="16" class="t-mid" fill="#111111" text-anchor="middle">आर्यन न्यूज़ एजेंसी</text>
-    <text x="200" y="78" font-size="11.5" class="t-reg" fill="#222222" text-anchor="middle">5(1), Old Bus Stand, Beawar (Raj.) 305901</text>
-    <text x="200" y="96" font-size="11.5" class="t-reg" fill="#222222" text-anchor="middle">WhatsApp: 9462558949 | Ph: 9829058949</text>
-    <text x="200" y="114" font-size="11" class="t-reg" fill="#333333" text-anchor="middle">www.aryannewsagency.com</text>
+    <text x="200" y="56" font-size="12" class="t-mid" fill="#222222" text-anchor="middle">5(1), Old Bus Stand, Beawar (Raj.) 305901</text>
+    <text x="200" y="76" font-size="12" class="t-reg" fill="#222222" text-anchor="middle">WhatsApp: 9462558949 | Ph: 9829058949</text>
+    <text x="200" y="96" font-size="11" class="t-reg" fill="#333333" text-anchor="middle">www.aryannewsagency.com</text>
     
     <!-- Thick Rule -->
-    <line x1="16" y1="126" x2="384" y2="126" stroke="#000000" stroke-width="2.5"/>
+    <line x1="16" y1="108" x2="384" y2="108" stroke="#000000" stroke-width="2.5"/>
     
     <!-- Meta Info -->
-    <text x="16" y="148" font-size="14" class="t-bold" fill="#000000">Bill No: ${escapeXml(billNo)}</text>
-    <text x="384" y="148" font-size="14" class="t-bold" fill="#000000" text-anchor="end">Month: ${escapeXml(month)}</text>
-    <text x="16" y="170" font-size="14" class="t-bold" fill="#000000">A/c No: ${escapeXml(acNo)}</text>
+    <text x="16" y="130" font-size="14" class="t-bold" fill="#000000">Bill No: ${escapeXml(billNo)}</text>
+    <text x="384" y="130" font-size="14" class="t-bold" fill="#000000" text-anchor="end">Month: ${escapeXml(month)}</text>
+    <text x="16" y="152" font-size="14" class="t-bold" fill="#000000">A/c No: ${escapeXml(acNo)}</text>
     
     <!-- Dashed Divider -->
-    <line x1="16" y1="184" x2="384" y2="184" stroke="#000000" stroke-width="1.2" stroke-dasharray="5,3"/>
+    <line x1="16" y1="166" x2="384" y2="166" stroke="#000000" stroke-width="1.2" stroke-dasharray="5,3"/>
     
     <!-- Customer Details -->
-    <text x="16" y="212" font-size="15" class="t-bold" fill="#000000">${escapeXml(engName.toUpperCase())}</text>
-    <text x="16" y="238" font-size="12" class="t-reg" fill="#000000">Region: ${escapeXml(region)}</text>
-    <text x="384" y="238" font-size="12" class="t-reg" fill="#000000" text-anchor="end">Mob: ${escapeXml(phone)}</text>
+    <text x="16" y="194" font-size="15" class="t-bold" fill="#000000">${escapeXml(engName.toUpperCase())}</text>
+    <text x="16" y="220" font-size="12" class="t-reg" fill="#000000">Region: ${escapeXml(region)}</text>
+    <text x="384" y="220" font-size="12" class="t-reg" fill="#000000" text-anchor="end">Mob: ${escapeXml(phone)}</text>
     
     <!-- Dashed Divider -->
-    <line x1="16" y1="260" x2="384" y2="260" stroke="#000000" stroke-width="1.2" stroke-dasharray="5,3"/>
+    <line x1="16" y1="242" x2="384" y2="242" stroke="#000000" stroke-width="1.2" stroke-dasharray="5,3"/>
     
     <!-- Table Headers -->
-    <text x="16" y="280" font-size="13" class="t-bold" fill="#000000">विवरण / Particular</text>
-    <text x="250" y="280" font-size="13" class="t-bold" fill="#000000" text-anchor="middle">Days</text>
-    <text x="384" y="280" font-size="13" class="t-bold" fill="#000000" text-anchor="end">Amount ₹</text>
-    <line x1="16" y1="292" x2="384" y2="292" stroke="#000000" stroke-width="1" stroke-dasharray="4,2"/>
+    <text x="16" y="262" font-size="13" class="t-bold" fill="#000000">Particular</text>
+    <text x="250" y="262" font-size="13" class="t-bold" fill="#000000" text-anchor="middle">Days</text>
+    <text x="384" y="262" font-size="13" class="t-bold" fill="#000000" text-anchor="end">Amount Rs.</text>
+    <line x1="16" y1="274" x2="384" y2="274" stroke="#000000" stroke-width="1" stroke-dasharray="4,2"/>
     
     <!-- Dynamic Line Items -->
     ${itemRowsSvg}
@@ -224,16 +223,16 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
     <line x1="16" y1="${dividerY}" x2="384" y2="${dividerY}" stroke="#000000" stroke-width="1.2" stroke-dasharray="5,3"/>
     
     <!-- Summary -->
-    <text x="16" y="${currentAmtY}" font-size="13" class="t-reg" fill="#000000">Current / इस माह</text>
-    <text x="384" y="${currentAmtY}" font-size="14" class="t-bold" fill="#000000" text-anchor="end">₹ ${currentAmt}</text>
+    <text x="16" y="${currentAmtY}" font-size="13" class="t-reg" fill="#000000">Current Month</text>
+    <text x="384" y="${currentAmtY}" font-size="14" class="t-bold" fill="#000000" text-anchor="end">Rs. ${currentAmt}</text>
     
-    <text x="16" y="${prevDueY}" font-size="13" class="t-reg" fill="#000000">Prev. Due / बकाया</text>
-    <text x="384" y="${prevDueY}" font-size="14" class="t-bold" fill="#000000" text-anchor="end">₹ ${prevDue}</text>
+    <text x="16" y="${prevDueY}" font-size="13" class="t-reg" fill="#000000">Previous Due</text>
+    <text x="384" y="${prevDueY}" font-size="14" class="t-bold" fill="#000000" text-anchor="end">Rs. ${prevDue}</text>
     
     <!-- Boxed Total Banner -->
     <rect x="16" y="${totalBoxY}" width="368" height="38" rx="6" fill="#ffffff" stroke="#000000" stroke-width="2"/>
-    <text x="32" y="${totalBoxY + 25}" font-size="15" class="t-bold" fill="#000000">TOTAL / कुल देय</text>
-    <text x="368" y="${totalBoxY + 26}" font-size="18" class="t-bold" fill="#000000" text-anchor="end">₹ ${totalAmt}</text>
+    <text x="32" y="${totalBoxY + 25}" font-size="15" class="t-bold" fill="#000000">TOTAL PAYABLE</text>
+    <text x="368" y="${totalBoxY + 26}" font-size="18" class="t-bold" fill="#000000" text-anchor="end">Rs. ${totalAmt}</text>
     
     <!-- Dynamic UPI QR Code -->
     <g transform="translate(130, ${qrY})">
@@ -241,17 +240,17 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
       ${upiQrSvgInner}
     </g>
     
-    <text x="200" y="${qrText1Y}" font-size="13" class="t-bold" fill="#000000" text-anchor="middle">Scan &amp; Pay ₹${Math.round(Number(totalAmt))} via any UPI app</text>
-    <text x="200" y="${qrText2Y}" font-size="11.5" class="t-reg" fill="#333333" text-anchor="middle">किसी भी UPI ऐप से स्कैन कर भुगतान करें</text>
+    <text x="200" y="${qrText1Y}" font-size="13" class="t-bold" fill="#000000" text-anchor="middle">Scan &amp; Pay Rs. ${Math.round(Number(totalAmt))} via any UPI app</text>
+    <text x="200" y="${qrText2Y}" font-size="11.5" class="t-reg" fill="#333333" text-anchor="middle">GooglePay / PhonePe / Paytm / BHIM</text>
     
     <!-- Dashed Divider -->
     <line x1="16" y1="${footerDividerY}" x2="384" y2="${footerDividerY}" stroke="#000000" stroke-width="1.2" stroke-dasharray="5,3"/>
     
     <!-- Footer Notice -->
-    <text x="200" y="${footerNotice1Y}" font-size="11" class="t-bold" fill="#000000" text-anchor="middle">कृपया बिल की राशि 5 तारीख तक जमा करें।</text>
-    <text x="200" y="${footerNotice2Y}" font-size="10.5" class="t-mid" fill="#000000" text-anchor="middle">भुगतान के बाद स्क्रीनशॉट व्हाट्सएप पर भेजें।</text>
+    <text x="200" y="${footerNotice1Y}" font-size="11" class="t-bold" fill="#000000" text-anchor="middle">Please pay the bill before 5th of the month.</text>
+    <text x="200" y="${footerNotice2Y}" font-size="10.5" class="t-mid" fill="#000000" text-anchor="middle">After payment kindly send screenshot on WhatsApp.</text>
     <text x="200" y="${footerNotice3Y}" font-size="11" class="t-reg" fill="#111111" text-anchor="middle">Queries: WhatsApp 9462558949</text>
-    <text x="200" y="${footerThankYouY}" font-size="13" class="t-bold" fill="#000000" text-anchor="middle">धन्यवाद!</text>
+    <text x="200" y="${footerThankYouY}" font-size="13" class="t-bold" fill="#000000" text-anchor="middle">Thank You!</text>
     </g>
   </svg>
   `;
