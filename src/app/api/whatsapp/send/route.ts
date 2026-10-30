@@ -73,7 +73,7 @@ function formatWhatsAppCustomerName(rawName: string | undefined | null): string 
  * Creates a standalone high-contrast SVG of the exact 48mm thermal bill slip
  * and rasterizes it to a clean PNG buffer using sharp.
  */
-async function generateBillPngBuffer(bill: any): Promise<Buffer> {
+export async function generateBillPngBuffer(bill: any): Promise<Buffer> {
   const rawEngName = (bill.customer_name || bill.name_eng || '').trim();
   const engName = rawEngName.replace(/\s+crd\b/i, '').trim();
   const billNo = bill.bill_no || bill.customer_id || '37210';
@@ -156,7 +156,9 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
 
   // Real Dynamic UPI QR Code
   const upiQrSvgRaw = generateDynamicUpiQrSvg(Number(totalAmt), billNo, month, 140, 0);
-  const upiQrSvgInner = upiQrSvgRaw ? upiQrSvgRaw.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '') : '';
+  const upiQrSvgInner = upiQrSvgRaw
+    ? upiQrSvgRaw.trim().replace(/^<svg[^>]*>/i, '').replace(/<\/svg>\s*$/i, '')
+    : '';
 
   // High-resolution thermal bill slip SVG layout
   const svg = `
