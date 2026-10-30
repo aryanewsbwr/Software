@@ -92,7 +92,8 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
 
   if (items.length > 0) {
     items.forEach((it: any) => {
-      const pubName = getThermalPublicationDisplayName(it.pub_name || it.name || 'Newspaper');
+      // Use clean English name for publication to guarantee 100% crisp rendering without tofu squares
+      const pubName = String(it.pub_name || it.name || 'Newspaper').trim();
       const daysOrQty = String(it.days !== undefined && it.days !== null ? it.days : (it.qty || 30));
       const amtStr = Number(it.amount || 0).toFixed(2);
 
