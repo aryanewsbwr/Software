@@ -117,11 +117,13 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           test_phone: rawPhone,
-          month: `${currentBill.month || ''} ${currentBill.year || ''}`.trim() || 'Sep 2026',
+          month: `${currentBill.month || ''} ${currentBill.year || ''}`.trim() || 'Oct 2026',
           bill_id: currentBill.bill_no || currentBill.customer_id,
           customer_id: currentBill.customer_id,
           customer_name: currentBill.customer_name,
           customer_hindi: cleanOrTransliterateHindi(currentBill.customer_hindi || '', currentBill.customer_name),
+          items: currentBill.items || [],
+          delivery_charge: currentBill.delivery_charge || 0,
           paper_amount: currentBill.paper_amount || 0,
           previous_due: currentBill.previous_due || 0,
           net_payable: currentBill.net_payable || 0,
@@ -169,10 +171,12 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
         customer_id: b.customer_id,
         customer_name: b.customer_name,
         customer_hindi: cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name),
-        month: `${b.month || ''} ${b.year || ''}`.trim() || 'Sep 2026',
+        month: `${b.month || ''} ${b.year || ''}`.trim() || 'Oct 2026',
         region_name: b.region_name || b.region_id,
         phone: b.phone,
+        items: b.items || [],
         paper_amount: b.paper_amount || 0,
+        delivery_charge: b.delivery_charge || 0,
         previous_due: b.previous_due || 0,
         net_payable: b.net_payable || 0
       }));
