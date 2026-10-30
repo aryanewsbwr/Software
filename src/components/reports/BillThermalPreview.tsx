@@ -63,6 +63,8 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
   const [viewAll, setViewAll] = useState(false);
   const [scale, setScale] = useState(1);
   const [isSendingWa, setIsSendingWa] = useState(false);
+  const [isSendingWaAll, setIsSendingWaAll] = useState(false);
+  const [waProgress, setWaProgress] = useState<{ sent: number; total: number } | null>(null);
   const [waStatus, setWaStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const billCardRef = useRef<HTMLDivElement>(null);
 
@@ -138,6 +140,82 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
     } finally {
       setIsSendingWa(false);
       setTimeout(() => setWaStatus(null), 5000);
+    }
+  };
+
+  const handleSendAllWhatsApp = async () => {
+    // Filter bills that have phone numbers
+    const eligibleBills = bills.filter(b => b.phone && b.phone.trim() !== '' && b.phone.trim() !== '---');
+    
+    if (eligibleBills.length === 0) {
+      setWaStatus({ type: 'error', message: 'No customers in this region have a valid mobile number.' });
+      setTimeout(() => setWaStatus(null), 4000);
+      return;
+    }
+
+    const confirmSend = window.confirm(
+      `Send WhatsApp bills to all ${eligibleBills.length} customer(s) with valid phone numbers in this region?\n(Total bills: ${bills.length})`
+    );
+    if (!confirmSend) return;
+
+    setIsSendingWaAll(true);
+    setWaProgress({ sent: 0, total: eligibleBills.length });
+    setWaStatus(null);
+
+    try {
+      // Prepare payload with clean customer names, Hindi, and amounts
+      const preparedBills = eligibleBills.map(b => ({
+        bill_no: b.bill_no || b.customer_id,
+        customer_id: b.customer_id,
+        customer_name: b.customer_name,
+        customer_hindi: cleanOrTransliterateHindi(b.customer_hindi || '', b.customer_name),
+        month: `${b.month || ''} ${b.year || ''}`.trim() || 'Sep 2026',
+        region_name: b.region_name || b.region_id,
+        phone: b.phone,
+        paper_amount: b.paper_amount || 0,
+        previous_due: b.previous_due || 0,
+        net_payable: b.net_payable || 0
+      }));
+
+      // Send in batches of 15 to show progress smoothly
+      const chunkSize = 15;
+      let totalSent = 0;
+      let totalFailed = 0;
+      let totalSkipped = 0;
+
+      for (let i = 0; i < preparedBills.length; i += chunkSize) {
+        const chunk = preparedBills.slice(i, i + chunkSize);
+        const res = await fetch('/api/whatsapp/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bills: chunk,
+            month: preparedBills[0]?.month || 'Oct 2026'
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          totalSent += data.sent_count || 0;
+          totalFailed += data.failed_count || 0;
+          totalSkipped += data.skipped_count || 0;
+        } else {
+          totalFailed += chunk.length;
+        }
+
+        setWaProgress({ sent: Math.min(i + chunk.length, eligibleBills.length), total: eligibleBills.length });
+      }
+
+      setWaStatus({
+        type: totalSent > 0 ? 'success' : 'error',
+        message: `WhatsApp batch completed: ${totalSent} delivered successfully${totalFailed > 0 ? `, ${totalFailed} failed` : ''}${totalSkipped > 0 ? `, ${totalSkipped} skipped` : ''}.`
+      });
+    } catch (err: any) {
+      setWaStatus({ type: 'error', message: err?.message || 'Network error occurred during batch send.' });
+    } finally {
+      setIsSendingWaAll(false);
+      setWaProgress(null);
+      setTimeout(() => setWaStatus(null), 8000);
     }
   };
 
@@ -496,7 +574,7 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
 
           <button
             onClick={handleSendCurrentWhatsApp}
-            disabled={isSendingWa}
+            disabled={isSendingWa || isSendingWaAll}
             className="px-2.5 py-1 bg-green-600 hover:bg-green-500 disabled:bg-green-800 text-white font-bold rounded flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
             title="Send this Bill on WhatsApp to this customer"
           >
@@ -506,6 +584,24 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
               <Send className="w-3.5 h-3.5" />
             )}
             <span>{isSendingWa ? 'Sending...' : 'WhatsApp Bill'}</span>
+          </button>
+
+          <button
+            onClick={handleSendAllWhatsApp}
+            disabled={isSendingWa || isSendingWaAll}
+            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 text-white font-bold rounded flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
+            title="Send WhatsApp Bills to all customers with valid phone numbers in this region"
+          >
+            {isSendingWaAll ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Send className="w-3.5 h-3.5" />
+            )}
+            <span>
+              {isSendingWaAll 
+                ? (waProgress ? `Sending (${waProgress.sent}/${waProgress.total})...` : 'Sending All...')
+                : `WhatsApp Bill (All ${bills.filter(b => b.phone && b.phone !== '---').length})`}
+            </span>
           </button>
 
           <button

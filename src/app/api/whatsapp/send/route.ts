@@ -196,6 +196,7 @@ export async function POST(request: NextRequest) {
       customer_id, 
       test_phone, 
       selected_customer_ids, 
+      bills,
       month = 'Sep 2026' 
     } = body;
 
@@ -208,7 +209,126 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 1. Single Direct Send (Real Bill Data)
+    // 1. Batch Direct Send (Full Bill Objects from UI)
+    if (Array.isArray(bills) && bills.length > 0) {
+      const results: any[] = [];
+
+      for (const b of bills) {
+        const rawPhone = b.phone;
+        if (!rawPhone || rawPhone === '---') {
+          results.push({ 
+            customer_id: b.customer_id, 
+            customer_name: b.customer_name, 
+            status: 'skipped', 
+            reason: 'No phone' 
+          });
+          continue;
+        }
+
+        const rawPhones = String(rawPhone).split(',').map((p: string) => p.trim()).filter(Boolean);
+        const validPhones = rawPhones.map((p: string) => formatWhatsAppPhone(p)).filter(Boolean) as string[];
+
+        if (validPhones.length === 0) {
+          results.push({ 
+            customer_id: b.customer_id, 
+            customer_name: b.customer_name, 
+            phone: rawPhone,
+            status: 'skipped', 
+            reason: 'Invalid phone format' 
+          });
+          continue;
+        }
+
+        const billMonth = `${b.month || ''} ${b.year || ''}`.trim() || month;
+
+        for (const phone of validPhones) {
+          try {
+            let imageBuffer: Buffer;
+            if (b.image_base64) {
+              const cleanB64 = b.image_base64.replace(/^data:image\/\w+;base64,/, '');
+              imageBuffer = Buffer.from(cleanB64, 'base64');
+            } else {
+              const billData = {
+                bill_no: String(b.bill_no || b.customer_id),
+                customer_id: String(b.customer_id),
+                customer_name: b.customer_name || 'CUSTOMER',
+                customer_hindi: b.customer_hindi || b.customer_name || '',
+                month: billMonth,
+                region_name: b.region_name || b.region_id || '',
+                phone,
+                paper_amount: Number(b.paper_amount || 0),
+                previous_due: Number(b.previous_due || 0),
+                net_payable: Number(b.net_payable || 0)
+              };
+              imageBuffer = await generateBillPngBuffer(billData);
+            }
+
+            const sendPayload = {
+              toPhone: phone,
+              customerName: b.customer_hindi || b.customer_name || `Customer #${b.customer_id}`,
+              month: billMonth,
+              billNo: String(b.bill_no || b.customer_id),
+              accountNo: String(b.customer_id),
+              currentAmount: Number(b.paper_amount || 0),
+              previousDue: Number(b.previous_due || 0),
+              totalPayable: Number(b.net_payable || 0),
+              billImageBuffer: imageBuffer,
+              imageFileName: `Bill_${b.bill_no || b.customer_id}.png`
+            };
+
+            const res = await sendWhatsAppBillMessage(sendPayload);
+
+            // Log to database
+            try {
+              await supabaseAdmin.from('whatsapp_messages').insert({
+                customer_id: String(b.customer_id),
+                bill_id: String(b.bill_no || b.customer_id),
+                phone,
+                wamid: res.wamid || null,
+                status: res.success ? 'sent' : 'failed',
+                error_code: res.errorCode || null,
+                error_json: res.errorJson || null,
+                media_id: res.mediaId || null,
+                bill_month: billMonth,
+                total_amount: Number(b.net_payable || 0)
+              });
+            } catch (dbErr) {
+              console.warn('[WhatsApp Route] Error logging to database:', dbErr);
+            }
+
+            results.push({ 
+              customer_id: b.customer_id, 
+              customer_name: b.customer_name, 
+              phone, 
+              ...res 
+            });
+          } catch (itemErr: any) {
+            results.push({ 
+              customer_id: b.customer_id, 
+              customer_name: b.customer_name, 
+              phone, 
+              status: 'failed', 
+              error: itemErr?.message || String(itemErr) 
+            });
+          }
+        }
+      }
+
+      const sentCount = results.filter(r => r.success).length;
+      const skippedCount = results.filter(r => r.status === 'skipped').length;
+      const failedCount = results.filter(r => r.status === 'failed' || (r.success === false && r.status !== 'skipped')).length;
+
+      return NextResponse.json({ 
+        success: true, 
+        count: results.length, 
+        sent_count: sentCount,
+        skipped_count: skippedCount,
+        failed_count: failedCount,
+        results 
+      });
+    }
+
+    // 2. Single Direct Send (Real Bill Data)
     if (test_phone || body.phone) {
       const targetPhone = test_phone || body.phone;
       const cleanPhone = formatWhatsAppPhone(targetPhone);
@@ -362,7 +482,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, count: results.length, results });
     }
 
-    return NextResponse.json({ error: 'Missing parameters. Provide test_phone, bill_id, or selected_customer_ids.' }, { status: 400 });
+    return NextResponse.json({ error: 'Missing parameters. Provide bills, test_phone, bill_id, or selected_customer_ids.' }, { status: 400 });
   } catch (err: any) {
     console.error('API Send Error:', err);
     return NextResponse.json({ success: false, error: err?.message || String(err) }, { status: 500 });
