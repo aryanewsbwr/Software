@@ -400,11 +400,6 @@ export const BillThermalPreview: React.FC<BillThermalPreviewProps> = ({
           <div className="font-black text-[13.5px] uppercase tracking-tight text-black">
             {cleanEngName}
           </div>
-          {displayHindi && displayHindi !== cleanEngName && (
-            <div className="font-bold text-[12.5px] text-slate-900 mt-0.5">
-              {displayHindi}
-            </div>
-          )}
           <div className="flex justify-between items-center text-[10.5px] font-semibold text-slate-700 mt-1 whitespace-nowrap">
             <span>Region: {b.region_name || b.region_id}</span>
             {formattedPhone && <span>Mob: {formattedPhone}</span>}

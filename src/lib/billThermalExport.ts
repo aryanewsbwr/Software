@@ -234,7 +234,6 @@ export function renderSingleThermalBillHtml(b: BillRecord, printMode: BillPrintM
       <!-- Customer Details Section -->
       <div class="customer-section">
         <div class="customer-name-en">${cleanEngName}</div>
-        ${displayHindi && displayHindi !== cleanEngName ? `<div class="customer-name-hi">${displayHindi}</div>` : ''}
         <div class="customer-sub-row">
           <span>Region: ${b.region_name || b.region_id}</span>
           ${formattedPhone ? `<span>Mob: ${formattedPhone}</span>` : ''}

@@ -42,11 +42,30 @@ function escapeXml(unsafe: string | number | undefined | null): string {
 }
 
 /**
+ * Cleanly formats the customer's name for WhatsApp messages with " जी"
+ * E.g. "Lakshay ji Bhati" -> "Lakshay Bhati जी"
+ *      "LAKSHAY JI BHATI" -> "Lakshay Bhati जी"
+ *      "Ganpati Enterprises" -> "Ganpati Enterprises जी"
+ */
+function formatWhatsAppCustomerName(rawName: string | undefined | null): string {
+  if (!rawName) return 'ग्राहक जी';
+  let clean = String(rawName).trim().replace(/\s+crd\b/i, '').trim();
+  // Strip trailing regional tags / numbers
+  clean = clean.replace(/\s+(Df|3IMB|5AN|5dn|Hb|Scl|Mr1|Mr2|Sr2|Ag|NN|Gpr|Br)$/i, '').trim();
+  clean = clean.replace(/\s+\d+$/i, '').trim();
+
+  // If already ends with ji/jee or जी, normalize to single ' जी'
+  if (/\b(ji|jee|जी)$/i.test(clean)) {
+    return clean.replace(/\s*(ji|jee|जी)$/i, ' जी');
+  }
+  return `${clean} जी`;
+}
+
+/**
  * Creates a standalone high-contrast SVG of the exact 48mm thermal bill slip
  * and rasterizes it to a clean PNG buffer using sharp.
  */
 async function generateBillPngBuffer(bill: any): Promise<Buffer> {
-  const custName = (bill.customer_hindi || bill.name_hindi || bill.customer_name || bill.name_eng || 'ग्राहक').trim();
   const rawEngName = (bill.customer_name || bill.name_eng || '').trim();
   const engName = rawEngName.replace(/\s+crd\b/i, '').trim();
   const billNo = bill.bill_no || bill.customer_id || '37210';
@@ -191,10 +210,9 @@ async function generateBillPngBuffer(bill: any): Promise<Buffer> {
     <line x1="16" y1="184" x2="384" y2="184" stroke="#000000" stroke-width="1.2" stroke-dasharray="5,3"/>
     
     <!-- Customer Details -->
-    <text x="16" y="206" font-size="15" class="t-bold" fill="#000000">${escapeXml(engName.toUpperCase())}</text>
-    <text x="16" y="228" font-size="14" class="t-mid" fill="#111111">${escapeXml(custName)}</text>
-    <text x="16" y="248" font-size="12" class="t-reg" fill="#000000">Region: ${escapeXml(region)}</text>
-    <text x="384" y="248" font-size="12" class="t-reg" fill="#000000" text-anchor="end">Mob: ${escapeXml(phone)}</text>
+    <text x="16" y="212" font-size="15" class="t-bold" fill="#000000">${escapeXml(engName.toUpperCase())}</text>
+    <text x="16" y="238" font-size="12" class="t-reg" fill="#000000">Region: ${escapeXml(region)}</text>
+    <text x="384" y="238" font-size="12" class="t-reg" fill="#000000" text-anchor="end">Mob: ${escapeXml(phone)}</text>
     
     <!-- Dashed Divider -->
     <line x1="16" y1="260" x2="384" y2="260" stroke="#000000" stroke-width="1.2" stroke-dasharray="5,3"/>
@@ -333,7 +351,7 @@ export async function POST(request: NextRequest) {
 
             const sendPayload = {
               toPhone: phone,
-              customerName: b.customer_hindi || b.customer_name || `Customer #${b.customer_id}`,
+              customerName: formatWhatsAppCustomerName(b.customer_name),
               month: billMonth,
               billNo: String(b.bill_no || b.customer_id),
               accountNo: String(b.customer_id),
@@ -430,7 +448,7 @@ export async function POST(request: NextRequest) {
       const activeBill = {
         bill_no: String(body.bill_id || body.bill_no || '37210'),
         customer_id: String(body.customer_id || '24669'),
-        customer_name: body.customer_hindi || body.customer_name || 'ग्राहक',
+        customer_name: formatWhatsAppCustomerName(body.customer_name),
         month: body.month || month,
         current_amount: Number(body.paper_amount || 0),
         previous_due: Number(body.previous_due || 0),
@@ -520,7 +538,7 @@ export async function POST(request: NextRequest) {
 
           const res = await sendWhatsAppBillMessage({
             toPhone: phone,
-            customerName: billData.customer_hindi,
+            customerName: formatWhatsAppCustomerName(cust.name_eng || `Customer #${cid}`),
             month: billData.month,
             billNo: billData.bill_no,
             accountNo: billData.customer_id,
