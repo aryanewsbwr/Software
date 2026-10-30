@@ -231,6 +231,16 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'jijyasu': 'जिज्ञासु',
   'saurabh': 'सौरभ',
   'pragyan': 'प्रज्ञान',
+  'lakshay': 'लक्ष्य',
+  'lakshya': 'लक्ष्य',
+  'lakshman': 'लक्ष्मण',
+  'laxman': 'लक्ष्मण',
+  'akshay': 'अक्षय',
+  'daksh': 'दक्ष',
+  'dixit': 'दीक्षित',
+  'deexit': 'दीक्षित',
+  'minakshi': 'मीनाक्षी',
+  'meenakshi': 'मीनाक्षी',
 
   // Common Surnames & Castes
   'agarwal': 'अग्रवाल',
@@ -303,7 +313,6 @@ export const HINDI_DICTIONARY: Record<string, string> = {
   'praveen': 'प्रवीण',
   'govind': 'गोविंद',
   'shyam': 'श्याम',
-  'laxman': 'लक्ष्मण',
   'bharat': 'भरत',
   'hanuman': 'हनुमान',
   'ganesh': 'गणेश',
@@ -411,6 +420,9 @@ const ENGLISH_INITIALS: Record<string, string> = {
 
 // 5. Authentic Susha 05 Decoding Dictionary & Regex Replacements
 const SUSHA_PATTERNS: [RegExp, string][] = [
+  [/laxya/g, 'लक्ष्य'],
+  [/Axaya/g, 'अक्षय'],
+  [/BaaTI/g, 'भाटी'],
   [/vyaaTsePp/gi, 'व्हाट्सएप'],
   [/vyaaT\s*sePp/gi, 'व्हाट्सएप'],
   [/saOmpla/gi, 'सैम्पल'],
@@ -570,6 +582,7 @@ const SUSHA_CHARS: [string, string][] = [
   ['p', 'प'], ['P', 'फ'], ['f', 'फ'], ['b', 'ब'], ['B', 'भ'], ['m', 'म'],
   ['y', 'य'], ['r', 'र'], ['l', 'ल'], ['v', 'व'], ['w', 'व'],
   ['S', 'श'], ['Y', 'ष'], ['s', 'स'], ['h', 'ह'],
+  ['x', 'क्ष'], ['X', 'क्ष'],
   ['~', 'त्र'], ['&', 'ज्ञ'], ['@', 'क्'], ['%', 'त्'],
   ['$', 'रु'], ['`', '्र'], ['-', 'र्'], [':', 'ः'], ['^', 'ँ'], ['M', 'ं'],
   ['[', 'इ'], ['{', 'ई'], [']', 'उ'], ['}', 'ऊ']
