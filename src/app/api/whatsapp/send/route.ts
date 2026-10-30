@@ -42,23 +42,31 @@ function escapeXml(unsafe: string | number | undefined | null): string {
 }
 
 /**
- * Cleanly formats the customer's name for WhatsApp messages with " जी"
- * E.g. "Lakshay ji Bhati" -> "Lakshay Bhati जी"
- *      "LAKSHAY JI BHATI" -> "Lakshay Bhati जी"
- *      "Ganpati Enterprises" -> "Ganpati Enterprises जी"
+ * Cleanly formats the customer's name for the approved WhatsApp template 'monthly_bill_hi'.
+ * NOTE: The approved Meta template text is already:
+ * "नमस्ते {{1}} जी,\nआर्यन न्यूज़ एजेंसी..."
+ * So variable {{1}} MUST contain only the customer's clean name WITHOUT any "ji", "jee", or "जी".
+ * That way, WhatsApp renders: "नमस्ते " + name + " जी," (never duplicate "जी जी").
+ * 
+ * E.g. "M A Rehmani ji" -> "M A Rehmani" (renders as "नमस्ते M A Rehmani जी,")
+ *      "Lakshay ji Bhati" -> "Lakshay Bhati" (renders as "नमस्ते Lakshay Bhati जी,")
+ *      "Ganpati Enterprises" -> "Ganpati Enterprises" (renders as "नमस्ते Ganpati Enterprises जी,")
  */
 function formatWhatsAppCustomerName(rawName: string | undefined | null): string {
-  if (!rawName) return 'ग्राहक जी';
+  if (!rawName) return 'ग्राहक';
   let clean = String(rawName).trim().replace(/\s+crd\b/i, '').trim();
   // Strip trailing regional tags / numbers
   clean = clean.replace(/\s+(Df|3IMB|5AN|5dn|Hb|Scl|Mr1|Mr2|Sr2|Ag|NN|Gpr|Br)$/i, '').trim();
   clean = clean.replace(/\s+\d+$/i, '').trim();
 
-  // If already ends with ji/jee or जी, normalize to single ' जी'
-  if (/\b(ji|jee|जी)$/i.test(clean)) {
-    return clean.replace(/\s*(ji|jee|जी)$/i, ' जी');
-  }
-  return `${clean} जी`;
+  // Strip all occurrences of ji, jee, and जी (case-insensitive) anywhere in the name
+  clean = clean.replace(/\b(ji|jee|ji\.|jee\.)\b/gi, ' ');
+  clean = clean.replace(/(\s|^)जी(\s|$)/g, ' ');
+  // Also strip if attached to word end
+  clean = clean.replace(/(जी)+$/g, '');
+  clean = clean.replace(/\s+/g, ' ').trim();
+
+  return clean || 'ग्राहक';
 }
 
 /**
